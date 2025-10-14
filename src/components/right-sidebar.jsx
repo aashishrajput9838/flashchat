@@ -25,7 +25,7 @@ export function RightSidebar({ onUserClick }) {
           name: currentUser.displayName || currentUser.email || `User${currentUser.uid.substring(0, 5)}`,
           role: "You",
           email: currentUser.email,
-          photoURL: currentUser.photoURL,
+          photoURL: currentUser.photoURL || currentUser.photoURL, // Ensure we use the correct photoURL
           uid: currentUser.uid
         });
       }

@@ -54,15 +54,15 @@ export const subscribeToMessages = (selectedUserId, callback) => {
       const messagesRef = collection(db, 'messages');
       const currentUser = getCurrentUser();
       
-      // If no selected user, show all messages (for general view)
-      let q;
-      if (selectedUserId && currentUser) {
-        // Query all messages and filter client-side
-        q = query(messagesRef, orderBy('timestamp'));
-      } else {
-        // Show all messages if no specific user selected
-        q = query(messagesRef, orderBy('timestamp'));
+      // If no selected user or no current user, return empty array
+      if (!selectedUserId || !currentUser) {
+        callback([]);
+        return () => {};
       }
+      
+      // Use a simpler query that doesn't require composite indexes
+      // Query all messages and filter client-side
+      const q = query(messagesRef, orderBy('timestamp'));
       
       return onSnapshot(q, (querySnapshot) => {
         const messages = [];
@@ -71,34 +71,19 @@ export const subscribeToMessages = (selectedUserId, callback) => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           
-          // Filter messages for the specific conversation
-          if (selectedUserId && user) {
-            // Only include messages between current user and selected user
-            // Check if the message has the required fields
-            if (data.userId && data.recipientId) {
-              if ((data.userId === user.uid && data.recipientId === selectedUserId) ||
-                  (data.userId === selectedUserId && data.recipientId === user.uid)) {
-                messages.push({
-                  id: doc.id,
-                  ...data,
-                  you: user ? data.userId === user.uid : false,
-                  time: data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
-                        (data.createdAt ? data.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')
-                });
-              }
+          // Filter messages for the specific conversation on the client side
+          // Only include messages between current user and selected user
+          if (data.userId && data.recipientId) {
+            if ((data.userId === user.uid && data.recipientId === selectedUserId) ||
+                (data.userId === selectedUserId && data.recipientId === user.uid)) {
+              messages.push({
+                id: doc.id,
+                ...data,
+                you: user ? data.userId === user.uid : false,
+                time: data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
+                      (data.createdAt ? data.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')
+              });
             }
-            // If message doesn't have recipientId, we might have old messages
-            // For backward compatibility, we could include them if they seem relevant
-            // But for now, we'll exclude them to ensure clean conversation separation
-          } else {
-            // Show all messages if no specific user selected
-            messages.push({
-              id: doc.id,
-              ...data,
-              you: user ? data.userId === user.uid : false,
-              time: data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
-                    (data.createdAt ? data.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')
-            });
           }
         });
         

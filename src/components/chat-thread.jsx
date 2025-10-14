@@ -23,6 +23,12 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       setUserName(user.displayName || user.email || `User${user.uid.substring(0, 5)}`)
     }
 
+    // If no selected chat, clear messages and return
+    if (!selectedChat || !user) {
+      setChatMessages([]);
+      return () => {};
+    }
+
     // Subscribe to messages from Firestore for the selected user
     const unsubscribe = subscribeToMessages(selectedChat?.uid, (messages) => {
       setChatMessages(messages);
@@ -42,7 +48,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    if (message.trim() === "") return
+    if (message.trim() === "" || !selectedChat) return
 
     // Get current user data to ensure it's up to date
     const currentUser = getCurrentUser();
@@ -85,8 +91,8 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   // Determine the chat avatar to display
   const chatAvatar = selectedChat 
-    ? (selectedChat.photoURL || (user ? user.photoURL : null))
-    : (user ? user.photoURL : "/images/flashchat-hero.png");
+    ? (selectedChat.photoURL || (user ? user.photoURL : null) || "/diverse-avatars.png")
+    : (user ? user.photoURL : "/images/flashchat-hero.png") || "/diverse-avatars.png";
 
   // Function to get the correct photoURL for a message
   const getMessagePhotoURL = (message) => {
@@ -108,6 +114,21 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     // Fallback to default avatar
     return "/diverse-avatars.png";
   };
+
+  // If no chat is selected, show a welcome message
+  if (!selectedChat) {
+    return (
+      <div className="flex h-[70vh] min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
+        <div className="text-center p-8">
+          <h3 className="text-xl font-semibold mb-2">Welcome to FlashChat</h3>
+          <p className="text-muted-foreground mb-4">Select a friend from the conversation list to start chatting</p>
+          <div className="text-sm text-muted-foreground">
+            Don't have any friends yet? Use the "Add Friend" button to connect with others!
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -153,7 +174,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       <div className="p-3 md:p-4">
         <div className="overflow-hidden rounded-xl border">
           <img
-            src={chatAvatar || "/images/flashchat-hero.png"}
+            src={chatAvatar}
             alt="Conversation header"
             className="aspect-[16/9] w-full object-cover" />
         </div>
@@ -211,6 +232,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
             placeholder="Write a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            disabled={!selectedChat}
           />
         </form>
         <button
@@ -220,7 +242,8 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
         </button>
         <button
           onClick={handleSendMessage}
-          className="inline-flex items-center gap-2 rounded-lg border bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90">
+          disabled={!selectedChat}
+          className="inline-flex items-center gap-2 rounded-lg border bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50">
           <Send className="h-4 w-4" />
           <span className="hidden md:inline">Send</span>
         </button>
