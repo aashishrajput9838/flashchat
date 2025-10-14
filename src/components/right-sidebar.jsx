@@ -19,16 +19,12 @@ export function RightSidebar({ onUserClick }) {
         uid: user.uid
       }));
       
-      // Add current user to the top if not already in the list
-      if (currentUser && !memberList.some(m => m.role === "You")) {
-        memberList.unshift({
-          name: currentUser.displayName || currentUser.email || `User${currentUser.uid.substring(0, 5)}`,
-          role: "You",
-          email: currentUser.email,
-          photoURL: currentUser.photoURL || currentUser.photoURL, // Ensure we use the correct photoURL
-          uid: currentUser.uid
-        });
-      }
+      // Sort to put current user at the top
+      memberList.sort((a, b) => {
+        if (a.role === "You") return -1;
+        if (b.role === "You") return 1;
+        return 0;
+      });
       
       setMembers(memberList);
     });
@@ -39,7 +35,7 @@ export function RightSidebar({ onUserClick }) {
         unsubscribe();
       }
     };
-  }, [currentUser]);
+  }, []);
 
   // Function to handle user click
   const handleUserClick = (user) => {
@@ -50,10 +46,10 @@ export function RightSidebar({ onUserClick }) {
 
   return (
     <div
-      className="flex h-[70vh] min-h-[640px] flex-col gap-3 lg:h-[calc(100dvh-48px)]">
+      className="flex h-[70vh] min-h-[640px] flex-col gap-3 rounded-xl border bg-card p-3 md:p-4 lg:h-[calc(100dvh-48px)]">
       {/* User Profile */}
       {currentUser && (
-        <section className="rounded-xl border bg-card p-3 md:p-4">
+        <section className="rounded-xl border bg-card p-3 md:p-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarImage alt="Your avatar" src={currentUser.photoURL || "/diverse-avatars.png"} />
@@ -74,7 +70,7 @@ export function RightSidebar({ onUserClick }) {
       )}
       
       {/* Quick actions */}
-      <section className="rounded-xl border bg-card p-3 md:p-4">
+      <section className="rounded-xl border bg-card p-3 md:p-4 flex-shrink-0">
         <div className="mb-3 text-sm font-medium">Actions</div>
         <div className="grid grid-cols-4 gap-2">
           <button
@@ -99,13 +95,14 @@ export function RightSidebar({ onUserClick }) {
           </button>
         </div>
       </section>
+      
       {/* Members */}
-      <section className="min-h-0 flex-1 rounded-xl border bg-card p-3 md:p-4">
-        <div className="mb-3 flex items-center justify-between">
+      <section className="min-h-0 flex-1 rounded-xl border bg-card p-3 md:p-4 flex flex-col">
+        <div className="mb-3 flex items-center justify-between flex-shrink-0">
           <h4 className="text-sm font-medium">Members</h4>
-          <span className="text-xs text-muted-foreground">{members.length}</span>
+          <span className="text-xs text-muted-foreground">{members.length} users</span>
         </div>
-        <div className="space-y-2 overflow-auto pr-1">
+        <div className="space-y-2 overflow-auto pr-1 flex-grow">
           {members.map((m, index) => (
             <div
               key={m.uid || index}
@@ -132,22 +129,6 @@ export function RightSidebar({ onUserClick }) {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-      {/* Files */}
-      <section className="rounded-xl border bg-card p-3 md:p-4">
-        <div className="mb-3 text-sm font-medium">Files</div>
-        <div className="space-y-3">
-          <div
-            className="rounded-lg border bg-secondary/50 p-3 text-xs text-muted-foreground">
-            115 photos • 208 files • 47 shared links
-          </div>
-          <div className="overflow-hidden rounded-xl border">
-            <img
-              src="/images/flashchat-hero.png"
-              alt="Shared file preview"
-              className="aspect-[16/9] w-full object-cover" />
-          </div>
         </div>
       </section>
     </div>

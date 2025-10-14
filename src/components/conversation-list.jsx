@@ -9,6 +9,7 @@ export function ConversationList({ onSelectChat }) {
   const [newFriendEmail, setNewFriendEmail] = useState('')
   const [friendRequestStatus, setFriendRequestStatus] = useState('')
   const currentUser = getCurrentUser()
+  const currentUserId = currentUser?.uid // Extract the UID for dependency array
 
   useEffect(() => {
     // Subscribe to friends only from Firestore to create chat list
@@ -52,7 +53,7 @@ export function ConversationList({ onSelectChat }) {
         unsubscribe();
       }
     };
-  }, [currentUser]);
+  }, [currentUserId]); // Use currentUserId instead of currentUser object
 
   // Function to handle chat selection
   const handleSelectChat = (chat) => {

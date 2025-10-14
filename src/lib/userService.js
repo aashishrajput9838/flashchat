@@ -331,6 +331,7 @@ export const subscribeToUsers = (callback) => {
           }
           users.push({ id: doc.id, ...userData });
         });
+        
         callback(users);
       }, (error) => {
         console.error('Firestore subscription error:', error);
