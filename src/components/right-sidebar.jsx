@@ -41,6 +41,7 @@ export function RightSidebar({ onUserClick }) {
 
     // Subscribe to notifications
     const unsubscribeNotifications = subscribeToNotifications((notifications) => {
+      console.log('Notifications received in UI:', notifications);
       setNotifications(notifications);
     });
 
@@ -183,11 +184,13 @@ export function RightSidebar({ onUserClick }) {
                       className={`p-2 rounded-lg text-xs ${notification.read ? 'bg-background' : 'bg-primary/10'}`}
                     >
                       <div className="flex justify-between">
-                        <div className="font-medium">{notification.fromName}</div>
+                        <div className="font-medium">
+                          {notification.fromName || notification.toName || notification.friendName || 'System'}
+                        </div>
                         {!notification.read && (
                           <button 
                             onClick={() => handleMarkAsRead(notification)}
-                            className="text-primary hover:underline"
+                            className="text-primary hover:underline text-xs"
                           >
                             {notificationStatus[notification.timestamp] || 'Mark as read'}
                           </button>
@@ -197,7 +200,9 @@ export function RightSidebar({ onUserClick }) {
                       <div className="text-muted-foreground text-xs mt-1">
                         {notification.timestamp && notification.timestamp.toDate 
                           ? notification.timestamp.toDate().toLocaleString() 
-                          : new Date(notification.timestamp).toLocaleString()}
+                          : notification.timestamp 
+                          ? new Date(notification.timestamp).toLocaleString()
+                          : 'Unknown time'}
                       </div>
                     </div>
                   ))}

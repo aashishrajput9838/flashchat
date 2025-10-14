@@ -246,21 +246,38 @@ export const sendFriendRequest = async (friendEmail) => {
         from: currentUser.uid,
         fromEmail: currentUser.email,
         fromName: currentUser.displayName,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       })
     });
     
     // Add notification to the requester about sending the request
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayUnion({
-        type: 'friend_request_sent',
-        message: `You sent a friend request to ${friendData.name || friendData.displayName || friendData.email}`,
-        to: friendData.uid,
-        toName: friendData.name || friendData.displayName || friendData.email,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData = {
+      type: 'friend_request_sent',
+      message: `You sent a friend request to ${friendData.name || friendData.displayName || friendData.email}`,
+      to: friendData.uid,
+      toName: friendData.name || friendData.displayName || friendData.email,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    console.log('Adding notification:', notificationData);
+    
+    // Get the current user's document first
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData);
+      
+      // Update the document with the new notifications array
+      await updateDoc(userDocRef, {
+        notifications: notifications
+      });
+    }
     
     return friendData;
   } catch (error) {
@@ -318,28 +335,58 @@ export const acceptFriendRequest = async (request) => {
     });
     
     // Add notification to the current user (Himani) about accepting the request
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayUnion({
-        type: 'friend_request_accepted_self',
-        message: `You accepted ${request.fromName || request.fromEmail}'s friend request`,
-        from: request.from,
-        fromName: request.fromName || request.fromEmail,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData1 = {
+      type: 'friend_request_accepted_self',
+      message: `You accepted ${request.fromName || request.fromEmail}'s friend request`,
+      from: request.from,
+      fromName: request.fromName || request.fromEmail,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the current user's document first
+    const currentUserDocRef = doc(db, 'users', currentUser.uid);
+    const currentUserDoc = await getDoc(currentUserDocRef);
+    
+    if (currentUserDoc.exists()) {
+      const userData = currentUserDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData1);
+      
+      // Update the document with the new notifications array
+      await updateDoc(currentUserDocRef, {
+        notifications: notifications
+      });
+    }
     
     // Add notification to the requester
-    await updateDoc(doc(db, 'users', request.from), {
-      notifications: arrayUnion({
-        type: 'friend_request_accepted',
-        message: `${currentUser.displayName || currentUser.email} accepted your friend request`,
-        from: currentUser.uid,
-        fromName: currentUser.displayName || currentUser.email,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData2 = {
+      type: 'friend_request_accepted',
+      message: `${currentUser.displayName || currentUser.email} accepted your friend request`,
+      from: currentUser.uid,
+      fromName: currentUser.displayName || currentUser.email,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the requester's document first
+    const requesterDocRef = doc(db, 'users', request.from);
+    const requesterDoc = await getDoc(requesterDocRef);
+    
+    if (requesterDoc.exists()) {
+      const userData = requesterDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData2);
+      
+      // Update the document with the new notifications array
+      await updateDoc(requesterDocRef, {
+        notifications: notifications
+      });
+    }
 
     return true;
   } catch (error) {
@@ -361,28 +408,58 @@ export const declineFriendRequest = async (request) => {
     });
     
     // Add notification to the current user (Himani) about declining the request
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayUnion({
-        type: 'friend_request_declined_self',
-        message: `You declined ${request.fromName || request.fromEmail}'s friend request`,
-        from: request.from,
-        fromName: request.fromName || request.fromEmail,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData1 = {
+      type: 'friend_request_declined_self',
+      message: `You declined ${request.fromName || request.fromEmail}'s friend request`,
+      from: request.from,
+      fromName: request.fromName || request.fromEmail,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the current user's document first
+    const currentUserDocRef = doc(db, 'users', currentUser.uid);
+    const currentUserDoc = await getDoc(currentUserDocRef);
+    
+    if (currentUserDoc.exists()) {
+      const userData = currentUserDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData1);
+      
+      // Update the document with the new notifications array
+      await updateDoc(currentUserDocRef, {
+        notifications: notifications
+      });
+    }
     
     // Add notification to the requester
-    await updateDoc(doc(db, 'users', request.from), {
-      notifications: arrayUnion({
-        type: 'friend_request_declined',
-        message: `${currentUser.displayName || currentUser.email} declined your friend request`,
-        from: currentUser.uid,
-        fromName: currentUser.displayName || currentUser.email,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData2 = {
+      type: 'friend_request_declined',
+      message: `${currentUser.displayName || currentUser.email} declined your friend request`,
+      from: currentUser.uid,
+      fromName: currentUser.displayName || currentUser.email,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the requester's document first
+    const requesterDocRef = doc(db, 'users', request.from);
+    const requesterDoc = await getDoc(requesterDocRef);
+    
+    if (requesterDoc.exists()) {
+      const userData = requesterDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData2);
+      
+      // Update the document with the new notifications array
+      await updateDoc(requesterDocRef, {
+        notifications: notifications
+      });
+    }
 
     return true;
   } catch (error) {
@@ -398,6 +475,11 @@ export const unfriendUser = async (friendUid) => {
   }
 
   try {
+    // Get friend's data for notification
+    const friendDoc = await getDoc(doc(db, 'users', friendUid));
+    const friendData = friendDoc.exists() ? friendDoc.data() : null;
+    const friendName = friendData?.displayName || friendData?.name || friendData?.email || `User${friendUid.substring(0, 5)}`;
+
     // Remove the friend from the current user's friends list
     await updateDoc(doc(db, 'users', currentUser.uid), {
       friends: arrayRemove(friendUid)
@@ -409,15 +491,58 @@ export const unfriendUser = async (friendUid) => {
     });
     
     // Add notification to the current user about unfriending
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayUnion({
-        type: 'unfriended_user',
-        message: `You unfriended a user`,
-        friendUid: friendUid,
-        timestamp: serverTimestamp(),
-        read: false
-      })
-    });
+    const notificationData1 = {
+      type: 'unfriended_user',
+      message: `You unfriended ${friendName}`,
+      friendUid: friendUid,
+      friendName: friendName,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the current user's document first
+    const currentUserDocRef = doc(db, 'users', currentUser.uid);
+    const currentUserDoc = await getDoc(currentUserDocRef);
+    
+    if (currentUserDoc.exists()) {
+      const userData = currentUserDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData1);
+      
+      // Update the document with the new notifications array
+      await updateDoc(currentUserDocRef, {
+        notifications: notifications
+      });
+    }
+
+    // Add notification to the unfriended user
+    const notificationData2 = {
+      type: 'unfriended_by_user',
+      message: `${currentUser.displayName || currentUser.email} unfriended you`,
+      from: currentUser.uid,
+      fromName: currentUser.displayName || currentUser.email,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+    
+    // Get the unfriended user's document first
+    const unfriendedUserDocRef = doc(db, 'users', friendUid);
+    const unfriendedUserDoc = await getDoc(unfriendedUserDocRef);
+    
+    if (unfriendedUserDoc.exists()) {
+      const userData = unfriendedUserDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Add the new notification to the array
+      notifications.push(notificationData2);
+      
+      // Update the document with the new notifications array
+      await updateDoc(unfriendedUserDocRef, {
+        notifications: notifications
+      });
+    }
 
     return true;
   } catch (error) {
@@ -441,6 +566,10 @@ export const subscribeToNotifications = (callback) => {
       if (docSnapshot.exists()) {
         const userData = docSnapshot.data();
         const notifications = userData.notifications || [];
+        
+        // Debug: Log notifications
+        console.log('Notifications retrieved:', notifications);
+        
         // Sort notifications by timestamp (newest first)
         const sortedNotifications = notifications.sort((a, b) => {
           // Handle cases where timestamp might be a Firestore timestamp object
@@ -470,18 +599,35 @@ export const markNotificationAsRead = async (notification) => {
   }
 
   try {
-    // Remove the notification and add it back as read
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayRemove(notification)
-    });
+    // Get the current user's document
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
     
-    // Add it back with read status
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      notifications: arrayUnion({
-        ...notification,
-        read: true
-      })
-    });
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+      
+      // Find the notification to update by comparing relevant fields
+      const updatedNotifications = notifications.map(notif => {
+        // Compare the notification by type, message, and timestamp
+        if (notif.type === notification.type && 
+            notif.message === notification.message &&
+            ((notif.timestamp && notification.timestamp && 
+              notif.timestamp.toDate && notification.timestamp.toDate &&
+              notif.timestamp.toDate().getTime() === notification.timestamp.toDate().getTime()) ||
+             (notif.timestamp && notification.timestamp &&
+              notif.timestamp.getTime && notification.timestamp.getTime &&
+              notif.timestamp.getTime() === notification.timestamp.getTime()))) {
+          return { ...notif, read: true };
+        }
+        return notif;
+      });
+      
+      // Update the document with the modified notifications array
+      await updateDoc(userDocRef, {
+        notifications: updatedNotifications
+      });
+    }
 
     return true;
   } catch (error) {
