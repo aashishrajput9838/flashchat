@@ -4,13 +4,15 @@ import { LeftRail } from '@/components/left-rail';
 import { ConversationList } from '@/components/conversation-list';
 import { ChatThread } from '@/components/chat-thread';
 import { RightSidebar } from '@/components/right-sidebar';
-import { initAuth, getCurrentUser } from '@/lib/userService';
+import { initAuth, getCurrentUser, subscribeToFriends } from '@/lib/userService';
 import { Login } from '@/components/login';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState(null);
+  const [friends, setFriends] = useState([]);
+  const currentUser = getCurrentUser();
 
   useEffect(() => {
     // Initialize authentication
@@ -24,6 +26,21 @@ export default function App() {
         setLoading(false);
       });
   }, []);
+
+  // Subscribe to friends list
+  useEffect(() => {
+    if (user) {
+      const unsubscribe = subscribeToFriends((friendsList) => {
+        setFriends(friendsList);
+      });
+      
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    }
+  }, [user]);
 
   // Handle login success
   const handleLoginSuccess = (user) => {
@@ -45,8 +62,28 @@ export default function App() {
   }
 
   // Function to select a chat (replaces current chat)
+  // Only allow chatting with friends
   const selectChat = (user) => {
-    setSelectedChat(user);
+    // Check if the selected user is in the friends list
+    const isFriend = friends.some(friend => friend.uid === user.uid);
+    
+    // Allow user to chat with themselves (for testing purposes)
+    const isSelf = user.uid === currentUser?.uid;
+    
+    if (isFriend || isSelf) {
+      setSelectedChat(user);
+    } else {
+      // Close the chat if the user is no longer a friend
+      setSelectedChat(null);
+      // Optionally show a message or prevent selection
+      console.log("Cannot chat with non-friends");
+      // You could show a toast or modal here informing the user
+    }
+  };
+
+  // Function to handle closing the chat
+  const handleCloseChat = () => {
+    setSelectedChat(null);
   };
 
   return (
@@ -65,7 +102,7 @@ export default function App() {
 
         {/* Chat center - always shows the selected chat */}
         <section className="lg:col-span-1">
-          <ChatThread selectedChat={selectedChat} />
+          <ChatThread selectedChat={selectedChat} onClose={handleCloseChat} />
         </section>
 
         {/* Right sidebar */}

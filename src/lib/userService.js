@@ -16,7 +16,9 @@ import {
   where, 
   onSnapshot,
   arrayUnion,
-  updateDoc
+  arrayRemove,
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 
 // Function to get higher quality Google profile image
@@ -76,6 +78,7 @@ export const initAuth = () => {
                 photoURL: getHighQualityPhotoURL(user.photoURL) || user.photoURL || '', // Keep original if processing fails
                 friends: [], // Initialize empty friends array
                 friendRequests: [], // Initialize empty friend requests array
+                notifications: [], // Initialize empty notifications array
                 createdAt: new Date()
               };
               
@@ -247,9 +250,261 @@ export const sendFriendRequest = async (friendEmail) => {
       })
     });
     
+    // Add notification to the requester about sending the request
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayUnion({
+        type: 'friend_request_sent',
+        message: `You sent a friend request to ${friendData.name || friendData.displayName || friendData.email}`,
+        to: friendData.uid,
+        toName: friendData.name || friendData.displayName || friendData.email,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+    
     return friendData;
   } catch (error) {
     console.error('Error sending friend request:', error);
+    throw error;
+  }
+};
+
+// Function to subscribe to friend requests
+export const subscribeToFriendRequests = (callback) => {
+  if (!currentUser || !db) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    // Get the current user's document to get their friend requests
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    
+    return onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const userData = docSnapshot.data();
+        const friendRequests = userData.friendRequests || [];
+        callback(friendRequests);
+      } else {
+        callback([]);
+      }
+    }, (error) => {
+      console.error('Friend requests subscription error:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Friend requests subscription setup error:', error);
+    callback([]);
+    return () => {};
+  }
+};
+
+// Function to accept a friend request
+export const acceptFriendRequest = async (request) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Add the requester to the current user's friends list
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      friends: arrayUnion(request.from),
+      friendRequests: arrayRemove(request)
+    });
+
+    // Add the current user to the requester's friends list
+    await updateDoc(doc(db, 'users', request.from), {
+      friends: arrayUnion(currentUser.uid)
+    });
+    
+    // Add notification to the current user (Himani) about accepting the request
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayUnion({
+        type: 'friend_request_accepted_self',
+        message: `You accepted ${request.fromName || request.fromEmail}'s friend request`,
+        from: request.from,
+        fromName: request.fromName || request.fromEmail,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+    
+    // Add notification to the requester
+    await updateDoc(doc(db, 'users', request.from), {
+      notifications: arrayUnion({
+        type: 'friend_request_accepted',
+        message: `${currentUser.displayName || currentUser.email} accepted your friend request`,
+        from: currentUser.uid,
+        fromName: currentUser.displayName || currentUser.email,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error accepting friend request:', error);
+    throw error;
+  }
+};
+
+// Function to decline a friend request
+export const declineFriendRequest = async (request) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Remove the request from the current user's friendRequests array
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      friendRequests: arrayRemove(request)
+    });
+    
+    // Add notification to the current user (Himani) about declining the request
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayUnion({
+        type: 'friend_request_declined_self',
+        message: `You declined ${request.fromName || request.fromEmail}'s friend request`,
+        from: request.from,
+        fromName: request.fromName || request.fromEmail,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+    
+    // Add notification to the requester
+    await updateDoc(doc(db, 'users', request.from), {
+      notifications: arrayUnion({
+        type: 'friend_request_declined',
+        message: `${currentUser.displayName || currentUser.email} declined your friend request`,
+        from: currentUser.uid,
+        fromName: currentUser.displayName || currentUser.email,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error declining friend request:', error);
+    throw error;
+  }
+};
+
+// Function to unfriend a user
+export const unfriendUser = async (friendUid) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Remove the friend from the current user's friends list
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      friends: arrayRemove(friendUid)
+    });
+
+    // Remove the current user from the friend's friends list
+    await updateDoc(doc(db, 'users', friendUid), {
+      friends: arrayRemove(currentUser.uid)
+    });
+    
+    // Add notification to the current user about unfriending
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayUnion({
+        type: 'unfriended_user',
+        message: `You unfriended a user`,
+        friendUid: friendUid,
+        timestamp: serverTimestamp(),
+        read: false
+      })
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error unfriending user:', error);
+    throw error;
+  }
+};
+
+// Function to subscribe to notifications
+export const subscribeToNotifications = (callback) => {
+  if (!currentUser || !db) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    // Get the current user's document to get their notifications
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    
+    return onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const userData = docSnapshot.data();
+        const notifications = userData.notifications || [];
+        // Sort notifications by timestamp (newest first)
+        const sortedNotifications = notifications.sort((a, b) => {
+          // Handle cases where timestamp might be a Firestore timestamp object
+          const aTime = a.timestamp && a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+          const bTime = b.timestamp && b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+          return bTime - aTime;
+        });
+        callback(sortedNotifications);
+      } else {
+        callback([]);
+      }
+    }, (error) => {
+      console.error('Notifications subscription error:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Notifications subscription setup error:', error);
+    callback([]);
+    return () => {};
+  }
+};
+
+// Function to mark a notification as read
+export const markNotificationAsRead = async (notification) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Remove the notification and add it back as read
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayRemove(notification)
+    });
+    
+    // Add it back with read status
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: arrayUnion({
+        ...notification,
+        read: true
+      })
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+};
+
+// Function to clear all notifications
+export const clearAllNotifications = async () => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Clear all notifications
+    await updateDoc(doc(db, 'users', currentUser.uid), {
+      notifications: []
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error clearing notifications:', error);
     throw error;
   }
 };

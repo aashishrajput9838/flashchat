@@ -3,19 +3,32 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect, useRef } from "react"
 // Remove socket import
 import { sendMessage, subscribeToMessages } from "@/lib/chatService"
-import { getCurrentUser, updateUserProfile, signOutUser } from "@/lib/userService"
+import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser } from "@/lib/userService"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [message, setMessage] = useState("")
   const [chatMessages, setChatMessages] = useState([])
   const [userName, setUserName] = useState("")
+  const [showDropdown, setShowDropdown] = useState(false)
+  const dropdownRef = useRef(null)
+  const ellipsisRef = useRef(null)
   const messagesEndRef = useRef(null)
   const user = getCurrentUser()
 
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
+          ellipsisRef.current && !ellipsisRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     // Set user name
@@ -41,10 +54,6 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       }
     }
   }, [user, selectedChat])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [chatMessages])
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -84,6 +93,29 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     }
   };
 
+  // Function to unfriend the selected user
+  const handleUnfriend = async () => {
+    if (!selectedChat) return;
+    
+    try {
+      await unfriendUser(selectedChat.uid);
+      // Close the chat after unfriending
+      if (onClose) {
+        onClose();
+      }
+    } catch (error) {
+      console.error("Error unfriending user:", error);
+    }
+    
+    setShowDropdown(false);
+  };
+
+  // Function to toggle dropdown menu
+  const toggleDropdown = (e) => {
+    e.stopPropagation();
+    setShowDropdown(!showDropdown);
+  };
+
   // Determine the chat title to display
   const chatTitle = selectedChat 
     ? selectedChat.name 
@@ -118,7 +150,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   // If no chat is selected, show a welcome message
   if (!selectedChat) {
     return (
-      <div className="flex h-[70vh] min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
+      <div className="flex h-full min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card">
         <div className="text-center p-8">
           <h3 className="text-xl font-semibold mb-2">Welcome to FlashChat</h3>
           <p className="text-muted-foreground mb-4">Select a friend from the conversation list to start chatting</p>
@@ -132,7 +164,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   return (
     <div
-      className="flex h-[70vh] min-h-[640px] flex-col rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
+      className="flex h-full min-h-[640px] flex-col rounded-xl border bg-card">
       {/* Top bar */}
       <div className="flex items-center gap-2 border-b p-3 md:p-4">
         <h3 className="text-base font-semibold">{chatTitle}</h3>
@@ -162,11 +194,32 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
               aria-label="Start video">
               <Video className="h-4 w-4" />
             </button>
-            <button
-              className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
-              aria-label="More actions">
-              <Ellipsis className="h-4 w-4" />
-            </button>
+            <div className="relative">
+              <button
+                ref={ellipsisRef}
+                onClick={toggleDropdown}
+                className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+                aria-label="More actions">
+                <Ellipsis className="h-4 w-4" />
+              </button>
+              
+              {/* Dropdown menu */}
+              {showDropdown && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1" role="menu">
+                    <button
+                      onClick={handleUnfriend}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      role="menuitem"
+                    >
+                      Unfriend
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -199,16 +252,14 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   .slice(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-sm font-medium">{m.you ? userName : m.name}</span>
-                <span className="text-xs text-muted-foreground">{m.time}</span>
-              </div>
-              <p className="text-sm leading-relaxed text-pretty">{m.text}</p>
+            <div className="min-w-0">
+              <div className="text-xs font-medium">{m.name}</div>
+              <div className="text-sm">{m.text}</div>
+              <div className="text-xs text-muted-foreground">{m.time}</div>
             </div>
           </div>
         ))}
-        <div ref={messagesEndRef} />
+        <div />
       </div>
       {/* Composer */}
       <div className="flex items-center gap-2 border-t p-3 md:p-4">

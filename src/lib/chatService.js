@@ -14,9 +14,11 @@ export const sendMessage = async (messageData, recipientUserId) => {
       // Get the first 5 words of the message (limit to 30 characters to keep ID reasonable)
       const firstWords = messageData.text.split(' ').slice(0, 5).join('_').substring(0, 30);
       
-      // Create a readable document ID: timestamp + first 5 words
+      // Create a readable document ID: timestamp + first 5 words (sanitized)
       const userIdentifier = user ? (user.displayName || user.email || user.uid).replace(/\s+/g, '_').substring(0, 10) : 'anonymous';
-      const readableId = `${timestamp.getTime()}_${firstWords}`;
+      // Sanitize the firstWords to remove special characters that might cause issues with Firestore document IDs
+      const sanitizedFirstWords = firstWords.replace(/[^a-zA-Z0-9_]/g, '');
+      const readableId = `${timestamp.getTime()}_${sanitizedFirstWords}`;
       
       // Ensure we always have user data, even if getCurrentUser returns null
       const message = {
