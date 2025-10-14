@@ -1,16 +1,19 @@
 "use client";
-import { Plus, Home, MessageSquare, Users, Bell, Settings } from "lucide-react"
+import { Plus, Home, MessageSquare, Users, Bell, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { signOutUser } from "@/lib/userService"
 
 // A simple circular icon button used in the left rail
 function RailIcon({
   icon: Icon,
   label,
-  active = false
+  active = false,
+  onClick
 }) {
   return (
     <button
       aria-label={label}
+      onClick={onClick}
       className={cn(
         "relative grid h-12 w-12 place-items-center rounded-full border",
         "bg-sidebar text-sidebar-foreground",
@@ -23,6 +26,16 @@ function RailIcon({
 }
 
 export function LeftRail() {
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      // Redirect to the root path which will show the login screen
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   return (
     <div className="flex h-full flex-row gap-3 lg:flex-col">
       {/* Brand coin */}
@@ -38,6 +51,7 @@ export function LeftRail() {
         <RailIcon icon={Settings} label="Settings" />
       </div>
       <div className="ml-auto flex items-center gap-3 lg:ml-0 lg:mt-auto">
+        <RailIcon icon={LogOut} label="Logout" onClick={handleLogout} />
         <button
           aria-label="New"
           className="grid h-12 w-12 place-items-center rounded-full border bg-secondary hover:bg-muted">

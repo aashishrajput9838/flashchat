@@ -1,10 +1,25 @@
-import { useState } from 'react';
-import { signInWithGoogle, signOutUser } from '@/lib/userService';
-import { GoogleAuthProvider } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { signInWithGoogle } from '@/lib/userService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
-export function Login() {
+export function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // If user is already authenticated, notify parent
+        if (onLoginSuccess) {
+          onLoginSuccess(user);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [onLoginSuccess]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -12,20 +27,9 @@ export function Login() {
     
     try {
       await signInWithGoogle();
+      // The onAuthStateChanged listener will handle the redirect
     } catch (error) {
       console.error('Sign in error:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    setLoading(true);
-    try {
-      await signOutUser();
-    } catch (error) {
-      console.error('Sign out error:', error);
       setError(error.message);
     } finally {
       setLoading(false);

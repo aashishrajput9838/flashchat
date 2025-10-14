@@ -1,7 +1,7 @@
 import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect, useRef } from "react"
-import socket from "@/lib/socket"
+// Remove socket import
 import { sendMessage, subscribeToMessages } from "@/lib/chatService"
 import { getCurrentUser, updateUserProfile, signOutUser } from "@/lib/userService"
 
@@ -23,17 +23,6 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       setUserName(user.displayName || user.email || `User${user.uid.substring(0, 5)}`)
     }
 
-    // Listen for incoming messages from Socket.IO
-    socket.on("receive_message", (data) => {
-      // Only add message if it's for the current conversation
-      if (!selectedChat || 
-          (!data.userId && !data.recipientId) || // If missing both IDs, show it (backward compatibility)
-          (data.userId === user?.uid && data.recipientId === selectedChat?.uid) ||
-          (data.userId === selectedChat?.uid && data.recipientId === user?.uid)) {
-        setChatMessages(prev => [...prev, data])
-      }
-    })
-
     // Subscribe to messages from Firestore for the selected user
     const unsubscribe = subscribeToMessages(selectedChat?.uid, (messages) => {
       setChatMessages(messages);
@@ -41,7 +30,6 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
     // Clean up listeners on component unmount
     return () => {
-      socket.off("receive_message")
       if (unsubscribe) {
         unsubscribe()
       }
@@ -67,23 +55,17 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       text: message,
       userId: currentUser ? currentUser.uid : "anonymous",
       recipientId: selectedChat ? selectedChat.uid : null, // Add recipient ID
-      photoURL: currentUser ? currentUser.photoURL : null // Add photoURL to socket message
+      photoURL: currentUser ? currentUser.photoURL : null // Add photoURL
     }
 
     try {
-      // Try to send message to Firebase with recipient ID
+      // Send message to Firebase with recipient ID
       const messageId = await sendMessage(newMessage, selectedChat?.uid)
-      
-      // Also emit to Socket.IO for real-time updates
-      socket.emit("send_message", newMessage)
       
       // Clear input
       setMessage("")
     } catch (error) {
       console.error("Error sending message:", error)
-      // Fallback to Socket.IO only if Firebase fails
-      socket.emit("send_message", newMessage)
-      setChatMessages(prev => [...prev, newMessage])
       setMessage("")
     }
   }

@@ -25,6 +25,12 @@ export default function App() {
       });
   }, []);
 
+  // Handle login success
+  const handleLoginSuccess = (user) => {
+    setUser(user);
+    setLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
@@ -35,7 +41,7 @@ export default function App() {
 
   // If user is not authenticated, show login screen
   if (!user) {
-    return <Login />;
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Function to select a chat (replaces current chat)

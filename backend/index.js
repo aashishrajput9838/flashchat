@@ -12,8 +12,19 @@ app.use(cors());
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://localhost:5178", "http://localhost:5179", "http://localhost:5180"], // Vite default ports
-    methods: ["GET", "POST"]
+    origin: [
+      "http://localhost:5173", 
+      "http://localhost:5174", 
+      "http://localhost:5175", 
+      "http://localhost:5176", 
+      "http://localhost:5177", 
+      "http://localhost:5178", 
+      "http://localhost:5179", 
+      "http://localhost:5180",
+      "https://flashchat-coral.vercel.app" // Add Vercel deployment URL
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -54,3 +65,8 @@ process.on('SIGINT', () => {
     console.log('Process terminated');
   });
 });
+
+// This file is no longer needed as we're using Firestore for real-time messaging
+// Keeping it for reference, but the server is not used in the current implementation
+
+console.log("This Socket.IO server is no longer used. The app now uses Firestore for real-time messaging.");
