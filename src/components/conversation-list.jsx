@@ -186,7 +186,7 @@ export function ConversationList({ onSelectChat }) {
     <div
       className="flex h-[70vh] min-h-[640px] flex-col gap-3 rounded-xl border bg-card p-3 md:p-4 lg:h-[calc(100dvh-48px)]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <h2 className="text-lg font-semibold">FlashChat</h2>
         <div className="flex items-center gap-2">
           <button
@@ -202,7 +202,7 @@ export function ConversationList({ onSelectChat }) {
       
       {/* Add Friend Form */}
       {showAddFriend && (
-        <div className="rounded-lg border bg-secondary/50 p-3">
+        <div className="rounded-lg border bg-secondary/50 p-3 flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium">Add New Friend</h3>
             <button 
@@ -267,7 +267,7 @@ export function ConversationList({ onSelectChat }) {
       )}
       
       {/* Search */}
-      <label className="group relative block">
+      <label className="group relative block flex-shrink-0">
         <span className="sr-only">Search chats</span>
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

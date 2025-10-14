@@ -12,7 +12,6 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
-  const messagesEndRef = useRef(null)
   const user = getCurrentUser()
 
   // Close dropdown when clicking outside
@@ -150,7 +149,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   // If no chat is selected, show a welcome message
   if (!selectedChat) {
     return (
-      <div className="flex h-full min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card">
+      <div className="flex h-[70vh] min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
         <div className="text-center p-8">
           <h3 className="text-xl font-semibold mb-2">Welcome to FlashChat</h3>
           <p className="text-muted-foreground mb-4">Select a friend from the conversation list to start chatting</p>
@@ -164,7 +163,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   return (
     <div
-      className="flex h-full min-h-[640px] flex-col rounded-xl border bg-card">
+      className="flex h-[70vh] min-h-[640px] flex-col rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
       {/* Top bar */}
       <div className="flex items-center gap-2 border-b p-3 md:p-4">
         <h3 className="text-base font-semibold">{chatTitle}</h3>
