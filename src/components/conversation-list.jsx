@@ -196,7 +196,6 @@ export function ConversationList({ onSelectChat }) {
             <UserPlus className="h-4 w-4" />
             <span className="hidden md:inline">Add Friend</span>
           </button>
-          <div className="hidden text-sm text-muted-foreground md:block">Work</div>
         </div>
       </div>
       
