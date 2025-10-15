@@ -41,7 +41,6 @@ export function RightSidebar({ onUserClick }) {
 
     // Subscribe to notifications
     const unsubscribeNotifications = subscribeToNotifications((notifications) => {
-      console.log('Notifications received in UI:', notifications);
       setNotifications(notifications);
     });
 

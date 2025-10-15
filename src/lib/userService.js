@@ -260,8 +260,6 @@ export const sendFriendRequest = async (friendEmail) => {
       read: false
     };
     
-    console.log('Adding notification:', notificationData);
-    
     // Get the current user's document first
     const userDocRef = doc(db, 'users', currentUser.uid);
     const userDoc = await getDoc(userDocRef);
@@ -567,14 +565,11 @@ export const subscribeToNotifications = (callback) => {
         const userData = docSnapshot.data();
         const notifications = userData.notifications || [];
         
-        // Debug: Log notifications
-        console.log('Notifications retrieved:', notifications);
-        
         // Sort notifications by timestamp (newest first)
         const sortedNotifications = notifications.sort((a, b) => {
-          // Handle cases where timestamp might be a Firestore timestamp object
-          const aTime = a.timestamp && a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
-          const bTime = b.timestamp && b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+          // Handle cases where timestamp might be a string or Date object
+          const aTime = new Date(a.timestamp);
+          const bTime = new Date(b.timestamp);
           return bTime - aTime;
         });
         callback(sortedNotifications);
