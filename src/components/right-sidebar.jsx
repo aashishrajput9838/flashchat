@@ -260,21 +260,25 @@ export function RightSidebar({ onUserClick }) {
         <div className="mb-3 text-sm font-medium">Actions</div>
         <div className="grid grid-cols-4 gap-2">
           <button
+            onClick={() => alert('Call feature would be implemented here')}
             className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
             aria-label="Call">
             <Phone className="h-5 w-5" />
           </button>
           <button
+            onClick={() => alert('Video call feature would be implemented here')}
             className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
             aria-label="Video">
             <Video className="h-5 w-5" />
           </button>
           <button
+            onClick={() => alert('Screen share feature would be implemented here')}
             className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
             aria-label="Screen share">
             <Camera className="h-5 w-5" />
           </button>
           <button
+            onClick={() => alert('Links feature would be implemented here')}
             className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
             aria-label="Links">
             <Link className="h-5 w-5" />

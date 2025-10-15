@@ -36,24 +36,51 @@ export function LeftRail() {
     }
   };
 
+  const handleHome = () => {
+    // Navigate to the home page
+    window.location.href = "/";
+  };
+
+  const handleChats = () => {
+    // Refresh the current page to show chats
+    window.location.reload();
+  };
+
+  const handleTeams = () => {
+    alert("Teams feature would be implemented here");
+  };
+
+  const handleNotifications = () => {
+    alert("Notifications feature would be implemented here");
+  };
+
+  const handleSettings = () => {
+    alert("Settings feature would be implemented here");
+  };
+
+  const handleNew = () => {
+    alert("New feature would be implemented here");
+  };
+
   return (
     <div className="flex h-full flex-row gap-3 lg:flex-col">
       {/* Brand coin */}
       <div
         className="grid h-12 w-12 place-items-center rounded-full border bg-secondary">
-        <span className="text-sm font-semibold">FC</span>
+        <img src="/src/assets/logo.png" alt="FlashChat Logo" className="h-8 w-8 object-contain" />
       </div>
       <div className="hidden flex-1 flex-col gap-3 lg:flex">
-        <RailIcon icon={Home} label="Home" />
-        <RailIcon icon={MessageSquare} label="Chats" active />
-        <RailIcon icon={Users} label="Teams" />
-        <RailIcon icon={Bell} label="Notifications" />
-        <RailIcon icon={Settings} label="Settings" />
+        <RailIcon icon={Home} label="Home" onClick={handleHome} />
+        <RailIcon icon={MessageSquare} label="Chats" active onClick={handleChats} />
+        <RailIcon icon={Users} label="Teams" onClick={handleTeams} />
+        <RailIcon icon={Bell} label="Notifications" onClick={handleNotifications} />
+        <RailIcon icon={Settings} label="Settings" onClick={handleSettings} />
       </div>
       <div className="ml-auto flex items-center gap-3 lg:ml-0 lg:mt-auto">
         <RailIcon icon={LogOut} label="Logout" onClick={handleLogout} />
         <button
           aria-label="New"
+          onClick={handleNew}
           className="grid h-12 w-12 place-items-center rounded-full border bg-secondary hover:bg-muted">
           <Plus className="h-5 w-5" />
         </button>

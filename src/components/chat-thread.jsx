@@ -13,6 +13,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const user = getCurrentUser()
+  const fileInputRef = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -146,6 +147,41 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     return "/diverse-avatars.png";
   };
 
+  // Function to handle file attachment
+  const handleAttachFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Function to handle file selection
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      alert(`File selected: ${file.name}
+File type: ${file.type}
+File size: ${file.size} bytes
+
+In a real application, this file would be uploaded and sent as a message.`);
+      // Reset the file input
+      e.target.value = '';
+    }
+  };
+
+  // Function to handle emoji selection
+  const handleEmojiSelect = (emoji) => {
+    setMessage(prevMessage => prevMessage + emoji);
+  };
+
+  // Function to show emoji picker
+  const showEmojiPicker = () => {
+    const emojis = ['😀', '😂', '😍', '😎', '👍', '👏', '❤️', '🔥', '🎉', '✨'];
+    const selectedEmoji = prompt(`Select an emoji:\n${emojis.join(' ')}`);
+    if (selectedEmoji && emojis.includes(selectedEmoji)) {
+      handleEmojiSelect(selectedEmoji);
+    }
+  };
+
   // If no chat is selected, show a welcome message
   if (!selectedChat) {
     return (
@@ -184,11 +220,13 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
               <LogOut className="h-4 w-4" />
             </button>
             <button
+              onClick={() => alert('Call feature would be implemented here')}
               className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
               aria-label="Start call">
               <Phone className="h-4 w-4" />
             </button>
             <button
+              onClick={() => alert('Video call feature would be implemented here')}
               className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
               aria-label="Start video">
               <Video className="h-4 w-4" />
@@ -263,11 +301,20 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       {/* Composer */}
       <div className="flex items-center gap-2 border-t p-3 md:p-4">
         <button
+          onClick={handleAttachFile}
           className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
           aria-label="Attach">
           <Paperclip className="h-4 w-4" />
         </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          aria-label="File input"
+        />
         <button
+          onClick={() => alert('Voice message feature would be implemented here')}
           className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
           aria-label="Voice">
           <Mic className="h-4 w-4" />
@@ -286,6 +333,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
           />
         </form>
         <button
+          onClick={showEmojiPicker}
           className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
           aria-label="Emoji">
           <Smile className="h-4 w-4" />
