@@ -44,4 +44,28 @@ export const auth = getAuth(app);
 // Export Firestore instance
 export { db };
 
+// Add a function to handle Firestore errors and implement backoff logic
+export const handleFirestoreError = (error) => {
+  console.error("Firestore error:", error);
+  
+  // Check if it's a quota exceeded error
+  if (error.code === 'resource-exhausted') {
+    console.warn("Quota exceeded. Implementing backoff strategy.");
+    // You could implement a more sophisticated backoff strategy here
+    // For now, we'll just log the error and suggest waiting
+    alert("Service temporarily unavailable due to usage limits. Please wait a few minutes before trying again.");
+  }
+  
+  // Check if it's a permission error
+  if (error.code === 'permission-denied') {
+    console.warn("Permission denied. Check Firestore rules.");
+  }
+  
+  // Check if it's a network error
+  if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+    console.warn("Network error. Retrying...");
+    // You could implement retry logic here
+  }
+};
+
 export default app;

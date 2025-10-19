@@ -20,6 +20,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const user = getCurrentUser()
   const currentUserId = user ? user.uid : null
   const fileInputRef = useRef(null)
+  const messageSubscriptionRef = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -42,6 +43,12 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       setUserName(user.displayName || user.email || `User${user.uid.substring(0, 5)}`)
     }
 
+    // Clean up previous subscription
+    if (messageSubscriptionRef.current) {
+      messageSubscriptionRef.current();
+      messageSubscriptionRef.current = null;
+    }
+
     // If no selected chat, clear messages and return
     if (!selectedChat || !user) {
       setChatMessages([]);
@@ -49,14 +56,15 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     }
 
     // Subscribe to messages from Firestore for the selected user
-    const unsubscribe = subscribeToMessages(selectedChat?.uid, (messages) => {
+    messageSubscriptionRef.current = subscribeToMessages(selectedChat?.uid, (messages) => {
       setChatMessages(messages);
     });
 
     // Clean up listeners on component unmount
     return () => {
-      if (unsubscribe) {
-        unsubscribe()
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current();
+        messageSubscriptionRef.current = null;
       }
     }
   }, [currentUserId, selectedChat])

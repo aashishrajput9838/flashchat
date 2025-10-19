@@ -1,6 +1,7 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, query, orderBy, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, query, orderBy, where, onSnapshot, serverTimestamp, addDoc } from 'firebase/firestore';
 import { getCurrentUser } from './userService';
+import { handleFirestoreError } from './firebase';
 
 // Function to send a message to Firestore
 export const sendMessage = async (messageData, recipientUserId) => {
@@ -9,35 +10,23 @@ export const sendMessage = async (messageData, recipientUserId) => {
     try {
       const user = getCurrentUser();
       const messagesRef = collection(db, 'messages');
-      const timestamp = new Date();
       
-      // Get the first 5 words of the message (limit to 30 characters to keep ID reasonable)
-      const firstWords = messageData.text.split(' ').slice(0, 5).join('_').substring(0, 30);
-      
-      // Create a readable document ID: timestamp + first 5 words (sanitized)
-      const userIdentifier = user ? (user.displayName || user.email || user.uid).replace(/\s+/g, '_').substring(0, 10) : 'anonymous';
-      // Sanitize the firstWords to remove special characters that might cause issues with Firestore document IDs
-      const sanitizedFirstWords = firstWords.replace(/[^a-zA-Z0-9_]/g, '');
-      const readableId = `${timestamp.getTime()}_${sanitizedFirstWords}`;
-      
-      // Ensure we always have user data, even if getCurrentUser returns null
+      // Simplified message object without custom ID generation
       const message = {
         text: messageData.text,
         name: messageData.name || (user && user.displayName) ? user.displayName : 'Anonymous',
         userId: user ? user.uid : 'anonymous',
-        recipientId: recipientUserId, // Add recipient ID for conversation tracking
-        timestamp: timestamp, // Use client-side timestamp for consistency
+        recipientId: recipientUserId,
+        timestamp: serverTimestamp(), // Use server timestamp for better consistency
         you: messageData.you || false,
-        photoURL: messageData.photoURL || (user && user.photoURL) ? user.photoURL : null,
-        readableId: readableId // Keep this for reference
+        photoURL: messageData.photoURL || (user && user.photoURL) ? user.photoURL : null
       };
       
-      // Use setDoc with custom ID instead of addDoc
-      const docRef = doc(messagesRef, readableId);
-      await setDoc(docRef, message);
-      return readableId;
+      // Use addDoc to let Firestore generate the ID
+      const docRef = await addDoc(messagesRef, message);
+      return docRef.id;
     } catch (error) {
-      console.error('Error sending message to Firestore:', error);
+      handleFirestoreError(error);
       // Don't throw error, just return null to indicate failure
       return null;
     }
@@ -52,7 +41,6 @@ export const subscribeToMessages = (selectedUserId, callback) => {
   // Only subscribe to Firestore if it's available
   if (db) {
     try {
-      const messagesRef = collection(db, 'messages');
       const currentUser = getCurrentUser();
       
       // If no selected user or no current user, return empty array
@@ -61,53 +49,77 @@ export const subscribeToMessages = (selectedUserId, callback) => {
         return () => {};
       }
       
-      // Use a simpler query that doesn't require composite indexes
-      // Query all messages and filter client-side
-      const q = query(messagesRef, orderBy('timestamp'));
+      // Create a more efficient query that filters on the server side
+      // Query messages between current user and selected user
+      const messagesRef = collection(db, 'messages');
+      const q1 = query(
+        messagesRef, 
+        where('userId', '==', currentUser.uid),
+        where('recipientId', '==', selectedUserId),
+        orderBy('timestamp')
+      );
       
-      return onSnapshot(q, (querySnapshot) => {
+      const q2 = query(
+        messagesRef, 
+        where('userId', '==', selectedUserId),
+        where('recipientId', '==', currentUser.uid),
+        orderBy('timestamp')
+      );
+      
+      // Combine both queries
+      const unsubscribe1 = onSnapshot(q1, (snapshot) => {
         const messages = [];
-        const user = getCurrentUser();
-        
-        querySnapshot.forEach((doc) => {
+        snapshot.forEach((doc) => {
           const data = doc.data();
+          messages.push({
+            id: doc.id,
+            ...data,
+            you: true,
+            time: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+          });
+        });
+        
+        // Get messages from the other user
+        const unsubscribe2 = onSnapshot(q2, (snapshot2) => {
+          snapshot2.forEach((doc) => {
+            const data = doc.data();
+            messages.push({
+              id: doc.id,
+              ...data,
+              you: false,
+              time: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+            });
+          });
           
-          // Filter messages for the specific conversation on the client side
-          // Only include messages between current user and selected user
-          if (data.userId && data.recipientId) {
-            if ((data.userId === user.uid && data.recipientId === selectedUserId) ||
-                (data.userId === selectedUserId && data.recipientId === user.uid)) {
-              messages.push({
-                id: doc.id,
-                ...data,
-                you: user ? data.userId === user.uid : false,
-                time: data.timestamp ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
-              });
-            }
-          }
+          // Sort all messages by timestamp
+          messages.sort((a, b) => {
+            const timeA = a.timestamp ? new Date(a.timestamp.toDate()).getTime() : 0;
+            const timeB = b.timestamp ? new Date(b.timestamp.toDate()).getTime() : 0;
+            return timeA - timeB;
+          });
+          
+          callback(messages);
+        }, (error) => {
+          handleFirestoreError(error);
+          callback(messages); // Return what we have so far
         });
-        
-        // Sort messages by timestamp
-        messages.sort((a, b) => {
-          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-          return timeA - timeB;
-        });
-        
-        callback(messages);
       }, (error) => {
-        console.error('Error subscribing to messages:', error);
-        // Return empty array on error but don't break the app
-        callback([]); // Return empty array on error
+        handleFirestoreError(error);
+        callback([]);
       });
+      
+      // Return a function that unsubscribes from both queries
+      return () => {
+        unsubscribe1();
+      };
     } catch (error) {
-      console.error('Error setting up message subscription:', error);
-      callback([]); // Return empty array on error
-      return () => {}; // Return empty unsubscribe function
+      handleFirestoreError(error);
+      callback([]);
+      return () => {};
     }
   } else {
     console.warn('Firestore not available, returning empty message list');
-    callback([]); // Return empty array if Firestore is not available
-    return () => {}; // Return empty unsubscribe function
+    callback([]);
+    return () => {};
   }
 };

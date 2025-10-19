@@ -1,6 +1,6 @@
 import { Phone, Video, Camera, Link, User, Mail, Bell } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead } from "@/lib/userService"
 
 export function RightSidebar({ onUserClick }) {
@@ -11,10 +11,29 @@ export function RightSidebar({ onUserClick }) {
   const [friendRequestStatus, setFriendRequestStatus] = useState({})
   const [notificationStatus, setNotificationStatus] = useState({})
   const currentUser = getCurrentUser()
+  const usersSubscriptionRef = useRef(null)
+  const friendRequestsSubscriptionRef = useRef(null)
+  const notificationsSubscriptionRef = useRef(null)
 
   useEffect(() => {
+    // Clean up previous subscriptions
+    if (usersSubscriptionRef.current) {
+      usersSubscriptionRef.current();
+      usersSubscriptionRef.current = null;
+    }
+    
+    if (friendRequestsSubscriptionRef.current) {
+      friendRequestsSubscriptionRef.current();
+      friendRequestsSubscriptionRef.current = null;
+    }
+    
+    if (notificationsSubscriptionRef.current) {
+      notificationsSubscriptionRef.current();
+      notificationsSubscriptionRef.current = null;
+    }
+
     // Subscribe to all users from Firestore
-    const unsubscribeUsers = subscribeToUsers((users) => {
+    usersSubscriptionRef.current = subscribeToUsers((users) => {
       // Transform users data to match the expected format
       const memberList = users.map(user => ({
         name: user.name || user.displayName || user.email || `User${user.uid.substring(0, 5)}`,
@@ -35,25 +54,30 @@ export function RightSidebar({ onUserClick }) {
     });
 
     // Subscribe to friend requests
-    const unsubscribeFriendRequests = subscribeToFriendRequests((requests) => {
+    friendRequestsSubscriptionRef.current = subscribeToFriendRequests((requests) => {
       setFriendRequests(requests);
     });
 
     // Subscribe to notifications
-    const unsubscribeNotifications = subscribeToNotifications((notifications) => {
+    notificationsSubscriptionRef.current = subscribeToNotifications((notifications) => {
       setNotifications(notifications);
     });
 
     // Clean up listeners on component unmount
     return () => {
-      if (unsubscribeUsers) {
-        unsubscribeUsers();
+      if (usersSubscriptionRef.current) {
+        usersSubscriptionRef.current();
+        usersSubscriptionRef.current = null;
       }
-      if (unsubscribeFriendRequests) {
-        unsubscribeFriendRequests();
+      
+      if (friendRequestsSubscriptionRef.current) {
+        friendRequestsSubscriptionRef.current();
+        friendRequestsSubscriptionRef.current = null;
       }
-      if (unsubscribeNotifications) {
-        unsubscribeNotifications();
+      
+      if (notificationsSubscriptionRef.current) {
+        notificationsSubscriptionRef.current();
+        notificationsSubscriptionRef.current = null;
       }
     };
   }, []);

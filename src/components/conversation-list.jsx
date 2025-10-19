@@ -1,6 +1,6 @@
 import { Search, UserPlus, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest, subscribeToUsers } from "@/lib/userService"
 
 export function ConversationList({ onSelectChat }) {
@@ -13,10 +13,23 @@ export function ConversationList({ onSelectChat }) {
   const [filteredUsers, setFilteredUsers] = useState([]) // Filtered users for add friend section
   const currentUser = getCurrentUser()
   const currentUserId = currentUser?.uid // Extract the UID for dependency array
+  const friendsSubscriptionRef = useRef(null)
+  const usersSubscriptionRef = useRef(null)
 
   useEffect(() => {
+    // Clean up previous subscriptions
+    if (friendsSubscriptionRef.current) {
+      friendsSubscriptionRef.current();
+      friendsSubscriptionRef.current = null;
+    }
+    
+    if (usersSubscriptionRef.current) {
+      usersSubscriptionRef.current();
+      usersSubscriptionRef.current = null;
+    }
+
     // Subscribe to friends only from Firestore to create chat list
-    const unsubscribeFriends = subscribeToFriends((friends) => {
+    friendsSubscriptionRef.current = subscribeToFriends((friends) => {
       // Transform friends data to match the expected format
       const chatList = friends
         .map(friend => ({
@@ -51,17 +64,20 @@ export function ConversationList({ onSelectChat }) {
     });
 
     // Subscribe to all users for search functionality
-    const unsubscribeUsers = subscribeToUsers((users) => {
+    usersSubscriptionRef.current = subscribeToUsers((users) => {
       setAllUsers(users);
     });
 
     // Clean up listeners on component unmount
     return () => {
-      if (unsubscribeFriends) {
-        unsubscribeFriends();
+      if (friendsSubscriptionRef.current) {
+        friendsSubscriptionRef.current();
+        friendsSubscriptionRef.current = null;
       }
-      if (unsubscribeUsers) {
-        unsubscribeUsers();
+      
+      if (usersSubscriptionRef.current) {
+        usersSubscriptionRef.current();
+        usersSubscriptionRef.current = null;
       }
     };
   }, [currentUserId]); // Use currentUserId instead of currentUser object

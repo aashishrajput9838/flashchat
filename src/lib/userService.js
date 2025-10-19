@@ -18,8 +18,10 @@ import {
   arrayUnion,
   arrayRemove,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  addDoc
 } from 'firebase/firestore';
+import { handleFirestoreError } from './firebase';
 
 // Function to get higher quality Google profile image
 const getHighQualityPhotoURL = (photoURL) => {
@@ -106,7 +108,7 @@ export const initAuth = () => {
               await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true });
             }
           } catch (error) {
-            console.error('Firestore error in initAuth:', error);
+            handleFirestoreError(error);
             // Continue with authentication even if Firestore fails
           }
         }
@@ -148,7 +150,7 @@ export const signInWithGoogle = async () => {
         await setDoc(doc(db, 'users', currentUser.uid), userData, { merge: true });
         currentUserFirestoreData = userData;
       } catch (error) {
-        console.error('Firestore error in signInWithGoogle:', error);
+        handleFirestoreError(error);
         // Continue with authentication even if Firestore fails
       }
     }
@@ -221,8 +223,41 @@ export const updateUserProfile = async (displayName) => {
   }
 };
 
-// Function to send a friend request
+// Add rate limiting variables at the top of the file
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_OPERATIONS_PER_WINDOW = 100; // Adjust based on your needs
+let operationCount = 0;
+let windowStartTime = Date.now();
+
+// Helper function to check rate limit
+const checkRateLimit = () => {
+  const now = Date.now();
+  
+  // Reset window if it's been more than the window time
+  if (now - windowStartTime > RATE_LIMIT_WINDOW) {
+    operationCount = 0;
+    windowStartTime = now;
+  }
+  
+  // Check if we've exceeded the limit
+  if (operationCount >= MAX_OPERATIONS_PER_WINDOW) {
+    const timeLeft = RATE_LIMIT_WINDOW - (now - windowStartTime);
+    console.warn(`Rate limit exceeded. Please wait ${Math.ceil(timeLeft / 1000)} seconds.`);
+    return false;
+  }
+  
+  // Increment operation count
+  operationCount++;
+  return true;
+};
+
+// Function to send a friend request with rate limiting
 export const sendFriendRequest = async (friendEmail) => {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -246,7 +281,7 @@ export const sendFriendRequest = async (friendEmail) => {
         from: currentUser.uid,
         fromEmail: currentUser.email,
         fromName: currentUser.displayName,
-        timestamp: new Date().toISOString()
+        timestamp: serverTimestamp()
       })
     });
     
@@ -256,7 +291,7 @@ export const sendFriendRequest = async (friendEmail) => {
       message: `You sent a friend request to ${friendData.name || friendData.displayName || friendData.email}`,
       to: friendData.uid,
       toName: friendData.name || friendData.displayName || friendData.email,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -314,8 +349,13 @@ export const subscribeToFriendRequests = (callback) => {
   }
 };
 
-// Function to accept a friend request
+// Function to accept a friend request with rate limiting
 export const acceptFriendRequest = async (request) => {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -338,7 +378,7 @@ export const acceptFriendRequest = async (request) => {
       message: `You accepted ${request.fromName || request.fromEmail}'s friend request`,
       from: request.from,
       fromName: request.fromName || request.fromEmail,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -365,7 +405,7 @@ export const acceptFriendRequest = async (request) => {
       message: `${currentUser.displayName || currentUser.email} accepted your friend request`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -393,8 +433,13 @@ export const acceptFriendRequest = async (request) => {
   }
 };
 
-// Function to decline a friend request
+// Function to decline a friend request with rate limiting
 export const declineFriendRequest = async (request) => {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -411,7 +456,7 @@ export const declineFriendRequest = async (request) => {
       message: `You declined ${request.fromName || request.fromEmail}'s friend request`,
       from: request.from,
       fromName: request.fromName || request.fromEmail,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -438,7 +483,7 @@ export const declineFriendRequest = async (request) => {
       message: `${currentUser.displayName || currentUser.email} declined your friend request`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -466,8 +511,13 @@ export const declineFriendRequest = async (request) => {
   }
 };
 
-// Function to unfriend a user
+// Function to unfriend a user with rate limiting
 export const unfriendUser = async (friendUid) => {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -494,7 +544,7 @@ export const unfriendUser = async (friendUid) => {
       message: `You unfriended ${friendName}`,
       friendUid: friendUid,
       friendName: friendName,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     
@@ -521,7 +571,7 @@ export const unfriendUser = async (friendUid) => {
       message: `${currentUser.displayName || currentUser.email} unfriended you`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: false
     };
     

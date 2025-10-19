@@ -17,8 +17,41 @@ export const rtcConfiguration = {
   ]
 };
 
+// Add rate limiting variables
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_OPERATIONS_PER_WINDOW = 50; // Adjust based on your needs
+let operationCount = 0;
+let windowStartTime = Date.now();
+
+// Helper function to check rate limit
+const checkRateLimit = () => {
+  const now = Date.now();
+  
+  // Reset window if it's been more than the window time
+  if (now - windowStartTime > RATE_LIMIT_WINDOW) {
+    operationCount = 0;
+    windowStartTime = now;
+  }
+  
+  // Check if we've exceeded the limit
+  if (operationCount >= MAX_OPERATIONS_PER_WINDOW) {
+    const timeLeft = RATE_LIMIT_WINDOW - (now - windowStartTime);
+    console.warn(`Rate limit exceeded. Please wait ${Math.ceil(timeLeft / 1000)} seconds.`);
+    return false;
+  }
+  
+  // Increment operation count
+  operationCount++;
+  return true;
+};
+
 // Create a call document and associated subcollections for ICE candidates
 export async function createCallDocument(callerUid, calleeUid) {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   const callsRef = collection(db, 'calls');
   const callDocRef = await addDoc(callsRef, {
     callerUid,
@@ -30,11 +63,21 @@ export async function createCallDocument(callerUid, calleeUid) {
 }
 
 export async function setOffer(callId, offer) {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   const callRef = doc(db, 'calls', callId);
   await updateDoc(callRef, { offer, status: 'offer-set' });
 }
 
 export async function setAnswer(callId, answer) {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   const callRef = doc(db, 'calls', callId);
   await updateDoc(callRef, { answer, status: 'answer-set' });
 }
@@ -79,10 +122,20 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
 }
 
 export async function addIceCandidate(candidatesRef, candidate) {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   await addDoc(candidatesRef, candidate);
 }
 
 export async function endCall(callId) {
+  // Check rate limit before proceeding
+  if (!checkRateLimit()) {
+    throw new Error('Rate limit exceeded. Please try again later.');
+  }
+  
   const callRef = doc(db, 'calls', callId);
   await updateDoc(callRef, { status: 'ended', endedAt: serverTimestamp() });
 }
