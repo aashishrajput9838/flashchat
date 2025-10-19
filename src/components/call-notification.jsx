@@ -87,7 +87,7 @@ export function CallNotification({ onAccept, onDecline }) {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-[1000] w-80 bg-card border rounded-xl shadow-lg">
+    <div className="fixed top-4 right-4 z-[9999] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto" role="dialog" aria-label="Incoming call">
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">

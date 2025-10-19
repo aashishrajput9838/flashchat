@@ -145,9 +145,9 @@ export default function App() {
         />
       )}
 
-      {/* Legacy incoming call mock overlay */}
+      {/* Legacy incoming call mock overlay (kept behind popups) */}
       {showIncomingCall && incomingCall && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[8000] bg-black bg-opacity-75 flex items-center justify-center p-4 pointer-events-auto">
           <div className="w-full max-w-4xl h-[80vh] bg-card rounded-xl border flex flex-col">
             {/* Call header */}
             <div className="flex items-center justify-between p-4 border-b">
