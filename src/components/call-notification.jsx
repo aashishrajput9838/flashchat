@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Phone, Video, X } from 'lucide-react';
-import { subscribeToNotifications, getCurrentUser } from '@/lib/userService';
+import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from '@/lib/userService';
 
 export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
@@ -10,18 +10,43 @@ export function CallNotification({ onAccept, onDecline }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = subscribeToNotifications((notifications) => {
-      // Find the most recent unread call notification
-      const callNotifications = notifications.filter(
-        notif => (notif.type === 'video_call' || notif.type === 'audio_call') && 
-                 notif.status === 'ringing' && 
-                 !notif.read
-      );
-      
+    const unsubscribe = subscribeToNotifications(async (notifications) => {
+      // Only consider very recent, unread, ringing call notifications
+      const now = Date.now();
+      const RECENCY_MS = 2 * 60 * 1000; // 2 minutes
+
+      const callNotifications = notifications.filter((notif) => {
+        if (!notif || notif.read) return false;
+        if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return false;
+        if (notif.status !== 'ringing') return false;
+
+        // Normalize timestamp to a number
+        let ts = notif.timestamp;
+        let t = null;
+        try {
+          if (ts?.toDate) {
+            t = ts.toDate().getTime();
+          } else if (typeof ts === 'string') {
+            t = new Date(ts).getTime();
+          } else if (ts instanceof Date) {
+            t = ts.getTime();
+          }
+        } catch {}
+
+        // If timestamp missing or too old, mark as read to avoid perpetual popups
+        if (!t || isNaN(t) || now - t > RECENCY_MS) {
+          try { await markNotificationAsRead(notif); } catch {}
+          return false;
+        }
+
+        return true;
+      });
+
       if (callNotifications.length > 0) {
-        // Get the most recent call notification
         const latestCall = callNotifications[0];
         setIncomingCall(latestCall);
+      } else {
+        setIncomingCall(null);
       }
     });
 
@@ -32,15 +57,17 @@ export function CallNotification({ onAccept, onDecline }) {
     };
   }, [user]);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     if (incomingCall && onAccept) {
+      try { await markNotificationAsRead(incomingCall); } catch {}
       onAccept(incomingCall);
       setIncomingCall(null);
     }
   };
 
-  const handleDecline = () => {
+  const handleDecline = async () => {
     if (incomingCall && onDecline) {
+      try { await markNotificationAsRead(incomingCall); } catch {}
       onDecline(incomingCall);
       setIncomingCall(null);
     }
