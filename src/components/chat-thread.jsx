@@ -231,6 +231,47 @@ In a real application, this file would be uploaded and sent as a message.`);
         <div className="flex items-center gap-2 border-b p-3 md:p-4">
           <h3 className="text-base font-semibold">Welcome to FlashChat</h3>
         </div>
+        <div className="flex-1 overflow-auto p-4 md:p-8">
+          <div className="mx-auto max-w-3xl">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Chat faster. Connect smarter.</h1>
+            <p className="mt-2 text-sm md:text-base text-muted-foreground">
+              FlashChat is a modern, real‑time messaging app built with React 19, Vite, TailwindCSS and Firebase.
+              Start a conversation from the list, or discover members on the right to begin chatting.
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border bg-secondary/40 p-4">
+                <div className="text-sm font-semibold">Real‑time Messaging</div>
+                <div className="mt-1 text-sm text-muted-foreground">Firestore‑powered chats with presence and instant updates.</div>
+              </div>
+              <div className="rounded-lg border bg-secondary/40 p-4">
+                <div className="text-sm font-semibold">Video Calls</div>
+                <div className="mt-1 text-sm text-muted-foreground">WebRTC with secure signaling over Firestore, including call invites.</div>
+              </div>
+              <div className="rounded-lg border bg-secondary/40 p-4">
+                <div className="text-sm font-semibold">Responsive by Design</div>
+                <div className="mt-1 text-sm text-muted-foreground">Optimized layouts for mobile, tablet and desktop.</div>
+              </div>
+              <div className="rounded-lg border bg-secondary/40 p-4">
+                <div className="text-sm font-semibold">Google Sign‑In</div>
+                <div className="mt-1 text-sm text-muted-foreground">Quick authentication with Google and synced profiles.</div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 rounded-lg border bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90">
+                Open a conversation from the left
+              </button>
+              <button
+                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 rounded-lg border bg-secondary px-3 py-2 text-sm hover:bg-muted">
+                Or pick someone from the People panel
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
