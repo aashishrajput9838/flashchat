@@ -17,7 +17,6 @@ export function CallNotification({ onAccept, onDecline }) {
       const RECENCY_MS = 2 * 60 * 1000; // 2 minutes
 
       const validCalls = [];
-      const staleOrInvalid = [];
 
       notifications.forEach((notif) => {
         if (!notif || notif.read) return;
@@ -37,20 +36,10 @@ export function CallNotification({ onAccept, onDecline }) {
           }
         } catch {}
 
-        if (!t || isNaN(t) || now - t > RECENCY_MS) {
-          staleOrInvalid.push(notif);
-          return;
-        }
+        if (!t || isNaN(t) || now - t > RECENCY_MS) return;
 
         validCalls.push(notif);
       });
-
-      // Fire-and-forget marking stale notifications as read
-      if (staleOrInvalid.length > 0) {
-        staleOrInvalid.forEach((notif) => {
-          try { markNotificationAsRead(notif); } catch {}
-        });
-      }
 
       if (validCalls.length > 0) {
         const latestCall = validCalls[0];
