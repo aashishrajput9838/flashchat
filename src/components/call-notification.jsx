@@ -88,7 +88,7 @@ export function CallNotification({ onAccept, onDecline }) {
 
   return (
     <div
-      className="fixed top-4 right-4 z-[9999] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto touch-manipulation"
+      className="fixed top-4 right-4 z-[2147483647] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto touch-manipulation select-none"
       role="dialog"
       aria-label="Incoming call"
       onClick={(e) => e.stopPropagation()}
@@ -118,8 +118,10 @@ export function CallNotification({ onAccept, onDecline }) {
           <button
             type="button"
             onTouchStart={(e) => { e.preventDefault(); handleDecline(); }}
+            onTouchEnd={(e) => { e.preventDefault(); }}
+            onPointerUp={(e) => { e.preventDefault(); handleDecline(); }}
             onClick={handleDecline}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -129,16 +131,20 @@ export function CallNotification({ onAccept, onDecline }) {
           <button
             type="button"
             onTouchStart={(e) => { e.preventDefault(); handleDecline(); }}
+            onTouchEnd={(e) => { e.preventDefault(); }}
+            onPointerUp={(e) => { e.preventDefault(); handleDecline(); }}
             onClick={handleDecline}
-            className="flex-1 py-2 px-4 bg-secondary rounded-lg hover:bg-muted"
+            className="flex-1 py-2 px-4 bg-secondary rounded-lg hover:bg-muted cursor-pointer"
           >
             Decline
           </button>
           <button
             type="button"
             onTouchStart={(e) => { e.preventDefault(); handleAccept(); }}
+            onTouchEnd={(e) => { e.preventDefault(); }}
+            onPointerUp={(e) => { e.preventDefault(); handleAccept(); }}
             onClick={handleAccept}
-            className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
+            className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:opacity-90 cursor-pointer"
           >
             Accept
           </button>
