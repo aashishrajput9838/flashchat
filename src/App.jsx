@@ -8,7 +8,7 @@ import { CallNotification } from '@/components/call-notification';
 import { VideoCall } from '@/components/video-call';
 import { initAuth, getCurrentUser, subscribeToFriends } from '@/lib/userService';
 import { Login } from '@/components/login';
-import { X, Phone } from 'lucide-react';
+import { X, Phone, Menu, Users } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -18,6 +18,9 @@ export default function App() {
   const [incomingCall, setIncomingCall] = useState(null);
   const [showIncomingCall, setShowIncomingCall] = useState(false);
   const [activeIncomingVideoCall, setActiveIncomingVideoCall] = useState(null);
+  // Mobile UI state
+  const [showMobileConversations, setShowMobileConversations] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const currentUser = getCurrentUser();
 
   useEffect(() => {
@@ -94,6 +97,22 @@ export default function App() {
 
   return (
     <main className="min-h-dvh p-3 md:p-4 lg:p-6">
+      {/* Mobile header */}
+      <div className="mb-3 flex items-center gap-2 lg:hidden">
+        <button
+          onClick={() => setShowMobileConversations(true)}
+          className="grid h-10 w-10 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+          aria-label="Open conversations">
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="text-base font-semibold">FlashChat</div>
+        <button
+          onClick={() => setShowMobileSidebar(true)}
+          className="ml-auto grid h-10 w-10 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+          aria-label="Open sidebar">
+          <Users className="h-5 w-5" />
+        </button>
+      </div>
       {/* Call notifications */}
       <CallNotification 
         onAccept={(call) => {
@@ -188,12 +207,12 @@ export default function App() {
       {/* Shell */}
       <div className="grid grid-cols-1 gap-3 md:gap-4 lg:gap-6 lg:grid-cols-[70px_340px_1fr_340px]">
         {/* Left rail */}
-        <aside className="lg:col-span-1">
+        <aside className="hidden lg:block lg:col-span-1">
           <LeftRail />
         </aside>
 
         {/* Conversations list */}
-        <aside className="lg:col-span-1">
+        <aside className="hidden lg:block lg:col-span-1">
           <ConversationList onSelectChat={selectChat} />
         </aside>
 
@@ -203,10 +222,60 @@ export default function App() {
         </section>
 
         {/* Right sidebar */}
-        <aside className="lg:col-span-1">
+        <aside className="hidden lg:block lg:col-span-1">
           <RightSidebar onUserClick={selectChat} />
         </aside>
       </div>
+
+      {/* Mobile Conversations Overlay */}
+      {showMobileConversations && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/60">
+          <div className="absolute inset-y-0 left-0 w-full max-w-sm bg-card border-r shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b">
+              <h3 className="text-base font-semibold">Conversations</h3>
+              <button
+                onClick={() => setShowMobileConversations(false)}
+                className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+                aria-label="Close conversations">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <ConversationList
+                onSelectChat={(u) => {
+                  selectChat(u);
+                  setShowMobileConversations(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sidebar Overlay */}
+      {showMobileSidebar && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/60">
+          <div className="absolute inset-y-0 right-0 w-full max-w-sm bg-card border-l shadow-xl flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b">
+              <h3 className="text-base font-semibold">People</h3>
+              <button
+                onClick={() => setShowMobileSidebar(false)}
+                className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+                aria-label="Close sidebar">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <RightSidebar
+                onUserClick={(u) => {
+                  selectChat(u);
+                  setShowMobileSidebar(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
