@@ -87,7 +87,13 @@ export function CallNotification({ onAccept, onDecline }) {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto" role="dialog" aria-label="Incoming call">
+    <div
+      className="fixed top-4 right-4 z-[9999] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto touch-manipulation"
+      role="dialog"
+      aria-label="Incoming call"
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -109,7 +115,9 @@ export function CallNotification({ onAccept, onDecline }) {
               </p>
             </div>
           </div>
-          <button 
+          <button
+            type="button"
+            onTouchStart={(e) => { e.preventDefault(); handleDecline(); }}
             onClick={handleDecline}
             className="text-muted-foreground hover:text-foreground"
           >
@@ -120,6 +128,7 @@ export function CallNotification({ onAccept, onDecline }) {
         <div className="flex gap-2 mt-4">
           <button
             type="button"
+            onTouchStart={(e) => { e.preventDefault(); handleDecline(); }}
             onClick={handleDecline}
             className="flex-1 py-2 px-4 bg-secondary rounded-lg hover:bg-muted"
           >
@@ -127,6 +136,7 @@ export function CallNotification({ onAccept, onDecline }) {
           </button>
           <button
             type="button"
+            onTouchStart={(e) => { e.preventDefault(); handleAccept(); }}
             onClick={handleAccept}
             className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
           >
