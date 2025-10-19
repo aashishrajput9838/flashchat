@@ -10,15 +10,18 @@ export function CallNotification({ onAccept, onDecline }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = subscribeToNotifications(async (notifications) => {
+    const unsubscribe = subscribeToNotifications((notifications) => {
       // Only consider very recent, unread, ringing call notifications
       const now = Date.now();
       const RECENCY_MS = 2 * 60 * 1000; // 2 minutes
 
-      const callNotifications = notifications.filter((notif) => {
-        if (!notif || notif.read) return false;
-        if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return false;
-        if (notif.status !== 'ringing') return false;
+      const validCalls = [];
+      const staleOrInvalid = [];
+
+      notifications.forEach((notif) => {
+        if (!notif || notif.read) return;
+        if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return;
+        if (notif.status !== 'ringing') return;
 
         // Normalize timestamp to a number
         let ts = notif.timestamp;
@@ -33,17 +36,23 @@ export function CallNotification({ onAccept, onDecline }) {
           }
         } catch {}
 
-        // If timestamp missing or too old, mark as read to avoid perpetual popups
         if (!t || isNaN(t) || now - t > RECENCY_MS) {
-          try { await markNotificationAsRead(notif); } catch {}
-          return false;
+          staleOrInvalid.push(notif);
+          return;
         }
 
-        return true;
+        validCalls.push(notif);
       });
 
-      if (callNotifications.length > 0) {
-        const latestCall = callNotifications[0];
+      // Fire-and-forget marking stale notifications as read
+      if (staleOrInvalid.length > 0) {
+        staleOrInvalid.forEach((notif) => {
+          try { markNotificationAsRead(notif); } catch {}
+        });
+      }
+
+      if (validCalls.length > 0) {
+        const latestCall = validCalls[0];
         setIncomingCall(latestCall);
       } else {
         setIncomingCall(null);
