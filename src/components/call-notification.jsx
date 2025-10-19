@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Phone, Video, X } from 'lucide-react';
 import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from '@/lib/userService';
 
@@ -86,7 +87,7 @@ export function CallNotification({ onAccept, onDecline }) {
     return null;
   }
 
-  return (
+  const popup = (
     <div
       className="fixed top-4 right-4 z-[2147483647] w-80 bg-card border rounded-xl shadow-lg pointer-events-auto touch-manipulation select-none"
       role="dialog"
@@ -152,4 +153,6 @@ export function CallNotification({ onAccept, onDecline }) {
       </div>
     </div>
   );
+
+  return createPortal(popup, document.body);
 }
