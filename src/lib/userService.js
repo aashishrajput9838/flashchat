@@ -650,6 +650,131 @@ export const clearAllNotifications = async () => {
   }
 };
 
+// Function to send a video call notification to a user
+export const sendVideoCallNotification = async (recipientUid, callerData, callId) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Create call notification
+    const callNotification = {
+      type: 'video_call',
+      callerUid: currentUser.uid,
+      callerName: currentUser.displayName || currentUser.email,
+      callerPhotoURL: currentUser.photoURL,
+      callId: callId || null,
+      timestamp: new Date().toISOString(),
+      status: 'ringing', // ringing, accepted, declined, missed
+      read: false
+    };
+
+    // Get the recipient's document
+    const recipientDocRef = doc(db, 'users', recipientUid);
+    const recipientDoc = await getDoc(recipientDocRef);
+
+    if (recipientDoc.exists()) {
+      const userData = recipientDoc.data();
+      const notifications = userData.notifications || [];
+
+      // Add the new call notification to the array
+      notifications.push(callNotification);
+
+      // Update the document with the new notifications array
+      await updateDoc(recipientDocRef, {
+        notifications: notifications
+      });
+
+      return callNotification;
+    } else {
+      throw new Error('Recipient user not found');
+    }
+  } catch (error) {
+    console.error('Error sending video call notification:', error);
+    throw error;
+  }
+};
+
+// Function to send an audio call notification to a user
+export const sendAudioCallNotification = async (recipientUid, callerData) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Create call notification
+    const callNotification = {
+      type: 'audio_call',
+      callerUid: currentUser.uid,
+      callerName: currentUser.displayName || currentUser.email,
+      callerPhotoURL: currentUser.photoURL,
+      timestamp: new Date().toISOString(),
+      status: 'ringing', // ringing, accepted, declined, missed
+      read: false
+    };
+
+    // Get the recipient's document
+    const recipientDocRef = doc(db, 'users', recipientUid);
+    const recipientDoc = await getDoc(recipientDocRef);
+
+    if (recipientDoc.exists()) {
+      const userData = recipientDoc.data();
+      const notifications = userData.notifications || [];
+
+      // Add the new call notification to the array
+      notifications.push(callNotification);
+
+      // Update the document with the new notifications array
+      await updateDoc(recipientDocRef, {
+        notifications: notifications
+      });
+
+      return callNotification;
+    } else {
+      throw new Error('Recipient user not found');
+    }
+  } catch (error) {
+    console.error('Error sending audio call notification:', error);
+    throw error;
+  }
+};
+
+// Function to update call notification status
+export const updateCallNotificationStatus = async (notificationId, status) => {
+  if (!currentUser || !db) {
+    throw new Error('User not authenticated or database not available');
+  }
+
+  try {
+    // Get the current user's document
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+
+      // Find and update the notification
+      const updatedNotifications = notifications.map((notif, index) => {
+        if (index === notificationId) {
+          return { ...notif, status: status, read: true };
+        }
+        return notif;
+      });
+
+      // Update the document with the modified notifications array
+      await updateDoc(userDocRef, {
+        notifications: updatedNotifications
+      });
+
+      return true;
+    }
+  } catch (error) {
+    console.error('Error updating call notification status:', error);
+    throw error;
+  }
+};
+
 // Function to subscribe to friends list only
 export const subscribeToFriends = (callback) => {
   if (!currentUser || !db) {

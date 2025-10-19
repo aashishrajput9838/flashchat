@@ -88,7 +88,7 @@ export function ConversationList({ onSelectChat }) {
       // Removed .slice(0, 5) to show all matching users
     
     setFilteredUsers(filtered);
-  }, [userSearchQuery, allUsers, chats, currentUser]);
+  }, [userSearchQuery, allUsers, chats, currentUserId]);
 
   // Function to handle chat selection
   const handleSelectChat = (chat) => {

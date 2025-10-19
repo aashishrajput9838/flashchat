@@ -26,8 +26,7 @@ export const sendMessage = async (messageData, recipientUserId) => {
         name: messageData.name || (user && user.displayName) ? user.displayName : 'Anonymous',
         userId: user ? user.uid : 'anonymous',
         recipientId: recipientUserId, // Add recipient ID for conversation tracking
-        timestamp: serverTimestamp(),
-        createdAt: timestamp, // Add a client-side timestamp as backup
+        timestamp: timestamp, // Use client-side timestamp for consistency
         you: messageData.you || false,
         photoURL: messageData.photoURL || (user && user.photoURL) ? user.photoURL : null,
         readableId: readableId // Keep this for reference
@@ -82,8 +81,7 @@ export const subscribeToMessages = (selectedUserId, callback) => {
                 id: doc.id,
                 ...data,
                 you: user ? data.userId === user.uid : false,
-                time: data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
-                      (data.createdAt ? data.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now')
+                time: data.timestamp ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
               });
             }
           }
@@ -91,8 +89,8 @@ export const subscribeToMessages = (selectedUserId, callback) => {
         
         // Sort messages by timestamp
         messages.sort((a, b) => {
-          const timeA = a.timestamp ? a.timestamp.toDate().getTime() : (a.createdAt ? a.createdAt.getTime() : 0);
-          const timeB = b.timestamp ? b.timestamp.toDate().getTime() : (b.createdAt ? b.createdAt.getTime() : 0);
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
           return timeA - timeB;
         });
         

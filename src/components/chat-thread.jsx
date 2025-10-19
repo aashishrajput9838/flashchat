@@ -1,18 +1,24 @@
 import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { VideoCall } from "@/components/video-call"
+import { AudioCall } from "@/components/audio-call"
 import { useState, useEffect, useRef } from "react"
-// Remove socket import
 import { sendMessage, subscribeToMessages } from "@/lib/chatService"
-import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser } from "@/lib/userService"
+import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification } from "@/lib/userService"
+import { createCallDocument } from "@/lib/callService"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [message, setMessage] = useState("")
   const [chatMessages, setChatMessages] = useState([])
   const [userName, setUserName] = useState("")
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showVideoCall, setShowVideoCall] = useState(false)
+  const [showAudioCall, setShowAudioCall] = useState(false)
+  const [isCalling, setIsCalling] = useState(false)
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const user = getCurrentUser()
+  const currentUserId = user ? user.uid : null
   const fileInputRef = useRef(null)
 
   // Close dropdown when clicking outside
@@ -53,7 +59,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
         unsubscribe()
       }
     }
-  }, [user, selectedChat])
+  }, [currentUserId, selectedChat])
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -182,16 +188,48 @@ In a real application, this file would be uploaded and sent as a message.`);
     }
   };
 
+  // Function to start video call
+  const startVideoCall = async () => {
+    if (selectedChat && !isCalling && !showVideoCall) {
+      try {
+        setIsCalling(true);
+        // Create Firestore call doc and include callId in notification
+        const callId = await createCallDocument(user.uid, selectedChat.uid);
+        await sendVideoCallNotification(selectedChat.uid, {}, callId);
+        setShowVideoCall({ role: 'caller', callId });
+      } catch (e) {
+        console.error('Failed to start call', e);
+        setIsCalling(false);
+      }
+    }
+  };
+
+  // Function to end video call
+  const endVideoCall = () => {
+    setShowVideoCall(false);
+    setIsCalling(false);
+  };
+
+  // Function to start audio call
+  const startAudioCall = () => {
+    if (selectedChat && !isCalling && !showAudioCall) {
+      setIsCalling(true);
+      setShowAudioCall(true);
+    }
+  };
+
+  // Function to end audio call
+  const endAudioCall = () => {
+    setShowAudioCall(false);
+    setIsCalling(false);
+  };
+
   // If no chat is selected, show a welcome message
   if (!selectedChat) {
     return (
-      <div className="flex h-[70vh] min-h-[640px] flex-col items-center justify-center rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
-        <div className="text-center p-8">
-          <h3 className="text-xl font-semibold mb-2">Welcome to FlashChat</h3>
-          <p className="text-muted-foreground mb-4">Select a friend from the conversation list to start chatting</p>
-          <div className="text-sm text-muted-foreground">
-            Don't have any friends yet? Use the "Add Friend" button to connect with others!
-          </div>
+      <div className="flex h-[70vh] min-h-[640px] flex-col rounded-xl border bg-card lg:h-[calc(100dvh-48px)]">
+        <div className="flex items-center gap-2 border-b p-3 md:p-4">
+          <h3 className="text-base font-semibold">Welcome to FlashChat</h3>
         </div>
       </div>
     );
@@ -220,14 +258,16 @@ In a real application, this file would be uploaded and sent as a message.`);
               <LogOut className="h-4 w-4" />
             </button>
             <button
-              onClick={() => alert('Call feature would be implemented here')}
-              className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+              onClick={startAudioCall}
+              disabled={isCalling}
+              className={`grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted ${isCalling ? 'opacity-50 cursor-not-allowed' : ''}`}
               aria-label="Start call">
               <Phone className="h-4 w-4" />
             </button>
             <button
-              onClick={() => alert('Video call feature would be implemented here')}
-              className="grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted"
+              onClick={startVideoCall}
+              disabled={isCalling}
+              className={`grid h-9 w-9 place-items-center rounded-lg border bg-secondary hover:bg-muted ${isCalling ? 'opacity-50 cursor-not-allowed' : ''}`}
               aria-label="Start video">
               <Video className="h-4 w-4" />
             </button>
@@ -346,6 +386,22 @@ In a real application, this file would be uploaded and sent as a message.`);
           <span className="hidden md:inline">Send</span>
         </button>
       </div>
+      {showVideoCall && selectedChat && (
+        <VideoCall 
+          selectedChat={selectedChat}
+          role={showVideoCall.role}
+          callId={showVideoCall.callId}
+          onClose={endVideoCall}
+          onCallEnd={endVideoCall}
+        />
+      )}
+      {showAudioCall && selectedChat && (
+        <AudioCall 
+          selectedChat={selectedChat} 
+          onClose={endAudioCall}
+          onCallEnd={endAudioCall}
+        />
+      )}
     </div>
   );
 }
