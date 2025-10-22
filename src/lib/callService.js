@@ -19,7 +19,7 @@ export const rtcConfiguration = {
 
 // Add rate limiting variables
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_OPERATIONS_PER_WINDOW = 50; // Adjust based on your needs
+const MAX_OPERATIONS_PER_WINDOW = 100; // Increased limit for better user experience
 let operationCount = 0;
 let windowStartTime = Date.now();
 
@@ -139,5 +139,3 @@ export async function endCall(callId) {
   const callRef = doc(db, 'calls', callId);
   await updateDoc(callRef, { status: 'ended', endedAt: serverTimestamp() });
 }
-
-

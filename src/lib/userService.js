@@ -654,8 +654,14 @@ export const markNotificationAsRead = async (notification) => {
       
       // Find the notification to update by comparing relevant fields
       const updatedNotifications = notifications.map(notif => {
-        // Compare the notification by type, message, and timestamp
-        if (notif.type === notification.type && 
+        // For call notifications, compare by type, callerUid, and timestamp
+        if ((notif.type === 'video_call' || notif.type === 'audio_call') && 
+            notif.callerUid === notification.callerUid &&
+            notif.timestamp === notification.timestamp) {
+          return { ...notif, read: true };
+        }
+        // For other notifications, use the existing comparison logic
+        else if (notif.type === notification.type && 
             notif.message === notification.message &&
             ((notif.timestamp && notification.timestamp && 
               notif.timestamp.toDate && notification.timestamp.toDate &&
