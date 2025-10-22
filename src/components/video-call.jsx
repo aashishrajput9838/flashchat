@@ -12,7 +12,8 @@ import {
   listenForCallStatus,
   setOffer,
   setAnswer,
-  endCall as endCallService
+  endCall as endCallService,
+  cleanupCallData
 } from '@/lib/callService';
 
 export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', callId }) {
@@ -20,7 +21,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [callStatus, setCallStatus] = useState('Connecting...');
-  const notificationSentRef = useRef(false);
   
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -36,14 +36,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   // Initialize media devices and set up signaling
   useEffect(() => {
     startCall();
+    
+    // Cleanup function
     return () => {
-      // On unmount (including React StrictMode dev double-invoke),
-      // only clean resources; do not signal parent to close.
       cleanupMedia();
-      unsubscribersRef.current.forEach((u) => {
-        try { u && u(); } catch {}
-      });
-      unsubscribersRef.current = [];
+      cleanupListeners();
     };
   }, []);
 
@@ -61,8 +58,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       localStreamRef.current = stream;
       setIsCallActive(true);
-      setCallStatus('Ringing...');
-
+      
       // Create RTCPeerConnection
       const pc = new RTCPeerConnection(rtcConfiguration);
       peerConnectionRef.current = pc;
@@ -81,18 +77,25 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       const offerCandidatesRef = offerCandidatesCollection(callId);
       const answerCandidatesRef = answerCandidatesCollection(callId);
 
-      // Listen for call status changes
+      // Listen for call status changes to detect when other party ends call
       const unsubStatus = listenForCallStatus(callId, async (data) => {
         if (data.status === 'ended') {
           setCallStatus('Call ended by other party');
+          // Wait a moment to show the status message
           setTimeout(() => {
-            endCall();
+            endCall(true); // true indicates it was ended by remote party
           }, 2000);
+        } else if (data.status === 'ringing') {
+          setCallStatus('Ringing...');
+        } else if (data.status === 'accepted') {
+          setCallStatus('Call in progress');
         }
       });
       unsubscribersRef.current.push(unsubStatus);
 
       if (role === 'caller') {
+        setCallStatus('Ringing...');
+        
         // Push ICE candidates to offerCandidates
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
@@ -125,6 +128,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         });
         unsubscribersRef.current.push(unsubAnsCand);
       } else {
+        setCallStatus('Connecting...');
+        
         // Callee role
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
@@ -142,6 +147,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             setCallStatus('Call in progress');
           } catch (err) {
             console.error('Error handling offer', err);
+            setCallStatus('Failed to connect');
           }
         });
         unsubscribersRef.current.push(unsubOffer);
@@ -159,16 +165,59 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus('Failed to start call');
+      // Close the call interface after showing error
+      setTimeout(() => {
+        endCall();
+      }, 3000);
     }
   };
 
+  // Cleanup media resources
   const cleanupMedia = () => {
+    // Stop all tracks in local stream
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (err) {
+          console.warn('Error stopping track:', err);
+        }
+      });
+      localStreamRef.current = null;
     }
+    
+    // Clear video srcObjects
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    
+    // Close RTCPeerConnection
     if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
+      try {
+        peerConnectionRef.current.close();
+      } catch (err) {
+        console.warn('Error closing peer connection:', err);
+      }
+      peerConnectionRef.current = null;
     }
+  };
+
+  // Cleanup Firestore listeners
+  const cleanupListeners = () => {
+    // Unsubscribe all listeners
+    unsubscribersRef.current.forEach(unsubscribe => {
+      if (typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (err) {
+          console.warn('Error unsubscribing:', err);
+        }
+      }
+    });
+    unsubscribersRef.current = [];
   };
 
   const toggleMute = () => {
@@ -191,30 +240,37 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   };
 
-  const endCall = async () => {
-    cleanupMedia();
+  const endCall = async (endedByRemote = false) => {
+    // Update UI state immediately
     setIsCallActive(false);
+    setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
     
-    // Update call status to missed if call was not connected
-    if (callStatus === 'Ringing...' || callStatus === 'Connecting...') {
-      setCallStatus('Call missed');
-    } else {
-      setCallStatus('Call ended');
+    // Cleanup media resources
+    cleanupMedia();
+    
+    // Cleanup listeners
+    cleanupListeners();
+    
+    // Only notify Firestore if we're the ones ending the call
+    if (!endedByRemote) {
+      try {
+        // Notify the other party that the call has ended
+        await endCallService(callId);
+      } catch (error) {
+        console.error('Error ending call:', error);
+      }
     }
     
-    // Notify the other party that the call has ended
-    try {
-      await endCallService(callId);
-    } catch (error) {
-      console.error('Error ending call:', error);
-    }
+    // Schedule cleanup of Firestore data
+    setTimeout(async () => {
+      try {
+        await cleanupCallData(callId);
+      } catch (error) {
+        console.error('Error cleaning up call data:', error);
+      }
+    }, 5000); // Wait 5 seconds to ensure both parties have received the end signal
     
-    // Cleanup signaling listeners
-    unsubscribersRef.current.forEach((u) => {
-      try { u && u(); } catch {}
-    });
-    unsubscribersRef.current = [];
-    
+    // Notify parent components
     if (onCallEnd) {
       onCallEnd();
     }
@@ -233,7 +289,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             <p className="text-sm text-muted-foreground">{callStatus}</p>
           </div>
           <button
-            onClick={endCall}
+            onClick={() => endCall()}
             className="grid h-10 w-10 place-items-center rounded-full bg-destructive hover:bg-destructive/90"
             aria-label="End call">
             <Phone className="h-5 w-5 text-white" />
@@ -323,7 +379,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             </button>
             
             <button
-              onClick={endCall}
+              onClick={() => endCall()}
               className="grid h-12 w-12 place-items-center rounded-full bg-destructive hover:bg-destructive/90"
               aria-label="End call">
               <Phone className="h-5 w-5 text-white" />

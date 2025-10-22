@@ -7,7 +7,13 @@ import {
   collection,
   addDoc,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  deleteDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 
 // STUN servers for WebRTC
@@ -17,39 +23,53 @@ export const rtcConfiguration = {
   ]
 };
 
-// Add rate limiting variables
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_OPERATIONS_PER_WINDOW = 100; // Increased limit for better user experience
-let operationCount = 0;
-let windowStartTime = Date.now();
+// Improved rate limiting with timestamp-based cooldown
+const RATE_LIMIT_WINDOW = 30000; // 30 seconds
+const MAX_CALLS_PER_WINDOW = 3; // Allow 3 calls per window
 
-// Helper function to check rate limit
-const checkRateLimit = () => {
-  const now = Date.now();
-  
-  // Reset window if it's been more than the window time
-  if (now - windowStartTime > RATE_LIMIT_WINDOW) {
-    operationCount = 0;
-    windowStartTime = now;
+// Check rate limit based on recent call attempts
+export const checkRateLimit = async (userId) => {
+  try {
+    const callsRef = collection(db, 'calls');
+    const thirtySecondsAgo = new Date(Date.now() - RATE_LIMIT_WINDOW);
+    
+    // Query for recent calls initiated by this user
+    const q = query(
+      callsRef,
+      where('callerUid', '==', userId),
+      where('createdAt', '>', thirtySecondsAgo),
+      orderBy('createdAt', 'desc'),
+      limit(MAX_CALLS_PER_WINDOW)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    // If we have reached the limit, reject the call
+    if (querySnapshot.size >= MAX_CALLS_PER_WINDOW) {
+      const oldestCall = querySnapshot.docs[querySnapshot.docs.length - 1];
+      const oldestCallData = oldestCall.data();
+      const timeSinceOldestCall = Date.now() - oldestCallData.createdAt.toDate().getTime();
+      const timeLeft = RATE_LIMIT_WINDOW - timeSinceOldestCall;
+      
+      if (timeLeft > 0) {
+        console.warn(`Rate limit exceeded. Please wait ${Math.ceil(timeLeft / 1000)} seconds.`);
+        return { allowed: false, timeLeft: Math.ceil(timeLeft / 1000) };
+      }
+    }
+    
+    return { allowed: true };
+  } catch (error) {
+    console.error('Error checking rate limit:', error);
+    // In case of error, allow the call to proceed
+    return { allowed: true };
   }
-  
-  // Check if we've exceeded the limit
-  if (operationCount >= MAX_OPERATIONS_PER_WINDOW) {
-    const timeLeft = RATE_LIMIT_WINDOW - (now - windowStartTime);
-    console.warn(`Rate limit exceeded. Please wait ${Math.ceil(timeLeft / 1000)} seconds.`);
-    return false;
-  }
-  
-  // Increment operation count
-  operationCount++;
-  return true;
 };
 
-// Create a call document and associated subcollections for ICE candidates
+// Create a call document with proper lifecycle state tracking
 export async function createCallDocument(callerUid, calleeUid) {
-  // Check rate limit before proceeding
-  if (!checkRateLimit()) {
-    throw new Error('Rate limit exceeded. Please try again later.');
+  const rateCheck = await checkRateLimit(callerUid);
+  if (!rateCheck.allowed) {
+    throw new Error(`Rate limit exceeded. Please wait ${rateCheck.timeLeft} seconds.`);
   }
   
   const callsRef = collection(db, 'calls');
@@ -57,29 +77,28 @@ export async function createCallDocument(callerUid, calleeUid) {
     callerUid,
     calleeUid,
     createdAt: serverTimestamp(),
-    status: 'initiated'
+    status: 'initiated',
+    endedAt: null
   });
   return callDocRef.id;
 }
 
 export async function setOffer(callId, offer) {
-  // Check rate limit before proceeding
-  if (!checkRateLimit()) {
-    throw new Error('Rate limit exceeded. Please try again later.');
-  }
-  
   const callRef = doc(db, 'calls', callId);
-  await updateDoc(callRef, { offer, status: 'offer-set' });
+  await updateDoc(callRef, { 
+    offer, 
+    status: 'ringing',
+    ringingAt: serverTimestamp()
+  });
 }
 
 export async function setAnswer(callId, answer) {
-  // Check rate limit before proceeding
-  if (!checkRateLimit()) {
-    throw new Error('Rate limit exceeded. Please try again later.');
-  }
-  
   const callRef = doc(db, 'calls', callId);
-  await updateDoc(callRef, { answer, status: 'answer-set' });
+  await updateDoc(callRef, { 
+    answer, 
+    status: 'accepted',
+    acceptedAt: serverTimestamp()
+  });
 }
 
 export function listenForAnswer(callId, callback) {
@@ -102,15 +121,53 @@ export function listenForOffer(callId, callback) {
   });
 }
 
-// Listen for call status changes
+// Listen for call status changes (new function for synchronization)
 export function listenForCallStatus(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   return onSnapshot(callRef, (snapshot) => {
-    const data = snapshot.data();
-    if (data) {
+    if (snapshot.exists()) {
+      const data = snapshot.data();
       callback(data);
     }
   });
+}
+
+// Function to end a call and update status
+export async function endCall(callId) {
+  const callRef = doc(db, 'calls', callId);
+  const callDoc = await getDoc(callRef);
+  
+  if (callDoc.exists()) {
+    await updateDoc(callRef, { 
+      status: 'ended', 
+      endedAt: serverTimestamp()
+    });
+  }
+}
+
+// Function to clean up call signaling data
+export async function cleanupCallData(callId) {
+  try {
+    // Delete ICE candidate subcollections
+    const offerCandidatesRef = collection(doc(db, 'calls', callId), 'offerCandidates');
+    const answerCandidatesRef = collection(doc(db, 'calls', callId), 'answerCandidates');
+    
+    // Get and delete offer candidates
+    const offerCandidatesSnapshot = await getDocs(offerCandidatesRef);
+    const deleteOfferPromises = offerCandidatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    
+    // Get and delete answer candidates
+    const answerCandidatesSnapshot = await getDocs(answerCandidatesRef);
+    const deleteAnswerPromises = answerCandidatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+    
+    // Wait for all deletions
+    await Promise.all([...deleteOfferPromises, ...deleteAnswerPromises]);
+    
+    // Finally delete the call document itself
+    await deleteDoc(doc(db, 'calls', callId));
+  } catch (error) {
+    console.error('Error cleaning up call data:', error);
+  }
 }
 
 export function offerCandidatesCollection(callId) {
@@ -133,20 +190,5 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
 }
 
 export async function addIceCandidate(candidatesRef, candidate) {
-  // Check rate limit before proceeding
-  if (!checkRateLimit()) {
-    throw new Error('Rate limit exceeded. Please try again later.');
-  }
-  
   await addDoc(candidatesRef, candidate);
-}
-
-export async function endCall(callId) {
-  // Check rate limit before proceeding
-  if (!checkRateLimit()) {
-    throw new Error('Rate limit exceeded. Please try again later.');
-  }
-  
-  const callRef = doc(db, 'calls', callId);
-  await updateDoc(callRef, { status: 'ended', endedAt: serverTimestamp() });
 }

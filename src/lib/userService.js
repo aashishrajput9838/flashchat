@@ -637,7 +637,7 @@ export const subscribeToNotifications = (callback) => {
   }
 };
 
-// Function to mark a notification as read
+// Function to mark a notification as read with improved handling
 export const markNotificationAsRead = async (notification) => {
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
@@ -706,7 +706,7 @@ export const clearAllNotifications = async () => {
   }
 };
 
-// Function to send a video call notification to a user
+// Function to send a video call notification to a user with improved structure
 export const sendVideoCallNotification = async (recipientUid, callerData, callId) => {
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');

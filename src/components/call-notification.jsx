@@ -7,115 +7,113 @@ import { listenForCallStatus } from '@/lib/callService';
 export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const user = getCurrentUser();
-  const shouldHidePopup = useRef(false);
-  const unsubscribeCallStatusRef = useRef(null);
+  const callStatusUnsubscribeRef = useRef(null);
 
   // Subscribe to notifications to listen for incoming calls
   useEffect(() => {
     if (!user) return;
 
     const unsubscribe = subscribeToNotifications((notifications) => {
-      // If we've explicitly hidden the popup, don't show it again until new notifications arrive
-      if (shouldHidePopup.current) {
-        // Check if there are any new notifications that aren't the ones we already handled
-        const hasNewNotifications = notifications.some(notif => 
-          notif && !notif.read && 
-          (notif.type === 'video_call' || notif.type === 'audio_call') && 
-          notif.status === 'ringing'
-        );
-        
-        // If there are no new notifications, keep the popup hidden
-        if (!hasNewNotifications) {
-          return;
-        }
-        
-        // If there are new notifications, reset the flag
-        shouldHidePopup.current = false;
-      }
-
-      // Only consider very recent, unread, ringing call notifications
-      const now = Date.now();
-      const RECENCY_MS = 2 * 60 * 1000; // 2 minutes
-
-      const validCalls = [];
-
-      notifications.forEach((notif) => {
-        if (!notif || notif.read) return;
-        if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return;
-        if (notif.status !== 'ringing') return;
-
-        // Normalize timestamp to a number
-        let ts = notif.timestamp;
-        let t = null;
-        try {
-          if (ts?.toDate) {
-            t = ts.toDate().getTime();
-          } else if (typeof ts === 'string') {
-            t = new Date(ts).getTime();
-          } else if (ts instanceof Date) {
-            t = ts.getTime();
-          }
-        } catch {}
-
-        if (!t || isNaN(t) || now - t > RECENCY_MS) return;
-
-        validCalls.push(notif);
-      });
+      // Filter for unread, ringing call notifications
+      const validCalls = notifications.filter(notif => 
+        notif && 
+        !notif.read && 
+        (notif.type === 'video_call' || notif.type === 'audio_call') && 
+        notif.status === 'ringing'
+      );
 
       if (validCalls.length > 0) {
-        // Only update if we don't already have an incoming call to avoid overriding
-        setIncomingCall(prevCall => {
-          // If we already have a call showing, don't replace it
-          if (prevCall) return prevCall;
-          return validCalls[0];
-        });
+        // Use the most recent call
+        const latestCall = validCalls[0];
+        setIncomingCall(latestCall);
       } else {
+        // No valid calls, clear the current one
         setIncomingCall(null);
       }
     });
 
+    // Cleanup function
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
       // Clean up call status listener if it exists
-      if (unsubscribeCallStatusRef.current) {
-        unsubscribeCallStatusRef.current();
+      if (callStatusUnsubscribeRef.current) {
+        callStatusUnsubscribeRef.current();
+        callStatusUnsubscribeRef.current = null;
       }
     };
   }, [user]);
 
   const handleAccept = async () => {
     if (incomingCall && onAccept) {
-      try { await markNotificationAsRead(incomingCall); } catch {}
-      // Set flag to prevent popup from reappearing
-      shouldHidePopup.current = true;
+      try { 
+        await markNotificationAsRead(incomingCall); 
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
       
       // If this is a video call with a callId, listen for call status changes
       if (incomingCall.type === 'video_call' && incomingCall.callId) {
-        unsubscribeCallStatusRef.current = listenForCallStatus(incomingCall.callId, (data) => {
-          if (data.status === 'ended') {
+        // Clean up any existing listener
+        if (callStatusUnsubscribeRef.current) {
+          callStatusUnsubscribeRef.current();
+        }
+        
+        // Listen for call status changes to automatically dismiss popup
+        callStatusUnsubscribeRef.current = listenForCallStatus(incomingCall.callId, (data) => {
+          if (data.status === 'ended' || data.status === 'accepted') {
             setIncomingCall(null);
+            // Clean up the listener
+            if (callStatusUnsubscribeRef.current) {
+              callStatusUnsubscribeRef.current();
+              callStatusUnsubscribeRef.current = null;
+            }
           }
         });
       }
       
-      setIncomingCall(null);
       // Pass the call data to the handler
       onAccept(incomingCall);
+      
+      // Immediately clear the call to dismiss the popup
+      setIncomingCall(null);
     }
   };
 
   const handleDecline = async () => {
     if (incomingCall && onDecline) {
-      try { await markNotificationAsRead(incomingCall); } catch {}
-      // Set flag to prevent popup from reappearing
-      shouldHidePopup.current = true;
-      setIncomingCall(null);
+      try { 
+        await markNotificationAsRead(incomingCall); 
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+      
       // Pass the call data to the handler
       onDecline(incomingCall);
+      
+      // Immediately clear the call to dismiss the popup
+      setIncomingCall(null);
     }
   };
+
+  // Auto-dismiss popup if call status changes to non-ringing
+  useEffect(() => {
+    if (incomingCall && incomingCall.callId) {
+      const unsubscribe = listenForCallStatus(incomingCall.callId, (data) => {
+        // If the call is no longer ringing, dismiss the popup
+        if (data.status !== 'ringing') {
+          setIncomingCall(null);
+        }
+      });
+      
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    }
+  }, [incomingCall]);
 
   if (!incomingCall) {
     return null;
