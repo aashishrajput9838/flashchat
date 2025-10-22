@@ -98,7 +98,7 @@ export default function App() {
           </div>
         </header>
         <main className="container max-w-4xl mx-auto p-4">
-          <div className="bg-card rounded-xl border shadow-sm p-8">
+          <div className="bg-card rounded-xl border shadow-sm p-6 sm:p-8">
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
               <p className="text-muted-foreground mb-6">
@@ -114,7 +114,7 @@ export default function App() {
                       });
                     });
                   }}
-                  className="inline-flex items-center justify-center gap-3 px-6 py-3 border rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-3 border rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
