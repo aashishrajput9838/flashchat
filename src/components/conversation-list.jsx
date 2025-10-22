@@ -222,17 +222,17 @@ export function ConversationList({ onSelectChat }) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm">
+    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-list">
       {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Conversations</h2>
+      <div className="p-3 sm:p-4 border-b">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Conversations</h2>
           <button 
             onClick={() => setShowAddFriend(true)}
             className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
             aria-label="Add friend"
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
         
@@ -244,17 +244,17 @@ export function ConversationList({ onSelectChat }) {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
           />
         </div>
       </div>
 
       {/* Add Friend Modal */}
       {showAddFriend && (
-        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-2 sm:p-4">
           <div className="w-full max-w-md bg-card rounded-2xl border shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Add Friend</h3>
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+              <h3 className="text-lg sm:text-xl font-semibold">Add Friend</h3>
               <button
                 onClick={() => {
                   setShowAddFriend(false);
@@ -269,20 +269,20 @@ export function ConversationList({ onSelectChat }) {
               </button>
             </div>
             
-            <div className="p-4">
-              <div className="relative mb-4">
+            <div className="p-3 sm:p-4">
+              <div className="relative mb-3 sm:mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search by email or name..."
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
                 />
               </div>
               
               {friendRequestStatus && (
-                <div className="mb-4 p-3 rounded-lg bg-secondary text-center">
+                <div className="mb-3 sm:mb-4 p-3 rounded-lg bg-secondary text-center mobile-text-sm">
                   {friendRequestStatus}
                 </div>
               )}
@@ -304,10 +304,10 @@ export function ConversationList({ onSelectChat }) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{user.name || user.displayName || user.email}</div>
-                          <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                          <div className="font-medium truncate mobile-text-sm">{user.name || user.displayName || user.email}</div>
+                          <div className="text-sm text-muted-foreground truncate mobile-text-xs">{user.email}</div>
                         </div>
-                        <button className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                        <button className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 mobile-text-sm mobile-button">
                           Add
                         </button>
                       </div>
@@ -317,10 +317,10 @@ export function ConversationList({ onSelectChat }) {
               )}
               
               {userSearchQuery && filteredUsers.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <UserPlus className="h-12 w-12 mx-auto mb-2" />
-                  <p>No users found</p>
-                  <p className="text-sm">Try a different search term</p>
+                <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                  <UserPlus className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2" />
+                  <p className="mobile-text-sm">No users found</p>
+                  <p className="text-sm mobile-text-xs">Try a different search term</p>
                 </div>
               )}
             </div>
@@ -331,10 +331,10 @@ export function ConversationList({ onSelectChat }) {
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto">
         {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-            <Search className="h-12 w-12 mb-4 mx-auto" />
-            <h3 className="text-lg font-medium mb-1">No conversations yet</h3>
-            <p className="text-sm">Start a conversation with a friend or add new friends</p>
+          <div className="flex flex-col items-center justify-center h-full p-6 sm:p-8 text-center text-muted-foreground">
+            <Search className="h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 mx-auto" />
+            <h3 className="text-lg sm:text-xl font-medium mb-1">No conversations yet</h3>
+            <p className="text-sm sm:text-base">Start a conversation with a friend or add new friends</p>
           </div>
         ) : (
           <div className="divide-y">
@@ -357,22 +357,22 @@ export function ConversationList({ onSelectChat }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium truncate">{chat.name}</div>
+                    <div className="font-medium truncate mobile-text-sm">{chat.name}</div>
                     {chat.lastSeen && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground mobile-text-xs">
                         {formatLastSeen(chat.lastSeen)}
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <p className="text-sm text-muted-foreground truncate">{chat.preview}</p>
+                    <p className="text-sm text-muted-foreground truncate mobile-text-xs">{chat.preview}</p>
                     {chat.isOnline ? (
-                      <div className="flex items-center text-xs text-green-500">
+                      <div className="flex items-center text-xs text-green-500 mobile-text-xs">
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
                         <span>Online</span>
                       </div>
                     ) : (
-                      <div className="flex items-center text-xs text-muted-foreground">
+                      <div className="flex items-center text-xs text-muted-foreground mobile-text-xs">
                         <Clock className="h-3 w-3 mr-1" />
                         <span>Offline</span>
                       </div>

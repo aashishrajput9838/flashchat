@@ -5,7 +5,7 @@ import { ChatThread } from "@/components/chat-thread";
 import { RightSidebar } from "@/components/right-sidebar";
 import { CallNotification } from "@/components/call-notification";
 import { VideoCall } from "@/components/video-call";
-import { X, Phone } from 'lucide-react';
+import { X, Phone, MessageCircle, User } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getCurrentUser, subscribeToFriends } from '@/lib/userService';
@@ -154,7 +154,7 @@ export default function App() {
               <div className="bg-primary rounded-full w-8 h-8 flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-lg">FC</span>
               </div>
-              <h1 className="text-xl font-bold hidden sm:block">FlashChat</h1>
+              <h1 className="text-xl font-bold">FlashChat</h1>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -169,6 +169,24 @@ export default function App() {
             </div>
           </div>
         </header>
+        
+        {/* Mobile Navigation Bar */}
+        <div className="lg:hidden flex items-center justify-between p-3 border-b bg-card">
+          <button
+            onClick={() => setShowMobileConversations(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="text-sm font-medium">Chats</span>
+          </button>
+          <button
+            onClick={() => setShowMobileSidebar(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
+          >
+            <User className="h-5 w-5" />
+            <span className="text-sm font-medium">People</span>
+          </button>
+        </div>
         
         {/* Call notifications */}
         <CallNotification 
@@ -261,15 +279,15 @@ export default function App() {
           </div>
         )}
 
-        {/* Main content */}
-        <div className="grid grid-cols-1 gap-3 md:gap-4 lg:gap-6 lg:grid-cols-[70px_340px_1fr_340px] px-3 md:px-4 lg:px-6">
+        {/* Main content - Desktop */}
+        <div className="hidden lg:grid grid-cols-1 gap-3 md:gap-4 lg:gap-6 lg:grid-cols-[70px_340px_1fr_340px] px-3 md:px-4 lg:px-6">
           {/* Left rail */}
-          <aside className="hidden lg:block lg:col-span-1">
+          <aside className="lg:col-span-1">
             <LeftRail />
           </aside>
 
           {/* Conversations list */}
-          <aside className="hidden lg:block lg:col-span-1">
+          <aside className="lg:col-span-1">
             <ConversationList onSelectChat={selectChat} />
           </aside>
 
@@ -279,9 +297,42 @@ export default function App() {
           </section>
 
           {/* Right sidebar */}
-          <aside className="hidden lg:block lg:col-span-1">
+          <aside className="lg:col-span-1">
             <RightSidebar onUserClick={selectChat} />
           </aside>
+        </div>
+        
+        {/* Mobile Content - Show chat thread when a chat is selected, otherwise show welcome message */}
+        <div className="lg:hidden">
+          {selectedChat ? (
+            <div className="h-[calc(100vh-120px)]">
+              <ChatThread selectedChat={selectedChat} onClose={handleCloseChat} showCloseButton={true} />
+            </div>
+          ) : (
+            <div className="h-[calc(100vh-120px)] flex items-center justify-center p-4">
+              <div className="text-center max-w-md">
+                <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
+                <p className="text-muted-foreground mb-6">
+                  Select a conversation or add friends to start chatting.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => setShowMobileConversations(true)}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    View Chats
+                  </button>
+                  <button
+                    onClick={() => setShowMobileSidebar(true)}
+                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
+                  >
+                    Add Friends
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile Conversations Overlay */}

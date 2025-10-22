@@ -171,6 +171,16 @@ video {
     height: 1.25rem;
     width: 1.25rem;
   }
+  
+  /* Mobile chat list improvements */
+  .mobile-chat-list {
+    max-height: calc(100vh - 120px);
+  }
+  
+  /* Mobile chat thread improvements */
+  .mobile-chat-thread {
+    height: calc(100vh - 120px);
+  }
 }
 
 /* Extra small devices */
@@ -185,5 +195,25 @@ video {
   
   .video-call-controls {
     gap: 0.5rem;
+  }
+  
+  /* Further mobile optimizations */
+  .mobile-padding {
+    padding: 0.5rem;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .mobile-text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  .mobile-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
   }
 }

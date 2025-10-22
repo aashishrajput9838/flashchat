@@ -199,135 +199,89 @@ ${emojis.join(' ')}`);
     setShowDropdown(prev => !prev);
   };
 
-  // Handle attach file
-  const handleAttachFile = () => {
-    fileInputRef.current?.click();
+  // Close chat on mobile
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    }
   };
 
-  // Get photo URL for messages
-  const getMessagePhotoURL = (msg) => {
-    if (msg.you) {
-      return user?.photoURL;
-    }
-    return selectedChat?.photoURL;
-  };
+  // If no chat is selected, show a placeholder
+  if (!selectedChat) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-4 bg-card rounded-xl border shadow-sm mobile-chat-thread">
+        <div className="text-center max-w-xs">
+          <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">FlashChat</h3>
+          <p className="text-muted-foreground mb-6">
+            Select a conversation to start chatting
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Get chat title
   const chatTitle = selectedChat 
     ? selectedChat.name || selectedChat.displayName || selectedChat.email || "Unknown User"
     : "FlashChat";
 
-  // Get chat avatar
-  const chatAvatar = selectedChat 
-    ? selectedChat.photoURL || ""
-    : "";
-
-  // If no chat is selected, show welcome message
-  if (!selectedChat) {
-    return (
-      <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm">
-        {/* Header - hidden when no chat is selected */}
-        <div className="hidden lg:flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-3">
-            <div className="bg-secondary rounded-full w-10 h-10 flex items-center justify-center">
-              <span className="font-bold">FC</span>
-            </div>
-            <div>
-              <h2 className="font-semibold">FlashChat</h2>
-              <p className="text-sm text-muted-foreground">Select a conversation to start chatting</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Welcome message */}
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="bg-secondary rounded-full w-24 h-24 flex items-center justify-center mb-6">
-            <MessageCircle className="h-12 w-12 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Select a conversation from the sidebar to start messaging, or add new friends to begin chatting.
-          </p>
-          <div className="grid grid-cols-2 gap-4 max-w-xs">
-            <div className="bg-muted p-4 rounded-lg">
-              <Send className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-sm font-medium">Messaging</div>
-            </div>
-            <div className="bg-muted p-4 rounded-lg">
-              <Video className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-sm font-medium">Video Calls</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
+    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
+      {/* Chat header */}
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+        <div className="flex items-center gap-2 sm:gap-3">
           {showCloseButton && (
             <button
-              onClick={onClose}
-              className="lg:hidden grid h-8 w-8 place-items-center rounded-lg hover:bg-muted"
+              onClick={handleClose}
+              className="p-1 rounded-lg hover:bg-muted transition-colors lg:hidden"
               aria-label="Close chat"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
           )}
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={chatAvatar} alt={chatTitle} />
-            <AvatarFallback className="bg-secondary">
-              {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+              <AvatarImage src={selectedChat.photoURL || "/diverse-avatars.png"} alt={chatTitle} />
+              <AvatarFallback className="bg-secondary text-xs sm:text-sm">
+                {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute bottom-0 right-0 h-3 w-3 sm:h-3 sm:w-3 bg-green-500 rounded-full border-2 border-card"></div>
+          </div>
           <div>
-            <h2 className="font-semibold">{chatTitle}</h2>
-            <p className="text-sm text-muted-foreground">
-              {selectedChat.isOnline ? (
-                <span className="flex items-center text-green-500">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                  Online
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Offline
-                </span>
-              )}
-            </p>
+            <h3 className="font-semibold mobile-text-sm sm:font-semibold sm:text-base">{chatTitle}</h3>
+            <p className="text-xs text-muted-foreground mobile-text-xs">Online</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={startAudioCall}
             disabled={isCalling}
-            className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             aria-label="Audio call"
           >
-            <Phone className="h-5 w-5" />
+            <Phone className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           <button
             onClick={startVideoCall}
             disabled={isCalling}
-            className="p-2 rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             aria-label="Video call"
           >
-            <Video className="h-5 w-5" />
+            <Video className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
-          <div className="relative">
+          <div className="relative" ref={ellipsisRef}>
             <button
-              ref={ellipsisRef}
               onClick={toggleDropdown}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
-              aria-label="More options"
+              aria-label="Chat options"
             >
-              <Ellipsis className="h-5 w-5" />
+              <Ellipsis className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
             
+            {/* Dropdown menu */}
             {showDropdown && (
               <div 
                 ref={dropdownRef}
@@ -337,15 +291,15 @@ ${emojis.join(' ')}`);
                   onClick={handleUnfriend}
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
-                  <X className="h-4 w-4" />
-                  Unfriend
+                  <XCircle className="h-4 w-4" />
+                  <span className="mobile-text-sm">Unfriend</span>
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-destructive"
+                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
-                  Sign Out
+                  <span className="mobile-text-sm">Sign out</span>
                 </button>
               </div>
             )}
@@ -353,37 +307,35 @@ ${emojis.join(' ')}`);
         </div>
       </div>
       
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         {chatMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-            <MessageCircle className="h-12 w-12 mb-4" />
-            <h3 className="text-lg font-medium mb-1">No messages yet</h3>
-            <p className="text-sm">Send a message to start the conversation</p>
+            <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No messages yet</h3>
+            <p className="text-muted-foreground">
+              Start a conversation with {chatTitle}
+            </p>
           </div>
         ) : (
-          chatMessages.map((msg, index) => (
+          chatMessages.map((msg) => (
             <div 
-              key={index} 
-              className={`flex ${msg.you ? 'justify-end' : 'justify-start'}`}
+              key={msg.id} 
+              className={`flex ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex gap-2 max-w-[80%] ${msg.you ? 'flex-row-reverse' : 'flex-row'}`}>
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={getMessagePhotoURL(msg)} alt={msg.name} />
-                  <AvatarFallback className="bg-secondary text-xs">
-                    {msg.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={`rounded-2xl px-4 py-2 ${msg.you ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
-                  <div className="text-sm">{msg.text}</div>
-                  <div className={`text-xs mt-1 flex items-center ${msg.you ? 'text-primary-foreground/70 justify-end' : 'text-muted-foreground justify-start'}`}>
-                    <span>{formatMessageTime(msg.timestamp)}</span>
-                    {msg.you && (
-                      <span className="ml-1">
-                        {getMessageStatusIcon(msg.status)}
-                      </span>
-                    )}
-                  </div>
+              <div 
+                className={`max-w-xs sm:max-w-md lg:max-w-lg xl:max-w-xl rounded-2xl px-4 py-2 ${
+                  msg.senderId === currentUserId 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-muted rounded-bl-none'
+                }`}
+              >
+                <p className="mobile-text-sm sm:text-sm">{msg.text}</p>
+                <div className={`flex items-center justify-end gap-1 mt-1 ${
+                  msg.senderId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                }`}>
+                  <span className="text-xs mobile-text-xs">{formatMessageTime(msg.timestamp)}</span>
+                  {msg.senderId === currentUserId && getMessageStatusIcon(msg.status)}
                 </div>
               </div>
             </div>
@@ -394,25 +346,23 @@ ${emojis.join(' ')}`);
       
       {/* Typing indicator */}
       {isTyping && (
-        <div className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={chatAvatar} alt={chatTitle} />
-              <AvatarFallback className="bg-secondary text-xs">
-                {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex gap-1">
-              <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></div>
-              <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-            </div>
+        <div className="px-4 py-2 flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={selectedChat.photoURL || "/diverse-avatars.png"} alt={chatTitle} />
+            <AvatarFallback className="bg-secondary text-xs">
+              {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex gap-1">
+            <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></div>
+            <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
           </div>
         </div>
       )}
       
       {/* Input area */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t">
+      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -422,13 +372,6 @@ ${emojis.join(' ')}`);
           >
             <Paperclip className="h-5 w-5" />
           </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            aria-label="File input"
-          />
           <button
             type="button"
             onClick={showEmojiPicker}
@@ -443,7 +386,7 @@ ${emojis.join(' ')}`);
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
-              className="w-full px-4 py-2 rounded-full bg-muted border focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 rounded-full bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
             />
           </div>
           <button
