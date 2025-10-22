@@ -214,16 +214,32 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       try {
         remoteVideoRef.current.srcObject = stream;
         
+        // Configure video element properties
+        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.autoplay = true;
+        remoteVideoRef.current.playsInline = true;
+        remoteVideoRef.current.controls = false;
+        
         // Force play the video
-        remoteVideoRef.current.play().catch(error => {
-          console.log('Error playing remote video:', error);
-        });
+        const playPromise = remoteVideoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('Remote video play successful');
+              setIsRemoteVideoConnected(true);
+            })
+            .catch(error => {
+              console.log('Error playing remote video:', error);
+              // Even if play fails, we still want to show the video element
+              setIsRemoteVideoConnected(true);
+            });
+        } else {
+          // Fallback for browsers that don't return a promise
+          setIsRemoteVideoConnected(true);
+        }
         
         // Mark that we've applied the stream
         remoteStreamAppliedRef.current = true;
-        
-        // Set remote video connected state
-        setIsRemoteVideoConnected(true);
         
         // Add event listeners for better UX
         remoteVideoRef.current.onloadedmetadata = () => {
@@ -237,6 +253,17 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           console.log('Remote video started playing');
           console.log('Video playing state:', remoteVideoRef.current?.paused, remoteVideoRef.current?.ended);
           setIsRemoteVideoConnected(true);
+        };
+        
+        // Handle video pause event
+        remoteVideoRef.current.onpause = () => {
+          console.log('Remote video paused');
+          // Try to play it again
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.play().catch(error => {
+              console.log('Error re-playing remote video:', error);
+            });
+          }
         };
         
         // Handle video errors
@@ -253,8 +280,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         remoteVideoRef.current.oncanplay = () => {
           console.log('Remote video can play');
         };
+        
+        // Handle video waiting (buffering)
+        remoteVideoRef.current.onwaiting = () => {
+          console.log('Remote video waiting/buffering');
+        };
       } catch (error) {
         console.error('Error applying remote stream to video element:', error);
+        // Even if there's an error, we still want to show the video element
+        setIsRemoteVideoConnected(true);
       }
     } else {
       // Store stream temporarily if ref is not available yet
@@ -269,10 +303,34 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       localVideoRef.current.srcObject = stream;
       localStreamRef.current = stream;
       
+      // Configure video element properties
+      localVideoRef.current.muted = true;
+      localVideoRef.current.autoplay = true;
+      localVideoRef.current.playsInline = true;
+      localVideoRef.current.controls = false;
+      
       // Force play the local video
-      localVideoRef.current.play().catch(error => {
-        console.log('Error playing local video:', error);
-      });
+      const playPromise = localVideoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('Local video play successful');
+          })
+          .catch(error => {
+            console.log('Error playing local video:', error);
+          });
+      }
+      
+      // Handle video pause event for local video
+      localVideoRef.current.onpause = () => {
+        console.log('Local video paused');
+        // Try to play it again
+        if (localVideoRef.current) {
+          localVideoRef.current.play().catch(error => {
+            console.log('Error re-playing local video:', error);
+          });
+        }
+      };
     }
   };
 
