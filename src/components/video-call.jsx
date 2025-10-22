@@ -19,6 +19,7 @@ import {
 
 export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', callId }) {
   const [isCallActive, setIsCallActive] = useState(false);
+  const [isRemoteVideoConnected, setIsRemoteVideoConnected] = useState(false); // Track remote video connection
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [callStatus, setCallStatus] = useState('Connecting...');
@@ -84,6 +85,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       localStreamRef.current = stream;
       setIsCallActive(true);
+      setIsRemoteVideoConnected(false); // Reset remote video connection state
       hasEndedRef.current = false; // Reset ended flag
       
       // Create RTCPeerConnection
@@ -95,8 +97,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
       // Remote track handler
       pc.ontrack = (event) => {
+        console.log('Remote track received:', event);
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = event.streams[0];
+          setIsRemoteVideoConnected(true); // Mark remote video as connected
         }
       };
 
@@ -319,6 +323,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       remoteVideoRef.current.srcObject = null;
     }
     
+    // Reset video connection state
+    setIsRemoteVideoConnected(false);
+    
     // Close RTCPeerConnection
     if (peerConnectionRef.current) {
       try {
@@ -383,6 +390,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     
     // Update UI state immediately
     setIsCallActive(false);
+    setIsRemoteVideoConnected(false); // Reset remote video connection state
     setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
     
     // Cleanup media resources
@@ -427,6 +435,49 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }, 100);
   };
 
+  // Function to render the remote video or profile placeholder
+  const renderRemoteVideo = () => {
+    // Show remote video if connected, otherwise show profile placeholder
+    if (isRemoteVideoConnected && remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+      return (
+        <video 
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+    
+    // Show profile placeholder while waiting for video or if video is not connected
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
+        <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
+          {selectedChat?.photoURL ? (
+            <img 
+              src={selectedChat.photoURL} 
+              alt={chatTitle} 
+              className="w-32 h-32 rounded-full object-cover"
+            />
+          ) : (
+            <span className="text-4xl font-bold">
+              {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
+          )}
+        </div>
+        <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
+        <p className="text-muted-foreground mb-6">
+          {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
+        </p>
+        <div className="flex items-center justify-center">
+          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl h-[80vh] bg-card rounded-xl border flex flex-col">
@@ -448,40 +499,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         <div className="flex-1 relative flex flex-col md:flex-row gap-4 p-4">
           {/* Remote video or recipient info during ringing */}
           <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-            {isCallActive ? (
-              <video 
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              // Show recipient profile during ringing
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
-                  {selectedChat?.photoURL ? (
-                    <img 
-                      src={selectedChat.photoURL} 
-                      alt={chatTitle} 
-                      className="w-32 h-32 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-4xl font-bold">
-                      {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
-                <p className="text-muted-foreground mb-6">
-                  {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
-                </p>
-                <div className="flex items-center justify-center">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                </div>
-              </div>
-            )}
+            {renderRemoteVideo()}
           </div>
 
           {/* Local video */}
