@@ -113,6 +113,12 @@ ${emojis.join(' ')}`);
   const startVideoCall = async () => {
     if (!selectedChat) return;
     
+    // Prevent users from calling themselves
+    if (selectedChat.uid === user?.uid) {
+      alert("You cannot make a video call to yourself.");
+      return;
+    }
+    
     setIsCalling(true);
     
     try {
@@ -136,6 +142,12 @@ ${emojis.join(' ')}`);
   // Function to start audio call
   const startAudioCall = async () => {
     if (!selectedChat) return;
+    
+    // Prevent users from calling themselves
+    if (selectedChat.uid === user?.uid) {
+      alert("You cannot make an audio call to yourself.");
+      return;
+    }
     
     setIsCalling(true);
     
