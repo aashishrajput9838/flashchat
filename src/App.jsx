@@ -1,33 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import './App.css';
-import { LeftRail } from '@/components/left-rail';
-import { ConversationList } from '@/components/conversation-list';
-import { ChatThread } from '@/components/chat-thread';
-import { RightSidebar } from '@/components/right-sidebar';
-import { CallNotification } from '@/components/call-notification';
-import { VideoCall } from '@/components/video-call';
-import { initAuth, getCurrentUser, subscribeToFriends } from '@/lib/userService';
-import { Login } from '@/components/login';
-import { X, Phone, Menu, Users } from 'lucide-react';
-
-// Add theme context
-export const ThemeContext = React.createContext();
+import React, { useState, useEffect } from 'react';
+import { ThemeContext } from './App';
+import { LeftRail } from "@/components/left-rail";
+import { ConversationList } from "@/components/conversation-list";
+import { ChatThread } from "@/components/chat-thread";
+import { RightSidebar } from "@/components/right-sidebar";
+import { CallNotification } from "@/components/call-notification";
+import { VideoCall } from "@/components/video-call";
+import { X } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { getCurrentUser, subscribeToFriends } from '@/lib/userService';
 
 export default function App() {
+  // Theme state
+  const [theme, setTheme] = useState('dark');
+  
+  // User state
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Chat state
   const [selectedChat, setSelectedChat] = useState(null);
-  const [friends, setFriends] = useState([]);
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [showIncomingCall, setShowIncomingCall] = useState(false);
-  const [activeIncomingVideoCall, setActiveIncomingVideoCall] = useState(null);
+  
   // Mobile UI state
   const [showMobileConversations, setShowMobileConversations] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  // Theme state
-  const [theme, setTheme] = useState('dark');
-  const currentUser = getCurrentUser();
-
+  
+  // Call state
+  const [activeIncomingVideoCall, setActiveIncomingVideoCall] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [showIncomingCall, setShowIncomingCall] = useState(false);
+  
   // Toggle theme
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
@@ -38,131 +41,99 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
-
+  
+  // Auth state listener
   useEffect(() => {
-    // Initialize authentication
-    initAuth()
-      .then((user) => {
-        setUser(user);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Authentication error:', error);
-        setLoading(false);
-      });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
   }, []);
-
-  // Subscribe to friends list
-  useEffect(() => {
-    if (user) {
-      const unsubscribe = subscribeToFriends((friendsList) => {
-        setFriends(friendsList);
-      });
-      
-      return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      };
-    }
-  }, [user]);
-
-  // Handle login success
-  const handleLoginSuccess = (user) => {
-    setUser(user);
-    setLoading(false);
+  
+  // Handle closing chat on mobile
+  const handleCloseChat = () => {
+    setSelectedChat(null);
+  };
+  
+  // Select a chat
+  const selectChat = (user) => {
+    setSelectedChat(user);
+    // Close mobile overlays when selecting a chat
+    setShowMobileConversations(false);
+    setShowMobileSidebar(false);
   };
 
   if (loading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-xl font-semibold">Loading FlashChat...</div>
-          <div className="text-muted-foreground mt-2">Connecting you to your conversations</div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Loading FlashChat...</p>
         </div>
       </div>
     );
   }
 
-  // If user is not authenticated, show login screen
   if (!user) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b">
+          <div className="container flex items-center justify-between h-16 px-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-primary rounded-full w-8 h-8 flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-lg">FC</span>
+              </div>
+              <h1 className="text-xl font-bold">FlashChat</h1>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+              aria-label="Toggle theme">
+              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
+          </div>
+        </header>
+        <main className="container max-w-4xl mx-auto p-4">
+          <div className="bg-card rounded-xl border shadow-sm p-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
+              <p className="text-muted-foreground mb-6">
+                Sign in to start messaging and making calls with your friends.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
-
-  // Function to select a chat (replaces current chat)
-  // Only allow chatting with friends
-  const selectChat = (user) => {
-    // Check if the selected user is in the friends list
-    const isFriend = friends.some(friend => friend.uid === user.uid);
-    
-    // Allow user to chat with themselves (for testing purposes)
-    const isSelf = user.uid === currentUser?.uid;
-    
-    if (isFriend || isSelf) {
-      setSelectedChat(user);
-    } else {
-      // Close the chat if the user is no longer a friend
-      setSelectedChat(null);
-      // Optionally show a message or prevent selection
-      console.log("Cannot chat with non-friends");
-      // You could show a toast or modal here informing the user
-    }
-  };
-
-  // Function to handle closing the chat
-  const handleCloseChat = () => {
-    setSelectedChat(null);
-  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <main className="min-h-dvh bg-background text-foreground transition-colors duration-300">
-        {/* Mobile header with theme toggle */}
-        <div className="mb-3 flex items-center gap-2 lg:hidden px-3 py-2 bg-card rounded-lg shadow-sm">
-          <button
-            onClick={() => setShowMobileConversations(true)}
-            className="grid h-10 w-10 place-items-center rounded-lg border bg-secondary hover:bg-muted transition-colors"
-            aria-label="Open conversations">
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="text-base font-semibold flex-1 text-center">FlashChat</div>
-          <button
-            onClick={toggleTheme}
-            className="grid h-10 w-10 place-items-center rounded-lg border bg-secondary hover:bg-muted transition-colors"
-            aria-label="Toggle theme">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-          <button
-            onClick={() => setShowMobileSidebar(true)}
-            className="grid h-10 w-10 place-items-center rounded-lg border bg-secondary hover:bg-muted transition-colors"
-            aria-label="Open sidebar">
-            <Users className="h-5 w-5" />
-          </button>
-        </div>
-        
-        {/* Desktop header */}
-        <div className="hidden lg:flex items-center justify-between px-6 py-4 bg-card rounded-lg shadow-sm mb-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              FlashChat
-            </h1>
-            <div className="text-sm text-muted-foreground">
-              Real-time messaging and calling
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b">
+          <div className="container flex items-center justify-between h-16 px-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-primary rounded-full w-8 h-8 flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-lg">FC</span>
+              </div>
+              <h1 className="text-xl font-bold hidden sm:block">FlashChat</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+                aria-label="Toggle theme">
+                {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+              </button>
+              <div className="text-sm text-muted-foreground hidden sm:block">
+                Welcome, {user.displayName || user.email}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
-              aria-label="Toggle theme">
-              {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
-            </button>
-            <div className="text-sm text-muted-foreground">
-              Welcome, {user.displayName || user.email}
-            </div>
-          </div>
-        </div>
+        </header>
         
         {/* Call notifications */}
         <CallNotification 
@@ -327,7 +298,7 @@ export default function App() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </ThemeContext.Provider>
   );
 }

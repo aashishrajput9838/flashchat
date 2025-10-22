@@ -859,12 +859,12 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-2 sm:p-4">
-      <div className="w-full max-w-6xl h-[95vh] bg-card rounded-2xl border border-gray-700 flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-2">
+      <div className="w-full max-w-4xl h-[90vh] bg-card rounded-2xl border border-gray-700 flex flex-col shadow-2xl">
         {/* Call header */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-3 border-b border-gray-700">
           <div className="min-w-0 flex-1">
-            <h3 className="text-lg sm:text-xl font-semibold truncate">{chatTitle}</h3>
+            <h3 className="text-lg font-semibold truncate">{chatTitle}</h3>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground truncate">{callStatus}</p>
               {callStatus === 'Call in progress' && (
@@ -876,16 +876,16 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           </div>
           <button
             onClick={() => endCall()}
-            className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-destructive hover:bg-destructive/90 transition-colors"
+            className="flex items-center justify-center h-10 w-10 rounded-full bg-destructive hover:bg-destructive/90 transition-colors"
             aria-label="End call">
             <Phone className="h-5 w-5 text-white" />
           </button>
         </div>
 
         {/* Video area - responsive layout */}
-        <div className="flex-1 relative flex flex-col lg:flex-row gap-2 sm:gap-4 p-2 sm:p-4">
+        <div className="flex-1 relative flex flex-col md:flex-row gap-2 p-2 overflow-hidden">
           {/* Remote video or recipient info during ringing */}
-          <div className="flex-1 w-full lg:w-2/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
+          <div className="flex-1 w-full md:w-2/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
             {/* Remote video element */}
             <video 
               ref={remoteVideoRef}
@@ -898,7 +898,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             {/* Show profile placeholder when video is not connected */}
             {!isRemoteVideoConnected && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                <div className="bg-secondary rounded-full w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 flex items-center justify-center mb-4 sm:mb-6 border-4 border-primary/30">
+                <div className="bg-secondary rounded-full w-16 h-16 sm:w-24 sm:h-24 flex items-center justify-center mb-4 border-2 border-primary/30">
                   {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
                     <img 
                       src={remoteUser?.photoURL || selectedChat?.photoURL} 
@@ -906,13 +906,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="text-2xl sm:text-4xl font-bold">
+                    <span className="text-xl sm:text-2xl font-bold">
                       {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   )}
                 </div>
-                <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-center px-2">{chatTitle}</h2>
-                <p className="text-muted-foreground mb-4 sm:mb-6 text-center px-4">
+                <h2 className="text-lg sm:text-xl font-semibold mb-2 text-center px-2">{chatTitle}</h2>
+                <p className="text-muted-foreground mb-4 text-center px-4">
                   {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
                 </p>
                 <div className="flex items-center justify-center">
@@ -925,7 +925,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           </div>
 
           {/* Local video */}
-          <div className="w-full lg:w-1/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
+          <div className="w-full md:w-1/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
             <video 
               ref={localVideoRef}
               autoPlay
@@ -935,7 +935,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             />
             {isVideoOff && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted/80">
-                <VideoOff className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
+                <VideoOff className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
               </div>
             )}
             
@@ -947,65 +947,65 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         </div>
 
         {/* Call controls - improved responsive layout */}
-        <div className="p-3 sm:p-4 border-t border-gray-700">
-          <div className="flex items-center justify-center gap-4 sm:gap-6 md:gap-8">
+        <div className="p-3 border-t border-gray-700">
+          <div className="flex items-center justify-center gap-4 md:gap-6">
             <button
               onClick={toggleMute}
-              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isMuted ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
+              className={`flex flex-col items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full ${isMuted ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all`}
               aria-label={isMuted ? "Unmute" : "Mute"}>
               {isMuted ? (
                 <>
-                  <MicOff className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Unmute</span>
+                  <MicOff className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Unmute</span>
                 </>
               ) : (
                 <>
-                  <Mic className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Mute</span>
+                  <Mic className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Mute</span>
                 </>
               )}
             </button>
             
             <button
               onClick={toggleVideo}
-              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isVideoOff ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
+              className={`flex flex-col items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full ${isVideoOff ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all`}
               aria-label={isVideoOff ? "Turn on camera" : "Turn off camera"}>
               {isVideoOff ? (
                 <>
-                  <VideoOff className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Video Off</span>
+                  <VideoOff className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Video Off</span>
                 </>
               ) : (
                 <>
-                  <Video className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Video On</span>
+                  <Video className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Video On</span>
                 </>
               )}
             </button>
             
             <button
               onClick={toggleScreenShare}
-              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isScreenSharing ? 'bg-primary' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
+              className={`flex flex-col items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full ${isScreenSharing ? 'bg-primary' : 'bg-secondary'} hover:opacity-90 transition-all`}
               aria-label={isScreenSharing ? "Stop screen share" : "Start screen share"}>
               {isScreenSharing ? (
                 <>
-                  <MonitorOff className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Stop Share</span>
+                  <MonitorOff className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Stop Share</span>
                 </>
               ) : (
                 <>
-                  <Monitor className="h-6 w-6 sm:h-7 sm:w-7" />
-                  <span className="text-[10px] mt-1">Share Screen</span>
+                  <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-[8px] sm:text-[10px] mt-1">Share Screen</span>
                 </>
               )}
             </button>
             
             <button
               onClick={() => endCall()}
-              className="flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-destructive hover:bg-destructive/90 transition-all transform hover:scale-105"
+              className="flex flex-col items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-destructive hover:bg-destructive/90 transition-all"
               aria-label="End call">
-              <Phone className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-              <span className="text-[10px] mt-1 text-white">End</span>
+              <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              <span className="text-[8px] sm:text-[10px] mt-1 text-white">End</span>
             </button>
           </div>
         </div>
