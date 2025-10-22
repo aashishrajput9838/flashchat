@@ -8,7 +8,7 @@ import { VideoCall } from "@/components/video-call";
 import { X, Phone, MessageCircle, User } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getCurrentUser, subscribeToFriends } from '@/lib/userService';
+import { getCurrentUser, subscribeToFriends, initAuth } from '@/lib/userService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -75,7 +75,11 @@ export default function App() {
   
   // Auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Initialize user in userService
+        await initAuth();
+      }
       setUser(user);
       setLoading(false);
     });
