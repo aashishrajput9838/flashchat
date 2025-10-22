@@ -108,11 +108,12 @@ export function CallNotification({ onAccept, onDecline }) {
         console.error('Error marking notification as read:', error);
       }
       
-      // If this is a video call with a callId, listen for call status changes
+      // If this is a video call with a callId, clean up call status listener
       if (incomingCall.type === 'video_call' && incomingCall.callId) {
         // Clean up any existing listener
         if (callStatusUnsubscribeRef.current) {
           callStatusUnsubscribeRef.current();
+          callStatusUnsubscribeRef.current = null;
         }
       }
       
@@ -159,11 +160,19 @@ export function CallNotification({ onAccept, onDecline }) {
   useEffect(() => {
     if (incomingCall && incomingCall.callId) {
       const unsubscribe = listenForCallStatus(incomingCall.callId, (data) => {
-        // If the call is no longer ringing, dismiss the popup
-        if (data.status !== 'ringing') {
+        console.log('Incoming call status changed:', data); // Debug log
+        // If the call is no longer ringing or has ended, dismiss the popup
+        if (data.status !== 'ringing' || data.status === 'ended' || data.status === 'declined') {
           setIncomingCall(null);
+          // Clean up the listener
+          if (callStatusUnsubscribeRef.current) {
+            callStatusUnsubscribeRef.current();
+            callStatusUnsubscribeRef.current = null;
+          }
         }
       });
+      
+      callStatusUnsubscribeRef.current = unsubscribe;
       
       return () => {
         if (unsubscribe) {

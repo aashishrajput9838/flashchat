@@ -141,13 +141,17 @@ export function listenForOffer(callId, callback) {
   });
 }
 
-// Listen for call status changes with error handling
+// Listen for call status changes with improved error handling and status detection
 export function listenForCallStatus(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   return onSnapshot(callRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.data();
+      // Ensure we're properly detecting all status changes
       callback(data);
+    } else {
+      // Document was deleted, treat as ended call
+      callback({ status: 'ended' });
     }
   }, (error) => {
     console.error('Error listening for call status:', error);
@@ -206,7 +210,10 @@ export async function updateCallStatus(callId, status, additionalData = {}) {
 // Function to end a call and update status
 export async function endCall(callId) {
   try {
-    return await updateCallStatus(callId, 'ended');
+    console.log('Ending call with ID:', callId); // Debug log
+    const result = await updateCallStatus(callId, 'ended');
+    console.log('Call end result:', result); // Debug log
+    return result;
   } catch (error) {
     console.error('Error ending call:', error);
     return false;

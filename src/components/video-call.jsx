@@ -39,6 +39,20 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   useEffect(() => {
     startCall();
     
+    // Listen for call ended event from socket
+    const handleCallEnded = (data) => {
+      console.log('Received call ended event:', data);
+      setCallStatus('Call ended by other party');
+      setTimeout(() => {
+        endCall(true); // true indicates it was ended by remote party
+      }, 2000);
+    };
+    
+    // Add socket listener if socket is available
+    if (window.socket) {
+      window.socket.on('call_ended', handleCallEnded);
+    }
+    
     // Cleanup function
     return () => {
       cleanupMedia();
@@ -46,6 +60,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Clear any pending cleanup timeouts
       if (cleanupTimeoutRef.current) {
         clearTimeout(cleanupTimeoutRef.current);
+      }
+      
+      // Remove socket listener
+      if (window.socket) {
+        window.socket.off('call_ended', handleCallEnded);
       }
     };
   }, []);
@@ -85,6 +104,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
       // Listen for call status changes to detect when other party ends call
       const unsubStatus = listenForCallStatus(callId, async (data) => {
+        console.log('Call status changed:', data); // Debug log
         if (data.status === 'ended') {
           setCallStatus('Call ended by other party');
           // Wait a moment to show the status message
@@ -270,6 +290,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   };
 
   const endCall = async (endedByRemote = false) => {
+    console.log('Ending call, endedByRemote:', endedByRemote); // Debug log
+    
     // Update UI state immediately
     setIsCallActive(false);
     setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');

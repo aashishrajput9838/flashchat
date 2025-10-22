@@ -129,16 +129,19 @@ io.on('connection', (socket) => {
       await updateCallStatus(callId, 'ended');
       
       // Clean up active call
+      const callInfo = activeCalls.get(callId);
       activeCalls.delete(callId);
       
       // Notify other participant that call was ended
-      const callInfo = activeCalls.get(callId);
       if (callInfo) {
         const otherParticipant = userId === callInfo.callerId ? callInfo.calleeId : callInfo.callerId;
+        console.log(`Notifying ${otherParticipant} that call ${callId} was ended by ${userId}`);
         io.to(otherParticipant).emit('call_ended', {
           callId,
           endedBy: userId
         });
+      } else {
+        console.log(`No active call found for ${callId}`);
       }
     } catch (error) {
       console.error('Error ending call:', error);
