@@ -8,11 +8,11 @@ const getSocketURL = () => {
     if (window.location.hostname === 'flashchat-coral.vercel.app') {
       return 'https://flashchat-coral.vercel.app';
     }
-    // For local development, use localhost
-    return 'http://localhost:3001';
+    // For local development, use localhost with the new port
+    return 'http://localhost:64005';
   }
   // Default for server-side rendering
-  return 'http://localhost:3001';
+  return 'http://localhost:64005';
 };
 
 const socket = io(getSocketURL(), {

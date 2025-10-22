@@ -14,12 +14,13 @@ app.use(express.json());
 
 // Firebase configuration (matching your frontend config)
 const firebaseConfig = {
-  apiKey: "AIzaSyBk9R8fZDj0aflFVQrD4D4D4D4D4D4D4D4",
+  apiKey: "AIzaSyB_3xErgKerW8IsWLQzu6IsMyiXNOPSxEo",
   authDomain: "web-socket-2e05f.firebaseapp.com",
   projectId: "web-socket-2e05f",
-  storageBucket: "web-socket-2e05f.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890abcdef"
+  storageBucket: "web-socket-2e05f.firebasestorage.app",
+  messagingSenderId: "213332457740",
+  appId: "1:213332457740:web:dbfe9e380e1629d0427129",
+  measurementId: "G-RYFQE7TFGN"
 };
 
 // Initialize Firebase
@@ -219,10 +220,11 @@ async function updateCallStatus(callId, status) {
   }
 }
 
-const PORT = process.env.PORT || 3001;
+const PORT = 0; // Use 0 to let the system assign an available port
 
 server.listen(PORT, () => {
-  console.log(`Call management server running on port ${PORT}`);
+  const assignedPort = server.address().port;
+  console.log(`Call management server running on port ${assignedPort}`);
 });
 
 // Graceful shutdown

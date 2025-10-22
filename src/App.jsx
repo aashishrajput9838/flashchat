@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeContext } from './App';
 import { LeftRail } from "@/components/left-rail";
 import { ConversationList } from "@/components/conversation-list";
 import { ChatThread } from "@/components/chat-thread";
 import { RightSidebar } from "@/components/right-sidebar";
 import { CallNotification } from "@/components/call-notification";
 import { VideoCall } from "@/components/video-call";
-import { X } from 'lucide-react';
+import { X, Phone } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getCurrentUser, subscribeToFriends } from '@/lib/userService';
+
+// Create Theme Context
+export const ThemeContext = React.createContext();
 
 export default function App() {
   // Theme state
