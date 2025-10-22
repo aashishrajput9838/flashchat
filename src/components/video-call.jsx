@@ -160,14 +160,38 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           // Set the new stream
           remoteVideoRef.current.srcObject = event.streams[0];
           
+          // Log stream information
+          const videoTracks = event.streams[0].getVideoTracks();
+          const audioTracks = event.streams[0].getAudioTracks();
+          
+          console.log('Remote stream info:', {
+            id: event.streams[0].id,
+            tracks: event.streams[0].getTracks(),
+            videoTracks: videoTracks,
+            audioTracks: audioTracks,
+            videoTrackEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false
+          });
+          
           // Add event listeners to the video element to ensure it plays
           const videoElement = remoteVideoRef.current;
           videoElement.onloadedmetadata = () => {
             console.log('Remote video metadata loaded');
+            console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
           };
           
           videoElement.onplay = () => {
             console.log('Remote video started playing');
+            console.log('Video playing state:', videoElement.paused, videoElement.ended);
+          };
+          
+          videoElement.onplaying = () => {
+            console.log('Remote video is now playing');
+            console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+            
+            // Check if video actually has content
+            if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+              console.warn('Video has no dimensions - might be an issue with the stream');
+            }
           };
           
           videoElement.onerror = (e) => {
@@ -181,6 +205,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           // Make sure the video element is visible
           videoElement.classList.remove('hidden');
           videoElement.classList.add('block');
+          
+          // Ensure the video element has the correct styling
+          videoElement.style.display = 'block';
+          videoElement.style.width = '100%';
+          videoElement.style.height = '100%';
+          
+          // Log parent container info
+          console.log('Parent container info:', {
+            offsetWidth: videoElement.parentElement.offsetWidth,
+            offsetHeight: videoElement.parentElement.offsetHeight,
+            computedStyle: window.getComputedStyle(videoElement.parentElement)
+          });
         } else {
           console.warn('Remote video ref not available when track received');
         }
@@ -520,12 +556,20 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       if (hasStream) {
         console.log('Rendering remote video with stream');
+        console.log('Video element visibility check:', {
+          offsetWidth: remoteVideoRef.current.offsetWidth,
+          offsetHeight: remoteVideoRef.current.offsetHeight,
+          clientWidth: remoteVideoRef.current.clientWidth,
+          clientHeight: remoteVideoRef.current.clientHeight,
+          computedStyle: window.getComputedStyle(remoteVideoRef.current)
+        });
+        
         return (
           <video 
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover block"
           />
         );
       }
@@ -582,41 +626,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         <div className="flex-1 relative flex flex-col md:flex-row gap-4 p-4">
           {/* Remote video or recipient info during ringing */}
           <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-            {/* Always render the video element but conditionally show/hide */}
-            <video 
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className={`w-full h-full object-cover ${isRemoteVideoConnected ? 'block' : 'hidden'}`}
-            />
-            
-            {/* Show profile placeholder when video is not connected */}
-            {!isRemoteVideoConnected && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
-                  {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
-                    <img 
-                      src={remoteUser?.photoURL || selectedChat?.photoURL} 
-                      alt={chatTitle} 
-                      className="w-32 h-32 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-4xl font-bold">
-                      {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
-                <p className="text-muted-foreground mb-6">
-                  {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
-                </p>
-                <div className="flex items-center justify-center">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                </div>
-              </div>
-            )}
+            {renderRemoteVideo()}
           </div>
 
           {/* Local video */}
