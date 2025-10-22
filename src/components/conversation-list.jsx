@@ -337,7 +337,7 @@ export function ConversationList({ onSelectChat }) {
               <div
                 key={chat.uid}
                 onClick={() => handleSelectChat(chat)}
-                className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors group"
+                className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
               >
                 <div className="relative">
                   <Avatar className="h-12 w-12">

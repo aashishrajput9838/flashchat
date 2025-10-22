@@ -157,36 +157,34 @@
   @apply bg-muted rounded-tl-none;
 }
 
-/* Conversation list item */
-.conversation-item {
-  @apply flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors group;
-}
-
 /* Responsive design improvements */
 @media (max-width: 1024px) {
   .video-call-window {
-    @apply h-[95vh] max-w-full mx-2;
+    height: 95vh;
+    max-width: 100%;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
   
   .video-call-content {
-    @apply flex-col;
+    flex-direction: column;
   }
   
   .video-call-local,
   .video-call-remote {
-    @apply w-full;
+    width: 100%;
   }
 }
 
 /* Dark mode specific adjustments */
 .dark .video-call-window {
-  @apply border-gray-600;
+  border-color: #4b5563;
 }
 
 .dark .video-call-header {
-  @apply border-gray-600;
+  border-color: #4b5563;
 }
 
 .dark .video-call-controls {
-  @apply border-gray-600;
+  border-color: #4b5563;
 }
