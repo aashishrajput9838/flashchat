@@ -177,6 +177,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           // Force a re-render to ensure the video element is displayed
           setIsRemoteVideoConnected(true);
           console.log('Remote video connected, stream tracks:', event.streams[0].getTracks());
+          
+          // Make sure the video element is visible
+          videoElement.classList.remove('hidden');
+          videoElement.classList.add('block');
         } else {
           console.warn('Remote video ref not available when track received');
         }
@@ -384,7 +388,16 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
     if (remoteVideoRef.current) {
       console.log('Clearing remote video srcObject');
+      // Stop all tracks in remote stream
+      if (remoteVideoRef.current.srcObject) {
+        const tracks = remoteVideoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+      }
       remoteVideoRef.current.srcObject = null;
+      
+      // Hide the video element
+      remoteVideoRef.current.classList.remove('block');
+      remoteVideoRef.current.classList.add('hidden');
     }
     
     // Reset video connection state
@@ -569,7 +582,41 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         <div className="flex-1 relative flex flex-col md:flex-row gap-4 p-4">
           {/* Remote video or recipient info during ringing */}
           <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-            {renderRemoteVideo()}
+            {/* Always render the video element but conditionally show/hide */}
+            <video 
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${isRemoteVideoConnected ? 'block' : 'hidden'}`}
+            />
+            
+            {/* Show profile placeholder when video is not connected */}
+            {!isRemoteVideoConnected && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
+                <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
+                  {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
+                    <img 
+                      src={remoteUser?.photoURL || selectedChat?.photoURL} 
+                      alt={chatTitle} 
+                      className="w-32 h-32 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl font-bold">
+                      {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
+                <p className="text-muted-foreground mb-6">
+                  {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
+                </p>
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Local video */}
