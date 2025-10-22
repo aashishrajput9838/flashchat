@@ -337,7 +337,12 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
       if (change.type === 'added') {
         const data = change.doc.data();
         console.log('Received ICE candidate via Firestore:', data);
-        onCandidate(data);
+        // Validate candidate before passing to callback
+        if (data && typeof data === 'object' && (data.candidate || data.candidate === '')) {
+          onCandidate(data);
+        } else {
+          console.warn('Invalid ICE candidate received, skipping:', data);
+        }
       }
     });
   }, (error) => {
@@ -348,12 +353,45 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
   return unsubscribe;
 }
 
+// Enhanced ICE candidate validation and addition
 export async function addIceCandidate(candidatesRef, candidate) {
   try {
     console.log('Adding ICE candidate to Firestore:', candidate);
+    
+    // Validate the candidate object before adding to Firestore
+    if (!candidate || typeof candidate !== 'object') {
+      console.warn('Invalid ICE candidate object, skipping:', candidate);
+      return;
+    }
+    
+    // Ensure the candidate has the required properties
+    if (candidate.candidate === undefined && candidate.sdpMid === undefined) {
+      console.warn('ICE candidate missing required properties, skipping:', candidate);
+      return;
+    }
+    
+    // Additional validation for candidate structure
+    if (candidate.candidate !== null && candidate.candidate !== undefined && typeof candidate.candidate !== 'string') {
+      console.warn('ICE candidate has invalid candidate property, skipping:', candidate);
+      return;
+    }
+    
+    // Validate sdpMid if present
+    if (candidate.sdpMid !== undefined && candidate.sdpMid !== null && typeof candidate.sdpMid !== 'string') {
+      console.warn('ICE candidate has invalid sdpMid property, skipping:', candidate);
+      return;
+    }
+    
+    // Validate sdpMLineIndex if present
+    if (candidate.sdpMLineIndex !== undefined && typeof candidate.sdpMLineIndex !== 'number') {
+      console.warn('ICE candidate has invalid sdpMLineIndex property, skipping:', candidate);
+      return;
+    }
+    
     await addDoc(candidatesRef, candidate);
     console.log('Successfully added ICE candidate to Firestore');
   } catch (error) {
     console.error('Error adding ICE candidate:', error);
+    // Don't throw the error to prevent breaking the call flow
   }
 }

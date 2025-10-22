@@ -42,6 +42,14 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   // Call timer ref
   const callTimerRef = useRef(null);
   
+  // Track offer handling to prevent duplicates
+  const hasHandledOfferRef = useRef(false);
+  // Track answer handling to prevent duplicates
+  const hasHandledAnswerRef = useRef(false);
+  // Track ICE candidate processing
+  const iceCandidateQueueRef = useRef([]);
+  const isProcessingIceQueueRef = useRef(false);
+  
   const user = getCurrentUser();
   // Use remote user name if available, otherwise fallback to selectedChat or default
   const chatTitle = remoteUser 
@@ -493,6 +501,32 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }, 100);
   };
 
+  // Process ICE candidate queue
+  const processIceCandidateQueue = async () => {
+    if (isProcessingIceQueueRef.current || iceCandidateQueueRef.current.length === 0) {
+      return;
+    }
+    
+    isProcessingIceQueueRef.current = true;
+    
+    try {
+      while (iceCandidateQueueRef.current.length > 0) {
+        const candidate = iceCandidateQueueRef.current.shift();
+        
+        if (peerConnectionRef.current && peerConnectionRef.current.signalingState !== 'closed') {
+          try {
+            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log('Added remote ICE candidate successfully');
+          } catch (err) {
+            console.error('Error adding ICE candidate:', err);
+          }
+        }
+      }
+    } finally {
+      isProcessingIceQueueRef.current = false;
+    }
+  };
+
   // Function to start call
   const startCall = async () => {
     try {
@@ -534,10 +568,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         if (event.candidate && callId) {
           console.log('Sending ICE candidate:', event.candidate);
           try {
+            // Fix: Pass the correct parameters to addIceCandidate
             if (role === 'caller') {
-              await addIceCandidate(callId, event.candidate, 'offer');
+              await addIceCandidate(offerCandidatesCollection(callId), event.candidate);
             } else {
-              await addIceCandidate(callId, event.candidate, 'answer');
+              await addIceCandidate(answerCandidatesCollection(callId), event.candidate);
             }
             console.log('ICE candidate added to Firestore successfully');
           } catch (err) {
@@ -599,10 +634,23 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         console.log('Creating offer for caller');
         setCallStatus('Ringing...');
         
-        // Listen for answer
+        // Listen for answer with duplicate prevention
         const unsubAnswer = listenForAnswer(callId, async (answer) => {
-          console.log('Received answer:', answer);
+          // Prevent handling the same answer multiple times
+          if (hasHandledAnswerRef.current) {
+            console.log('Answer already handled, skipping');
+            return;
+          }
+          
           try {
+            hasHandledAnswerRef.current = true;
+            
+            if (!pc || pc.signalingState === 'closed') {
+              console.log('Peer connection is closed, skipping answer handling');
+              return;
+            }
+            
+            console.log('Received answer:', answer);
             if (pc.signalingState !== 'have-local-offer') {
               console.log('Invalid signaling state for setting remote description:', pc.signalingState);
               return;
@@ -619,15 +667,17 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         });
         unsubscribersRef.current.push(unsubAnswer);
         
-        // Listen for callee ICE
+        // Listen for callee ICE with queue processing
         const unsubAnsCand = listenForIceCandidates(answerCandidatesCollection(callId), async (c) => {
           try {
             console.log('Received remote ICE candidate (caller):', c);
-            if (!pc) return;
-            await pc.addIceCandidate(new RTCIceCandidate(c));
-            console.log('Added remote ICE candidate (caller)');
+            if (!peerConnectionRef.current) return;
+            
+            // Add to queue and process
+            iceCandidateQueueRef.current.push(c);
+            await processIceCandidateQueue();
           } catch (err) {
-            console.error('Error adding answer ICE', err);
+            console.error('Error handling answer ICE candidate:', err);
           }
         });
         unsubscribersRef.current.push(unsubAnsCand);
@@ -644,18 +694,16 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         console.log('Listening for offer as callee');
         setCallStatus('Ringing...');
         
-        let hasHandledOffer = false;
-        
-        // Listen for offer
+        // Listen for offer with duplicate prevention
         const unsubOffer = listenForOffer(callId, async (offer) => {
           // Prevent handling the same offer multiple times
-          if (hasHandledOffer) {
+          if (hasHandledOfferRef.current) {
             console.log('Offer already handled, skipping');
             return;
           }
           
           try {
-            hasHandledOffer = true;
+            hasHandledOfferRef.current = true;
             
             if (!pc || pc.signalingState === 'closed') {
               console.log('Peer connection is closed, skipping offer handling');
@@ -690,15 +738,17 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         });
         unsubscribersRef.current.push(unsubOffer);
 
-        // Listen for caller ICE with enhanced debugging
+        // Listen for caller ICE with queue processing
         const unsubOffCand = listenForIceCandidates(offerCandidatesCollection(callId), async (c) => {
           try {
             console.log('Received remote ICE candidate (callee):', c);
             if (!peerConnectionRef.current) return;
-            await pc.addIceCandidate(new RTCIceCandidate(c));
-            console.log('Added remote ICE candidate (callee)');
+            
+            // Add to queue and process
+            iceCandidateQueueRef.current.push(c);
+            await processIceCandidateQueue();
           } catch (err) {
-            console.error('Error adding offer ICE', err);
+            console.error('Error handling offer ICE candidate:', err);
           }
         });
         unsubscribersRef.current.push(unsubOffCand);
