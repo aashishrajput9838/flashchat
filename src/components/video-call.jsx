@@ -407,14 +407,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       if (role === 'caller') {
         setCallStatus('Ringing...');
         
-        // Push ICE candidates to offerCandidates
+        // Push ICE candidates to offerCandidates with enhanced debugging
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
+            console.log('Local ICE candidate (caller):', event.candidate);
             try {
               await addIceCandidate(offerCandidatesRef, event.candidate.toJSON());
+              console.log('Added ICE candidate to offer collection');
             } catch (err) {
               console.error('Error adding ICE candidate:', err);
             }
+          } else {
+            console.log('ICE candidate gathering complete (caller)');
           }
         };
 
@@ -425,6 +429,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         await setOffer(callId, { sdp: offer.sdp, type: offer.type });
+        console.log('Created and set local offer:', offer);
 
         // Listen for remote answer
         const unsubAnswer = listenForAnswer(callId, async (answer) => {
@@ -447,6 +452,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             }
             
             const rtcAnswer = new RTCSessionDescription(answer);
+            console.log('Received remote answer:', answer);
             
             if (pc.signalingState !== 'have-local-offer' && pc.signalingState !== 'stable') {
               console.log('Invalid signaling state for setting remote description:', pc.signalingState);
@@ -456,6 +462,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             await pc.setRemoteDescription(rtcAnswer);
             setCallStatus('Call in progress');
             await updateCallStatus(callId, 'accepted');
+            console.log('Set remote description from answer');
           } catch (err) {
             console.error('Error setting remote description:', err);
             setCallStatus('Failed to connect');
@@ -463,11 +470,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         });
         unsubscribersRef.current.push(unsubAnswer);
 
-        // Listen for callee ICE
+        // Listen for callee ICE with enhanced debugging
         const unsubAnsCand = listenForIceCandidates(answerCandidatesRef, async (c) => {
           try {
+            console.log('Received remote ICE candidate (caller):', c);
             if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
+            console.log('Added remote ICE candidate (caller)');
           } catch (err) {
             console.error('Error adding answer ICE', err);
           }
@@ -476,14 +485,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       } else {
         setCallStatus('Connecting...');
         
-        // Callee role
+        // Callee role - enhanced ICE candidate handling
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
+            console.log('Local ICE candidate (callee):', event.candidate);
             try {
               await addIceCandidate(answerCandidatesRef, event.candidate.toJSON());
+              console.log('Added ICE candidate to answer collection');
             } catch (err) {
               console.error('Error adding ICE candidate:', err);
             }
+          } else {
+            console.log('ICE candidate gathering complete (callee)');
           }
         };
 
@@ -505,6 +518,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
               return;
             }
             
+            console.log('Received remote offer:', offer);
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             
             if (pc.signalingState !== 'have-remote-offer') {
@@ -513,6 +527,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             }
             
             const answer = await pc.createAnswer();
+            console.log('Created local answer:', answer);
             
             if (pc.signalingState !== 'have-remote-offer') {
               console.log('Invalid signaling state for setting local description:', pc.signalingState);
@@ -523,6 +538,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             await setAnswer(callId, { sdp: answer.sdp, type: answer.type });
             setCallStatus('Call in progress');
             await updateCallStatus(callId, 'accepted');
+            console.log('Set local description from answer');
           } catch (err) {
             console.error('Error handling offer', err);
             setCallStatus('Failed to connect');
@@ -530,11 +546,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         });
         unsubscribersRef.current.push(unsubOffer);
 
-        // Listen for caller ICE
+        // Listen for caller ICE with enhanced debugging
         const unsubOffCand = listenForIceCandidates(offerCandidatesRef, async (c) => {
           try {
+            console.log('Received remote ICE candidate (callee):', c);
             if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
+            console.log('Added remote ICE candidate (callee)');
           } catch (err) {
             console.error('Error adding offer ICE', err);
           }

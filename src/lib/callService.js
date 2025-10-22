@@ -19,7 +19,17 @@ import {
 // Enhanced STUN/TURN servers for WebRTC with better compatibility
 export const rtcConfiguration = {
   iceServers: [
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+    // Google STUN servers
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    // Additional STUN servers for better connectivity
+    { urls: ['stun:stun.stunprotocol.org:3478'] },
+    // TURN servers (you may want to add your own TURN server for production)
+    // Example TURN server configuration:
+    // {
+    //   urls: 'turn:your-turn-server.com:3478',
+    //   username: 'your-username',
+    //   credential: 'your-password'
+    // }
   ],
   // Add these for better compatibility
   iceCandidatePoolSize: 10,
@@ -95,12 +105,14 @@ export async function createCallDocument(callerUid, calleeUid) {
 
 export async function setOffer(callId, offer) {
   try {
+    console.log('Setting offer in Firestore:', offer);
     const callRef = doc(db, 'calls', callId);
     await updateDoc(callRef, { 
       offer, 
       status: 'ringing',
       ringingAt: serverTimestamp()
     });
+    console.log('Successfully set offer in Firestore');
   } catch (error) {
     console.error('Error setting offer:', error);
     throw error;
@@ -109,12 +121,14 @@ export async function setOffer(callId, offer) {
 
 export async function setAnswer(callId, answer) {
   try {
+    console.log('Setting answer in Firestore:', answer);
     const callRef = doc(db, 'calls', callId);
     await updateDoc(callRef, { 
       answer, 
       status: 'accepted',
       acceptedAt: serverTimestamp()
     });
+    console.log('Successfully set answer in Firestore');
   } catch (error) {
     console.error('Error setting answer:', error);
     throw error;
@@ -133,7 +147,10 @@ export function listenForAnswer(callId, callback) {
       const answerStr = JSON.stringify(data.answer);
       if (lastAnswer !== answerStr) {
         lastAnswer = answerStr;
+        console.log('Received answer via Firestore:', data.answer);
         callback(data.answer);
+      } else {
+        console.log('Ignoring duplicate answer');
       }
     }
   }, (error) => {
@@ -156,7 +173,10 @@ export function listenForOffer(callId, callback) {
       const offerStr = JSON.stringify(data.offer);
       if (lastOffer !== offerStr) {
         lastOffer = offerStr;
+        console.log('Received offer via Firestore:', data.offer);
         callback(data.offer);
+      } else {
+        console.log('Ignoring duplicate offer');
       }
     }
   }, (error) => {
@@ -316,6 +336,7 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
     snapshot.docChanges().forEach((change) => {
       if (change.type === 'added') {
         const data = change.doc.data();
+        console.log('Received ICE candidate via Firestore:', data);
         onCandidate(data);
       }
     });
@@ -329,7 +350,9 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
 
 export async function addIceCandidate(candidatesRef, candidate) {
   try {
+    console.log('Adding ICE candidate to Firestore:', candidate);
     await addDoc(candidatesRef, candidate);
+    console.log('Successfully added ICE candidate to Firestore');
   } catch (error) {
     console.error('Error adding ICE candidate:', error);
   }
