@@ -212,8 +212,8 @@ ${emojis.join(' ')}`);
       <div className="h-full flex flex-col items-center justify-center p-4 bg-card rounded-xl border shadow-sm mobile-chat-thread">
         <div className="text-center max-w-xs">
           <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">FlashChat</h3>
-          <p className="text-muted-foreground mb-6">
+          <h3 className="text-responsive-xl font-semibold mb-2">FlashChat</h3>
+          <p className="text-muted-foreground mb-6 text-responsive-sm">
             Select a conversation to start chatting
           </p>
         </div>
@@ -229,7 +229,7 @@ ${emojis.join(' ')}`);
   return (
     <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
       {/* Chat header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+      <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b">
         <div className="flex items-center gap-2 sm:gap-3">
           {showCloseButton && (
             <button
@@ -243,15 +243,15 @@ ${emojis.join(' ')}`);
           <div className="relative">
             <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
               <AvatarImage src={selectedChat.photoURL || "/diverse-avatars.png"} alt={chatTitle} />
-              <AvatarFallback className="bg-secondary text-xs sm:text-sm">
+              <AvatarFallback className="bg-secondary text-responsive-xs">
                 {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="absolute bottom-0 right-0 h-3 w-3 sm:h-3 sm:w-3 bg-green-500 rounded-full border-2 border-card"></div>
           </div>
           <div>
-            <h3 className="font-semibold mobile-text-sm sm:font-semibold sm:text-base">{chatTitle}</h3>
-            <p className="text-xs text-muted-foreground mobile-text-xs">Online</p>
+            <h3 className="font-semibold text-responsive-sm sm:font-semibold sm:text-responsive-base">{chatTitle}</h3>
+            <p className="text-muted-foreground text-responsive-xs">Online</p>
           </div>
         </div>
         
@@ -292,14 +292,14 @@ ${emojis.join(' ')}`);
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <XCircle className="h-4 w-4" />
-                  <span className="mobile-text-sm">Unfriend</span>
+                  <span className="text-responsive-sm">Unfriend</span>
                 </button>
                 <button
                   onClick={handleSignOut}
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="mobile-text-sm">Sign out</span>
+                  <span className="text-responsive-sm">Sign out</span>
                 </button>
               </div>
             )}
@@ -312,8 +312,8 @@ ${emojis.join(' ')}`);
         {chatMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No messages yet</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-responsive-xl font-semibold mb-2">No messages yet</h3>
+            <p className="text-muted-foreground text-responsive-sm">
               Start a conversation with {chatTitle}
             </p>
           </div>
@@ -330,11 +330,11 @@ ${emojis.join(' ')}`);
                     : 'bg-muted rounded-bl-none'
                 }`}
               >
-                <p className="mobile-text-sm sm:text-sm">{msg.text}</p>
+                <p className="text-responsive-sm">{msg.text}</p>
                 <div className={`flex items-center justify-end gap-1 mt-1 ${
                   msg.senderId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                 }`}>
-                  <span className="text-xs mobile-text-xs">{formatMessageTime(msg.timestamp)}</span>
+                  <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
                   {msg.senderId === currentUserId && getMessageStatusIcon(msg.status)}
                 </div>
               </div>
@@ -349,7 +349,7 @@ ${emojis.join(' ')}`);
         <div className="px-4 py-2 flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={selectedChat.photoURL || "/diverse-avatars.png"} alt={chatTitle} />
-            <AvatarFallback className="bg-secondary text-xs">
+            <AvatarFallback className="bg-secondary text-responsive-xs">
               {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
@@ -386,7 +386,7 @@ ${emojis.join(' ')}`);
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
-              className="w-full px-4 py-2 rounded-full bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
+              className="w-full px-4 py-2 rounded-full bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
             />
           </div>
           <button

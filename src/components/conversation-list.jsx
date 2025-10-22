@@ -224,9 +224,9 @@ export function ConversationList({ onSelectChat }) {
   return (
     <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-list">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b">
+      <div className="p-3 sm:p-4 md:p-5 border-b">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Conversations</h2>
+          <h2 className="text-responsive-lg font-semibold">Conversations</h2>
           <button 
             onClick={() => setShowAddFriend(true)}
             className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
@@ -244,7 +244,7 @@ export function ConversationList({ onSelectChat }) {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
           />
         </div>
       </div>
@@ -254,7 +254,7 @@ export function ConversationList({ onSelectChat }) {
         <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-2 sm:p-4">
           <div className="w-full max-w-md bg-card rounded-2xl border shadow-2xl">
             <div className="flex items-center justify-between p-3 sm:p-4 border-b">
-              <h3 className="text-lg sm:text-xl font-semibold">Add Friend</h3>
+              <h3 className="text-responsive-lg font-semibold">Add Friend</h3>
               <button
                 onClick={() => {
                   setShowAddFriend(false);
@@ -277,19 +277,19 @@ export function ConversationList({ onSelectChat }) {
                   placeholder="Search by email or name..."
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary mobile-text-sm"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
                 />
               </div>
               
               {friendRequestStatus && (
-                <div className="mb-3 sm:mb-4 p-3 rounded-lg bg-secondary text-center mobile-text-sm">
+                <div className="mb-3 sm:mb-4 p-3 rounded-lg bg-secondary text-center text-responsive-sm">
                   {friendRequestStatus}
                 </div>
               )}
               
               {filteredUsers.length > 0 && (
                 <div className="max-h-60 overflow-y-auto">
-                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Search Results</h4>
+                  <h4 className="text-responsive-sm font-medium mb-2 text-muted-foreground">Search Results</h4>
                   <div className="space-y-2">
                     {filteredUsers.map((user) => (
                       <div 
@@ -304,10 +304,10 @@ export function ConversationList({ onSelectChat }) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate mobile-text-sm">{user.name || user.displayName || user.email}</div>
-                          <div className="text-sm text-muted-foreground truncate mobile-text-xs">{user.email}</div>
+                          <div className="font-medium truncate text-responsive-sm">{user.name || user.displayName || user.email}</div>
+                          <div className="text-muted-foreground truncate text-responsive-xs">{user.email}</div>
                         </div>
-                        <button className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 mobile-text-sm mobile-button">
+                        <button className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-responsive-sm">
                           Add
                         </button>
                       </div>
@@ -319,8 +319,8 @@ export function ConversationList({ onSelectChat }) {
               {userSearchQuery && filteredUsers.length === 0 && (
                 <div className="text-center py-6 sm:py-8 text-muted-foreground">
                   <UserPlus className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2" />
-                  <p className="mobile-text-sm">No users found</p>
-                  <p className="text-sm mobile-text-xs">Try a different search term</p>
+                  <p className="text-responsive-sm">No users found</p>
+                  <p className="text-responsive-xs">Try a different search term</p>
                 </div>
               )}
             </div>
@@ -333,8 +333,8 @@ export function ConversationList({ onSelectChat }) {
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-6 sm:p-8 text-center text-muted-foreground">
             <Search className="h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 mx-auto" />
-            <h3 className="text-lg sm:text-xl font-medium mb-1">No conversations yet</h3>
-            <p className="text-sm sm:text-base">Start a conversation with a friend or add new friends</p>
+            <h3 className="text-responsive-lg font-medium mb-1">No conversations yet</h3>
+            <p className="text-responsive-sm">Start a conversation with a friend or add new friends</p>
           </div>
         ) : (
           <div className="divide-y">
@@ -357,22 +357,22 @@ export function ConversationList({ onSelectChat }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium truncate mobile-text-sm">{chat.name}</div>
+                    <div className="font-medium truncate text-responsive-sm">{chat.name}</div>
                     {chat.lastSeen && (
-                      <div className="text-xs text-muted-foreground mobile-text-xs">
+                      <div className="text-muted-foreground text-responsive-xs">
                         {formatLastSeen(chat.lastSeen)}
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <p className="text-sm text-muted-foreground truncate mobile-text-xs">{chat.preview}</p>
+                    <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
                     {chat.isOnline ? (
-                      <div className="flex items-center text-xs text-green-500 mobile-text-xs">
+                      <div className="flex items-center text-green-500 text-responsive-xs">
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
                         <span>Online</span>
                       </div>
                     ) : (
-                      <div className="flex items-center text-xs text-muted-foreground mobile-text-xs">
+                      <div className="flex items-center text-muted-foreground text-responsive-xs">
                         <Clock className="h-3 w-3 mr-1" />
                         <span>Offline</span>
                       </div>
