@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { initializeApp } = require('firebase/app');
-const { getFirestore, doc, updateDoc, serverTimestamp } = require('firebase/firestore');
+const { getFirestore, doc, updateDoc, serverTimestamp, runTransaction } = require('firebase/firestore');
 
 const app = express();
 const server = http.createServer(app);
@@ -81,12 +81,12 @@ io.on('connection', (socket) => {
   });
 
   // Handle call acceptance
-  socket.on('accept_call', (data) => {
+  socket.on('accept_call', async (data) => {
     const { callId, calleeId } = data;
     console.log(`Call accepted: ${callId} by ${calleeId}`);
     
     // Update call status in Firestore
-    updateCallStatus(callId, 'accepted');
+    await updateCallStatus(callId, 'accepted');
     
     // Notify caller that call was accepted
     const callInfo = activeCalls.get(callId);
@@ -99,12 +99,12 @@ io.on('connection', (socket) => {
   });
 
   // Handle call rejection
-  socket.on('reject_call', (data) => {
+  socket.on('reject_call', async (data) => {
     const { callId, calleeId } = data;
     console.log(`Call rejected: ${callId} by ${calleeId}`);
     
     // Update call status in Firestore
-    updateCallStatus(callId, 'rejected');
+    await updateCallStatus(callId, 'declined');
     
     // Clean up active call
     activeCalls.delete(callId);
@@ -174,20 +174,32 @@ io.on('connection', (socket) => {
   });
 });
 
-// Helper function to update call status in Firestore
+// Helper function to update call status in Firestore with transaction for atomicity
 async function updateCallStatus(callId, status) {
   try {
     const callRef = doc(db, 'calls', callId);
-    const updateData = { status };
     
-    // Add timestamp for specific statuses
-    if (status === 'ended') {
-      updateData.endedAt = serverTimestamp();
-    } else if (status === 'accepted') {
-      updateData.acceptedAt = serverTimestamp();
-    }
-    
-    await updateDoc(callRef, updateData);
+    await runTransaction(db, async (transaction) => {
+      const callDoc = await transaction.get(callRef);
+      if (!callDoc.exists()) {
+        throw new Error('Call document not found');
+      }
+      
+      const updateData = { status };
+      
+      // Add timestamp based on status
+      if (status === 'ended') {
+        updateData.endedAt = serverTimestamp();
+      } else if (status === 'accepted') {
+        updateData.acceptedAt = serverTimestamp();
+      } else if (status === 'declined') {
+        updateData.declinedAt = serverTimestamp();
+      } else if (status === 'ringing') {
+        updateData.ringingAt = serverTimestamp();
+      }
+      
+      transaction.update(callRef, updateData);
+    });
   } catch (error) {
     console.error(`Error updating call ${callId} status to ${status}:`, error);
   }

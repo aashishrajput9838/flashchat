@@ -13,7 +13,8 @@ import {
   query,
   where,
   orderBy,
-  limit
+  limit,
+  runTransaction
 } from 'firebase/firestore';
 
 // STUN servers for WebRTC
@@ -23,21 +24,21 @@ export const rtcConfiguration = {
   ]
 };
 
-// Improved rate limiting with timestamp-based cooldown
-const RATE_LIMIT_WINDOW = 30000; // 30 seconds
+// Improved rate limiting with more reasonable thresholds
+const RATE_LIMIT_WINDOW = 10000; // 10 seconds
 const MAX_CALLS_PER_WINDOW = 3; // Allow 3 calls per window
 
 // Check rate limit based on recent call attempts
 export const checkRateLimit = async (userId) => {
   try {
     const callsRef = collection(db, 'calls');
-    const thirtySecondsAgo = new Date(Date.now() - RATE_LIMIT_WINDOW);
+    const tenSecondsAgo = new Date(Date.now() - RATE_LIMIT_WINDOW);
     
     // Query for recent calls initiated by this user
     const q = query(
       callsRef,
       where('callerUid', '==', userId),
-      where('createdAt', '>', thirtySecondsAgo),
+      where('createdAt', '>', tenSecondsAgo),
       orderBy('createdAt', 'desc'),
       limit(MAX_CALLS_PER_WINDOW)
     );
@@ -140,20 +141,55 @@ export function listenForCallStatus(callId, callback) {
   });
 }
 
+// Function to update call status with transaction for atomicity
+export async function updateCallStatus(callId, status, additionalData = {}) {
+  try {
+    const callRef = doc(db, 'calls', callId);
+    
+    await runTransaction(db, async (transaction) => {
+      const callDoc = await transaction.get(callRef);
+      if (!callDoc.exists()) {
+        throw new Error('Call document not found');
+      }
+      
+      const updateData = { status, ...additionalData };
+      
+      // Add timestamp based on status
+      if (status === 'ended') {
+        updateData.endedAt = serverTimestamp();
+      } else if (status === 'accepted') {
+        updateData.acceptedAt = serverTimestamp();
+      } else if (status === 'ringing') {
+        updateData.ringingAt = serverTimestamp();
+      }
+      
+      transaction.update(callRef, updateData);
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating call status:', error);
+    return false;
+  }
+}
+
 // Function to end a call and update status
 export async function endCall(callId) {
   try {
-    const callRef = doc(db, 'calls', callId);
-    const callDoc = await getDoc(callRef);
-    
-    if (callDoc.exists()) {
-      await updateDoc(callRef, { 
-        status: 'ended', 
-        endedAt: serverTimestamp()
-      });
-    }
+    return await updateCallStatus(callId, 'ended');
   } catch (error) {
     console.error('Error ending call:', error);
+    return false;
+  }
+}
+
+// Function to decline a call
+export async function declineCall(callId) {
+  try {
+    return await updateCallStatus(callId, 'declined');
+  } catch (error) {
+    console.error('Error declining call:', error);
+    return false;
   }
 }
 

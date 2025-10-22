@@ -13,7 +13,8 @@ import {
   setOffer,
   setAnswer,
   endCall as endCallService,
-  cleanupCallData
+  cleanupCallData,
+  updateCallStatus
 } from '@/lib/callService';
 
 export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', callId }) {
@@ -90,6 +91,12 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           setTimeout(() => {
             endCall(true); // true indicates it was ended by remote party
           }, 2000);
+        } else if (data.status === 'declined') {
+          setCallStatus('Call declined by other party');
+          // Wait a moment to show the status message
+          setTimeout(() => {
+            endCall(true); // true indicates it was ended by remote party
+          }, 2000);
         } else if (data.status === 'ringing') {
           setCallStatus('Ringing...');
         } else if (data.status === 'accepted') {
@@ -124,6 +131,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             try {
               await pc.setRemoteDescription(rtcAnswer);
               setCallStatus('Call in progress');
+              // Update call status to accepted
+              await updateCallStatus(callId, 'accepted');
             } catch (err) {
               console.error('Error setting remote description:', err);
               setCallStatus('Failed to connect');
@@ -163,6 +172,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             await pc.setLocalDescription(answer);
             await setAnswer(callId, { sdp: answer.sdp, type: answer.type });
             setCallStatus('Call in progress');
+            // Update call status to accepted
+            await updateCallStatus(callId, 'accepted');
           } catch (err) {
             console.error('Error handling offer', err);
             setCallStatus('Failed to connect');

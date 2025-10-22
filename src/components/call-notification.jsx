@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, Video, X } from 'lucide-react';
 import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from '@/lib/userService';
-import { listenForCallStatus } from '@/lib/callService';
+import { listenForCallStatus, endCall, declineCall } from '@/lib/callService';
 
 export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
@@ -114,18 +114,6 @@ export function CallNotification({ onAccept, onDecline }) {
         if (callStatusUnsubscribeRef.current) {
           callStatusUnsubscribeRef.current();
         }
-        
-        // Listen for call status changes to automatically dismiss popup
-        callStatusUnsubscribeRef.current = listenForCallStatus(incomingCall.callId, (data) => {
-          if (data.status === 'ended' || data.status === 'accepted') {
-            setIncomingCall(null);
-            // Clean up the listener
-            if (callStatusUnsubscribeRef.current) {
-              callStatusUnsubscribeRef.current();
-              callStatusUnsubscribeRef.current = null;
-            }
-          }
-        });
       }
       
       // Pass the call data to the handler
@@ -137,15 +125,22 @@ export function CallNotification({ onAccept, onDecline }) {
   };
 
   const handleDecline = async () => {
-    if (incomingCall && onDecline) {
+    if (incomingCall) {
       try { 
         await markNotificationAsRead(incomingCall); 
+        
+        // If this is a video call with a callId, notify the caller that the call was declined
+        if (incomingCall.type === 'video_call' && incomingCall.callId) {
+          await declineCall(incomingCall.callId);
+        }
       } catch (error) {
-        console.error('Error marking notification as read:', error);
+        console.error('Error marking notification as read or declining call:', error);
       }
       
-      // Pass the call data to the handler
-      onDecline(incomingCall);
+      // Pass the call data to the handler if provided
+      if (onDecline) {
+        onDecline(incomingCall);
+      }
       
       // Immediately clear the call to dismiss the popup
       setIncomingCall(null);

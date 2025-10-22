@@ -6,7 +6,7 @@ import { ChatThread } from '@/components/chat-thread';
 import { RightSidebar } from '@/components/right-sidebar';
 import { CallNotification } from '@/components/call-notification';
 import { VideoCall } from '@/components/video-call';
-import { initAuth, getCurrentUser, subscribeToFriends, clearAllNotifications } from '@/lib/userService';
+import { initAuth, getCurrentUser, subscribeToFriends } from '@/lib/userService';
 import { Login } from '@/components/login';
 import { X, Phone, Menu, Users } from 'lucide-react';
 
@@ -48,15 +48,6 @@ export default function App() {
           unsubscribe();
         }
       };
-    }
-  }, [user]);
-
-  // Clear notifications on app load to prevent ghost notifications
-  useEffect(() => {
-    if (user) {
-      clearAllNotifications().catch((error) => {
-        console.error('Error clearing notifications:', error);
-      });
     }
   }, [user]);
 
