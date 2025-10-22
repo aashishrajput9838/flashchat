@@ -27,6 +27,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const localStreamRef = useRef(null);
   const peerConnectionRef = useRef(null);
   const unsubscribersRef = useRef([]);
+  const cleanupTimeoutRef = useRef(null);
   
   const user = getCurrentUser();
   const chatTitle = selectedChat 
@@ -41,6 +42,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     return () => {
       cleanupMedia();
       cleanupListeners();
+      // Clear any pending cleanup timeouts
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -99,7 +104,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Push ICE candidates to offerCandidates
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
-            await addIceCandidate(offerCandidatesRef, event.candidate.toJSON());
+            try {
+              await addIceCandidate(offerCandidatesRef, event.candidate.toJSON());
+            } catch (err) {
+              console.error('Error adding ICE candidate:', err);
+            }
           }
         };
 
@@ -112,8 +121,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         const unsubAnswer = listenForAnswer(callId, async (answer) => {
           const rtcAnswer = new RTCSessionDescription(answer);
           if (!pc.currentRemoteDescription) {
-            await pc.setRemoteDescription(rtcAnswer);
-            setCallStatus('Call in progress');
+            try {
+              await pc.setRemoteDescription(rtcAnswer);
+              setCallStatus('Call in progress');
+            } catch (err) {
+              console.error('Error setting remote description:', err);
+              setCallStatus('Failed to connect');
+            }
           }
         });
         unsubscribersRef.current.push(unsubAnswer);
@@ -133,7 +147,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Callee role
         pc.onicecandidate = async (event) => {
           if (event.candidate) {
-            await addIceCandidate(answerCandidatesRef, event.candidate.toJSON());
+            try {
+              await addIceCandidate(answerCandidatesRef, event.candidate.toJSON());
+            } catch (err) {
+              console.error('Error adding ICE candidate:', err);
+            }
           }
         };
 
@@ -262,7 +280,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
     
     // Schedule cleanup of Firestore data
-    setTimeout(async () => {
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current);
+    }
+    
+    cleanupTimeoutRef.current = setTimeout(async () => {
       try {
         await cleanupCallData(callId);
       } catch (error) {

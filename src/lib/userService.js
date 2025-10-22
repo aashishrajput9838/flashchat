@@ -599,7 +599,7 @@ export const unfriendUser = async (friendUid) => {
   }
 };
 
-// Function to subscribe to notifications
+// Function to subscribe to notifications with enhanced filtering
 export const subscribeToNotifications = (callback) => {
   if (!currentUser || !db) {
     callback([]);
@@ -615,13 +615,58 @@ export const subscribeToNotifications = (callback) => {
         const userData = docSnapshot.data();
         const notifications = userData.notifications || [];
         
+        // Enhanced filtering for valid, recent, unread call notifications
+        const now = Date.now();
+        const MAX_NOTIFICATION_AGE = 30 * 1000; // 30 seconds
+        
+        const validNotifications = notifications.filter(notif => {
+          // Skip if already read
+          if (notif.read) return false;
+          
+          // Skip if not a call notification
+          if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return true; // Non-call notifications are always valid
+          
+          // For call notifications, check additional criteria
+          // Check if status is ringing
+          if (notif.status !== 'ringing') return false;
+          
+          // Check timestamp validity
+          let timestampMs;
+          try {
+            if (notif.timestamp?.toDate) {
+              timestampMs = notif.timestamp.toDate().getTime();
+            } else if (typeof notif.timestamp === 'string') {
+              timestampMs = new Date(notif.timestamp).getTime();
+            } else if (notif.timestamp instanceof Date) {
+              timestampMs = notif.timestamp.getTime();
+            } else {
+              return false; // Invalid timestamp format
+            }
+          } catch (e) {
+            return false; // Error parsing timestamp
+          }
+          
+          // Check if notification is too old
+          if (now - timestampMs > MAX_NOTIFICATION_AGE) {
+            return false;
+          }
+          
+          // Check if callee is current user (for call notifications)
+          if (notif.calleeUid && notif.calleeUid !== currentUser.uid) {
+            return false;
+          }
+          
+          return true;
+        });
+        
         // Sort notifications by timestamp (newest first)
-        const sortedNotifications = notifications.sort((a, b) => {
+        const sortedNotifications = validNotifications.sort((a, b) => {
           // Handle cases where timestamp might be a string or Date object
           const aTime = new Date(a.timestamp);
           const bTime = new Date(b.timestamp);
           return bTime - aTime;
         });
+        
         callback(sortedNotifications);
       } else {
         callback([]);

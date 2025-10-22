@@ -108,6 +108,8 @@ export function listenForAnswer(callId, callback) {
     if (data && data.answer) {
       callback(data.answer);
     }
+  }, (error) => {
+    console.error('Error listening for answer:', error);
   });
 }
 
@@ -118,10 +120,12 @@ export function listenForOffer(callId, callback) {
     if (data && data.offer) {
       callback(data.offer);
     }
+  }, (error) => {
+    console.error('Error listening for offer:', error);
   });
 }
 
-// Listen for call status changes (new function for synchronization)
+// Listen for call status changes with error handling
 export function listenForCallStatus(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   return onSnapshot(callRef, (snapshot) => {
@@ -129,19 +133,27 @@ export function listenForCallStatus(callId, callback) {
       const data = snapshot.data();
       callback(data);
     }
+  }, (error) => {
+    console.error('Error listening for call status:', error);
+    // Call the callback with an ended status to clean up
+    callback({ status: 'ended' });
   });
 }
 
 // Function to end a call and update status
 export async function endCall(callId) {
-  const callRef = doc(db, 'calls', callId);
-  const callDoc = await getDoc(callRef);
-  
-  if (callDoc.exists()) {
-    await updateDoc(callRef, { 
-      status: 'ended', 
-      endedAt: serverTimestamp()
-    });
+  try {
+    const callRef = doc(db, 'calls', callId);
+    const callDoc = await getDoc(callRef);
+    
+    if (callDoc.exists()) {
+      await updateDoc(callRef, { 
+        status: 'ended', 
+        endedAt: serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error('Error ending call:', error);
   }
 }
 
@@ -186,9 +198,15 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
         onCandidate(data);
       }
     });
+  }, (error) => {
+    console.error('Error listening for ICE candidates:', error);
   });
 }
 
 export async function addIceCandidate(candidatesRef, candidate) {
-  await addDoc(candidatesRef, candidate);
+  try {
+    await addDoc(candidatesRef, candidate);
+  } catch (error) {
+    console.error('Error adding ICE candidate:', error);
+  }
 }

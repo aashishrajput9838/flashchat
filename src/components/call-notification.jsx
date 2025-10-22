@@ -8,13 +8,23 @@ export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const user = getCurrentUser();
   const callStatusUnsubscribeRef = useRef(null);
+  const autoDismissTimeoutRef = useRef(null);
+
+  // Clear any existing timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Subscribe to notifications to listen for incoming calls
   useEffect(() => {
     if (!user) return;
 
     const unsubscribe = subscribeToNotifications((notifications) => {
-      // Filter for unread, ringing call notifications
+      // Filter for unread, ringing call notifications that are valid
       const validCalls = notifications.filter(notif => 
         notif && 
         !notif.read && 
@@ -25,7 +35,13 @@ export function CallNotification({ onAccept, onDecline }) {
       if (validCalls.length > 0) {
         // Use the most recent call
         const latestCall = validCalls[0];
-        setIncomingCall(latestCall);
+        
+        // Additional validation to prevent ghost notifications
+        if (isCallNotificationValid(latestCall)) {
+          setIncomingCall(latestCall);
+        } else {
+          setIncomingCall(null);
+        }
       } else {
         // No valid calls, clear the current one
         setIncomingCall(null);
@@ -42,8 +58,47 @@ export function CallNotification({ onAccept, onDecline }) {
         callStatusUnsubscribeRef.current();
         callStatusUnsubscribeRef.current = null;
       }
+      // Clear any timeouts
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+      }
     };
   }, [user]);
+
+  // Validate if a call notification is legitimate
+  const isCallNotificationValid = (call) => {
+    if (!call) return false;
+    
+    // Check if it's too old (older than 30 seconds)
+    const now = Date.now();
+    let timestampMs;
+    
+    try {
+      if (call.timestamp?.toDate) {
+        timestampMs = call.timestamp.toDate().getTime();
+      } else if (typeof call.timestamp === 'string') {
+        timestampMs = new Date(call.timestamp).getTime();
+      } else if (call.timestamp instanceof Date) {
+        timestampMs = call.timestamp.getTime();
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+    
+    // If older than 30 seconds, it's not valid
+    if (now - timestampMs > 30000) {
+      return false;
+    }
+    
+    // Check if it's for the current user
+    if (call.calleeUid && call.calleeUid !== user.uid) {
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleAccept = async () => {
     if (incomingCall && onAccept) {
@@ -94,6 +149,14 @@ export function CallNotification({ onAccept, onDecline }) {
       
       // Immediately clear the call to dismiss the popup
       setIncomingCall(null);
+      
+      // Auto-dismiss after a short delay to ensure state is cleared
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+      }
+      autoDismissTimeoutRef.current = setTimeout(() => {
+        setIncomingCall(null);
+      }, 100);
     }
   };
 
@@ -115,7 +178,31 @@ export function CallNotification({ onAccept, onDecline }) {
     }
   }, [incomingCall]);
 
+  // Auto-dismiss popup after 30 seconds if not handled
+  useEffect(() => {
+    if (incomingCall) {
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+      }
+      
+      autoDismissTimeoutRef.current = setTimeout(() => {
+        setIncomingCall(null);
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (autoDismissTimeoutRef.current) {
+        clearTimeout(autoDismissTimeoutRef.current);
+      }
+    };
+  }, [incomingCall]);
+
   if (!incomingCall) {
+    return null;
+  }
+
+  // Additional validation before rendering
+  if (!isCallNotificationValid(incomingCall)) {
     return null;
   }
 
