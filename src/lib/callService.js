@@ -122,7 +122,7 @@ export function listenForAnswer(callId, callback) {
   // Track the last answer we've seen to prevent duplicate callbacks
   let lastAnswer = null;
   
-  return onSnapshot(callRef, (snapshot) => {
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
     const data = snapshot.data();
     if (data && data.answer) {
       // Create a simple hash of the answer to detect changes
@@ -135,6 +135,9 @@ export function listenForAnswer(callId, callback) {
   }, (error) => {
     console.error('Error listening for answer:', error);
   });
+  
+  // Return the unsubscribe function
+  return unsubscribe;
 }
 
 export function listenForOffer(callId, callback) {
@@ -142,7 +145,7 @@ export function listenForOffer(callId, callback) {
   // Track the last offer we've seen to prevent duplicate callbacks
   let lastOffer = null;
   
-  return onSnapshot(callRef, (snapshot) => {
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
     const data = snapshot.data();
     if (data && data.offer) {
       // Create a simple hash of the offer to detect changes
@@ -155,12 +158,15 @@ export function listenForOffer(callId, callback) {
   }, (error) => {
     console.error('Error listening for offer:', error);
   });
+  
+  // Return the unsubscribe function
+  return unsubscribe;
 }
 
 // Listen for call status changes with improved error handling and status detection
 export function listenForCallStatus(callId, callback) {
   const callRef = doc(db, 'calls', callId);
-  return onSnapshot(callRef, (snapshot) => {
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.data();
       // Ensure we're properly detecting all status changes including endedAt
@@ -174,6 +180,9 @@ export function listenForCallStatus(callId, callback) {
     // Call the callback with an ended status to clean up
     callback({ status: 'ended' });
   });
+  
+  // Return the unsubscribe function
+  return unsubscribe;
 }
 
 // Function to update call status with retry logic and duplicate prevention
@@ -299,7 +308,7 @@ export function answerCandidatesCollection(callId) {
 }
 
 export function listenForIceCandidates(candidatesRef, onCandidate) {
-  return onSnapshot(candidatesRef, (snapshot) => {
+  const unsubscribe = onSnapshot(candidatesRef, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === 'added') {
         const data = change.doc.data();
@@ -309,6 +318,9 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
   }, (error) => {
     console.error('Error listening for ICE candidates:', error);
   });
+  
+  // Return the unsubscribe function
+  return unsubscribe;
 }
 
 export async function addIceCandidate(candidatesRef, candidate) {

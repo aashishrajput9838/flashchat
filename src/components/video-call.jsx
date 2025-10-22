@@ -106,6 +106,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     
     // Cleanup function
     return () => {
+      console.log('Cleaning up VideoCall component');
       cleanupMedia();
       cleanupListeners();
       // Clear any pending cleanup timeouts
@@ -379,6 +380,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     unsubscribersRef.current.forEach((unsubscribe, index) => {
       if (typeof unsubscribe === 'function') {
         try {
+          console.log(`Unsubscribing listener ${index}`);
           unsubscribe();
         } catch (err) {
           console.warn('Error unsubscribing:', index, err);
@@ -426,7 +428,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     // Cleanup media resources
     cleanupMedia();
     
-    // Cleanup listeners
+    // Cleanup listeners immediately
     cleanupListeners();
     
     // Only notify Firestore if we're the ones ending the call
