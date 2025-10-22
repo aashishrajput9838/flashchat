@@ -35,7 +35,7 @@ export function RightSidebar({ onUserClick }) {
     // Subscribe to all users from Firestore
     usersSubscriptionRef.current = subscribeToUsers((users) => {
       // Transform users data to match the expected format
-      const memberList = users.map(user => ({
+      const memberList = (Array.isArray(users) ? users : []).map(user => ({
         name: user.name || user.displayName || user.email || `User${user.uid.substring(0, 5)}`,
         role: user.uid === currentUser?.uid ? "You" : "",
         email: user.email,
@@ -57,12 +57,12 @@ export function RightSidebar({ onUserClick }) {
 
     // Subscribe to friend requests
     friendRequestsSubscriptionRef.current = subscribeToFriendRequests((requests) => {
-      setFriendRequests(requests);
+      setFriendRequests(Array.isArray(requests) ? requests : []);
     });
 
     // Subscribe to notifications
     notificationsSubscriptionRef.current = subscribeToNotifications((notifications) => {
-      setNotifications(notifications);
+      setNotifications(Array.isArray(notifications) ? notifications : []);
     });
 
     // Clean up listeners on component unmount

@@ -31,7 +31,7 @@ export function ConversationList({ onSelectChat }) {
     // Subscribe to friends only from Firestore to create chat list
     friendsSubscriptionRef.current = subscribeToFriends((friends) => {
       // Transform friends data to match the expected format
-      const chatList = friends
+      const chatList = (Array.isArray(friends) ? friends : [])
         .map(friend => ({
           name: friend.name || friend.displayName || friend.email || `User${friend.uid.substring(0, 5)}`,
           preview: "Send a message...",
@@ -69,7 +69,7 @@ export function ConversationList({ onSelectChat }) {
 
     // Subscribe to all users for search functionality
     usersSubscriptionRef.current = subscribeToUsers((users) => {
-      setAllUsers(users);
+      setAllUsers(Array.isArray(users) ? users : []);
     });
 
     // Clean up listeners on component unmount

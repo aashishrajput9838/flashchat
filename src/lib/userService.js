@@ -93,6 +93,22 @@ export const initAuth = () => {
               if (userData.photoURL) {
                 userData.photoURL = getHighQualityPhotoURL(userData.photoURL) || userData.photoURL;
               }
+              
+              // Ensure friends array exists
+              if (!Array.isArray(userData.friends)) {
+                userData.friends = [];
+              }
+              
+              // Ensure friendRequests array exists
+              if (!Array.isArray(userData.friendRequests)) {
+                userData.friendRequests = [];
+              }
+              
+              // Ensure notifications array exists
+              if (!Array.isArray(userData.notifications)) {
+                userData.notifications = [];
+              }
+              
               currentUserFirestoreData = userData;
               
               // Update Firestore with latest auth data
@@ -102,6 +118,9 @@ export const initAuth = () => {
                 displayName: user.displayName,
                 email: user.email || '',
                 photoURL: getHighQualityPhotoURL(user.photoURL) || user.photoURL || '', // Keep original if processing fails
+                friends: userData.friends, // Preserve existing friends array
+                friendRequests: userData.friendRequests, // Preserve existing friendRequests array
+                notifications: userData.notifications, // Preserve existing notifications array
                 lastLogin: new Date()
               };
               
@@ -301,7 +320,7 @@ export const sendFriendRequest = async (friendEmail) => {
     
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData);
@@ -388,7 +407,7 @@ export const acceptFriendRequest = async (request) => {
     
     if (currentUserDoc.exists()) {
       const userData = currentUserDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData1);
@@ -415,7 +434,7 @@ export const acceptFriendRequest = async (request) => {
     
     if (requesterDoc.exists()) {
       const userData = requesterDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData2);
@@ -466,7 +485,7 @@ export const declineFriendRequest = async (request) => {
     
     if (currentUserDoc.exists()) {
       const userData = currentUserDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData1);
@@ -493,7 +512,7 @@ export const declineFriendRequest = async (request) => {
     
     if (requesterDoc.exists()) {
       const userData = requesterDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData2);
@@ -554,7 +573,7 @@ export const unfriendUser = async (friendUid) => {
     
     if (currentUserDoc.exists()) {
       const userData = currentUserDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData1);
@@ -581,7 +600,7 @@ export const unfriendUser = async (friendUid) => {
     
     if (unfriendedUserDoc.exists()) {
       const userData = unfriendedUserDoc.data();
-      const notifications = userData.notifications || [];
+      const notifications = Array.isArray(userData.notifications) ? userData.notifications : [];
       
       // Add the new notification to the array
       notifications.push(notificationData2);
@@ -891,7 +910,7 @@ export const subscribeToFriends = (callback) => {
     return onSnapshot(userDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const userData = docSnapshot.data();
-        const friendIds = userData.friends || [];
+        const friendIds = Array.isArray(userData.friends) ? userData.friends : [];
         
         // If no friends, return empty array
         if (friendIds.length === 0) {
