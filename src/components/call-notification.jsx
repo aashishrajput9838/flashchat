@@ -42,10 +42,19 @@ export function CallNotification({ onAccept, onDecline }) {
       });
 
       if (validCalls.length > 0) {
-        const latestCall = validCalls[0];
-        setIncomingCall(latestCall);
+        // Only update if we don't already have an incoming call to avoid overriding
+        setIncomingCall(prevCall => {
+          // If we already have a call showing, don't replace it
+          if (prevCall) return prevCall;
+          return validCalls[0];
+        });
       } else {
-        setIncomingCall(null);
+        // Only clear the call if we don't have any valid calls
+        setIncomingCall(prevCall => {
+          // Don't clear if there are still valid calls
+          if (validCalls.length > 0) return prevCall;
+          return null;
+        });
       }
     });
 
@@ -59,16 +68,22 @@ export function CallNotification({ onAccept, onDecline }) {
   const handleAccept = async () => {
     if (incomingCall && onAccept) {
       try { await markNotificationAsRead(incomingCall); } catch {}
-      onAccept(incomingCall);
+      // Store the call data before clearing the state
+      const callData = {...incomingCall};
       setIncomingCall(null);
+      // Pass the call data to the handler
+      onAccept(callData);
     }
   };
 
   const handleDecline = async () => {
     if (incomingCall && onDecline) {
       try { await markNotificationAsRead(incomingCall); } catch {}
-      onDecline(incomingCall);
+      // Store the call data before clearing the state
+      const callData = {...incomingCall};
       setIncomingCall(null);
+      // Pass the call data to the handler
+      onDecline(callData);
     }
   };
 
