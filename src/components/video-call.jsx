@@ -132,6 +132,16 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   }, [remoteVideoRef.current]);
 
+  // Ensure video element is properly sized after component mounts
+  useEffect(() => {
+    if (remoteVideoRef.current) {
+      const videoElement = remoteVideoRef.current;
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      videoElement.style.objectFit = 'cover';
+    }
+  }, []);
+
   // Function to apply remote stream to video element
   const applyRemoteStreamToVideoElement = (stream) => {
     if (remoteVideoRef.current) {
@@ -158,6 +168,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       // Add event listeners to the video element to ensure it plays
       const videoElement = remoteVideoRef.current;
+      
+      // Ensure the video element has the correct styling
+      videoElement.classList.remove('hidden');
+      videoElement.classList.add('block');
+      videoElement.style.display = 'block';
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      videoElement.style.objectFit = 'cover'; // This will make the video cover the container properly
+      
       videoElement.onloadedmetadata = () => {
         console.log('Remote video metadata loaded');
         console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
@@ -176,6 +195,12 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
           console.warn('Video has no dimensions - might be an issue with the stream');
         }
+        
+        // Force reflow to ensure proper display
+        videoElement.style.visibility = 'hidden';
+        setTimeout(() => {
+          videoElement.style.visibility = 'visible';
+        }, 10);
       };
       
       videoElement.onerror = (e) => {
@@ -185,11 +210,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Force a re-render to ensure the video element is displayed
       setIsRemoteVideoConnected(true);
       console.log('Remote video connected, stream tracks:', stream.getTracks());
-      
-      // Make sure the video element is visible
-      videoElement.classList.remove('hidden');
-      videoElement.classList.add('block');
-      videoElement.style.display = 'block';
     } else {
       console.warn('Remote video ref not available when trying to apply stream');
     }
@@ -223,6 +243,35 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       pc.ontrack = (event) => {
         console.log('Remote track received:', event);
         console.log('Remote video ref available:', !!remoteVideoRef.current);
+        
+        // Log detailed track information
+        console.log('Track details:', {
+          kind: event.track.kind,
+          id: event.track.id,
+          label: event.track.label,
+          enabled: event.track.enabled,
+          readyState: event.track.readyState
+        });
+        
+        // Log detailed stream information
+        if (event.streams[0]) {
+          console.log('Stream details:', {
+            id: event.streams[0].id,
+            active: event.streams[0].active,
+            trackCount: event.streams[0].getTracks().length
+          });
+          
+          // Log each track in the stream
+          event.streams[0].getTracks().forEach((track, index) => {
+            console.log(`Track ${index}:`, {
+              kind: track.kind,
+              id: track.id,
+              label: track.label,
+              enabled: track.enabled,
+              readyState: track.readyState
+            });
+          });
+        }
         
         // If remoteVideoRef is not available yet, store the stream temporarily
         if (!remoteVideoRef.current) {
@@ -586,7 +635,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              className={`w-full h-full object-cover ${isRemoteVideoConnected ? 'block' : 'hidden'}`}
+              className={`w-full h-full ${isRemoteVideoConnected ? 'block' : 'hidden'}`}
+              style={{ objectFit: 'cover' }}
             />
           
             {/* Show profile placeholder when video is not connected */}
