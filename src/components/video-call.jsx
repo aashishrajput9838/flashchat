@@ -758,27 +758,27 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl h-[80vh] bg-card rounded-xl border flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-6xl h-[95vh] bg-card rounded-2xl border border-gray-700 flex flex-col shadow-2xl">
         {/* Call header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div>
-            <h3 className="text-lg font-semibold">{chatTitle}</h3>
-            <p className="text-sm text-muted-foreground">{callStatus}</p>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg sm:text-xl font-semibold truncate">{chatTitle}</h3>
+            <p className="text-sm text-muted-foreground truncate">{callStatus}</p>
           </div>
           <button
             onClick={() => endCall()}
-            className="grid h-10 w-10 place-items-center rounded-full bg-destructive hover:bg-destructive/90"
+            className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-destructive hover:bg-destructive/90 transition-colors"
             aria-label="End call">
             <Phone className="h-5 w-5 text-white" />
           </button>
         </div>
 
-        {/* Video area */}
-        <div className="flex-1 relative flex flex-col md:flex-row gap-4 p-4">
+        {/* Video area - responsive layout */}
+        <div className="flex-1 relative flex flex-col lg:flex-row gap-2 sm:gap-4 p-2 sm:p-4">
           {/* Remote video or recipient info during ringing */}
-          <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-            {/* Always render the video element but conditionally show/hide */}
+          <div className="flex-1 w-full lg:w-2/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
+            {/* Remote video element */}
             <video 
               ref={remoteVideoRef}
               autoPlay
@@ -790,21 +790,21 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             {/* Show profile placeholder when video is not connected */}
             {!isRemoteVideoConnected && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-                <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
+                <div className="bg-secondary rounded-full w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 flex items-center justify-center mb-4 sm:mb-6 border-4 border-primary/30">
                   {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
                     <img 
                       src={remoteUser?.photoURL || selectedChat?.photoURL} 
                       alt={chatTitle} 
-                      className="w-32 h-32 rounded-full object-cover"
+                      className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="text-4xl font-bold">
+                    <span className="text-2xl sm:text-4xl font-bold">
                       {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   )}
                 </div>
-                <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
-                <p className="text-muted-foreground mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-center px-2">{chatTitle}</h2>
+                <p className="text-muted-foreground mb-4 sm:mb-6 text-center px-4">
                   {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
                 </p>
                 <div className="flex items-center justify-center">
@@ -817,7 +817,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           </div>
 
           {/* Local video */}
-          <div className="md:w-1/3 bg-muted rounded-lg overflow-hidden relative">
+          <div className="w-full lg:w-1/3 bg-muted rounded-xl overflow-hidden relative shadow-lg">
             <video 
               ref={localVideoRef}
               autoPlay
@@ -826,43 +826,61 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
               className="w-full h-full object-cover"
             />
             {isVideoOff && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                <VideoOff className="h-12 w-12 text-muted-foreground" />
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/80">
+                <VideoOff className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
               </div>
             )}
+            
+            {/* Local video label for better UX */}
+            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg">
+              You
+            </div>
           </div>
         </div>
 
-        {/* Call controls */}
-        <div className="p-4 border-t">
-          <div className="flex items-center justify-center gap-6">
+        {/* Call controls - improved responsive layout */}
+        <div className="p-3 sm:p-4 border-t border-gray-700">
+          <div className="flex items-center justify-center gap-4 sm:gap-6 md:gap-8">
             <button
               onClick={toggleMute}
-              className={`grid h-12 w-12 place-items-center rounded-full ${isMuted ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90`}
+              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isMuted ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
               aria-label={isMuted ? "Unmute" : "Mute"}>
               {isMuted ? (
-                <MicOff className="h-5 w-5" />
+                <>
+                  <MicOff className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Unmute</span>
+                </>
               ) : (
-                <Mic className="h-5 w-5" />
+                <>
+                  <Mic className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Mute</span>
+                </>
               )}
             </button>
             
             <button
               onClick={toggleVideo}
-              className={`grid h-12 w-12 place-items-center rounded-full ${isVideoOff ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90`}
+              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isVideoOff ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
               aria-label={isVideoOff ? "Turn on camera" : "Turn off camera"}>
               {isVideoOff ? (
-                <VideoOff className="h-5 w-5" />
+                <>
+                  <VideoOff className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Video Off</span>
+                </>
               ) : (
-                <Video className="h-5 w-5" />
+                <>
+                  <Video className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Video On</span>
+                </>
               )}
             </button>
             
             <button
               onClick={() => endCall()}
-              className="grid h-12 w-12 place-items-center rounded-full bg-destructive hover:bg-destructive/90"
+              className="flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-destructive hover:bg-destructive/90 transition-all transform hover:scale-105"
               aria-label="End call">
-              <Phone className="h-5 w-5 text-white" />
+              <Phone className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+              <span className="text-[10px] mt-1 text-white">End</span>
             </button>
           </div>
         </div>
