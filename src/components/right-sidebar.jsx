@@ -1,4 +1,4 @@
-import { Phone, Video, Camera, Link, User, Mail, Bell } from "lucide-react"
+import { Phone, Video, Camera, Link, User, Mail, Bell, X, Check, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead } from "@/lib/userService"
@@ -40,7 +40,9 @@ export function RightSidebar({ onUserClick }) {
         role: user.uid === currentUser?.uid ? "You" : "",
         email: user.email,
         photoURL: user.photoURL,
-        uid: user.uid
+        uid: user.uid,
+        isOnline: user.isOnline || false,
+        lastSeen: user.lastSeen || null
       }));
       
       // Sort to put current user at the top
@@ -154,37 +156,54 @@ export function RightSidebar({ onUserClick }) {
     setShowNotifications(!showNotifications);
   };
 
+  // Format last seen time
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return '';
+    const now = new Date();
+    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
   return (
-    <div
-      className="flex h-[70vh] min-h-[640px] flex-col gap-3 rounded-xl border bg-card p-3 md:p-4 lg:h-[calc(100dvh-48px)]">
+    <div className="flex h-[70vh] min-h-[640px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm lg:h-[calc(100dvh-48px)]">
       {/* User Profile */}
       {currentUser && (
-        <section className="rounded-xl border bg-card p-3 md:p-4 flex-shrink-0">
+        <section className="rounded-xl border bg-card p-4 flex-shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage alt="Your avatar" src={currentUser.photoURL || "/diverse-avatars.png"} />
-              <AvatarFallback>
-                {currentUser.displayName
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2) || currentUser.email?.substring(0, 2).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage alt="Your avatar" src={currentUser.photoURL || "/diverse-avatars.png"} />
+                <AvatarFallback className="bg-secondary">
+                  {currentUser.displayName
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2) || currentUser.email?.substring(0, 2).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{currentUser.displayName || "User"}</div>
+              <div className="truncate text-sm font-semibold">{currentUser.displayName || "User"}</div>
               <div className="truncate text-xs text-muted-foreground">{currentUser.email}</div>
             </div>
             {/* Notifications Bell */}
             <div className="relative">
               <button
                 onClick={toggleNotifications}
-                className="p-2 rounded-full hover:bg-secondary"
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
                 {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                  <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
                 )}
               </button>
             </div>
@@ -192,41 +211,58 @@ export function RightSidebar({ onUserClick }) {
           
           {/* Notifications Panel */}
           {showNotifications && (
-            <div className="mt-3 rounded-lg border bg-secondary/50 p-3 max-h-60 overflow-y-auto">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium">Notifications</h4>
-                <span className="text-xs text-muted-foreground">{notifications.length} items</span>
+            <div className="mt-4 rounded-xl border bg-secondary/50 p-4 max-h-80 overflow-y-auto shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold">Notifications</h4>
+                <button 
+                  onClick={() => setShowNotifications(false)}
+                  className="p-1 rounded-full hover:bg-muted"
+                  aria-label="Close notifications"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
               {notifications.length === 0 ? (
-                <div className="text-xs text-muted-foreground py-2">No notifications</div>
+                <div className="text-center py-6 text-muted-foreground">
+                  <Bell className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">No notifications</p>
+                </div>
               ) : (
-                <div className="space-y-2">
-                  {notifications.map((notification, index) => (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
                     <div 
-                      key={index} 
-                      className={`p-2 rounded-lg text-xs ${notification.read ? 'bg-background' : 'bg-primary/10'}`}
+                      key={notification.timestamp} 
+                      className={`p-3 rounded-lg ${notification.read ? 'bg-muted/50' : 'bg-white dark:bg-card border'}`}
                     >
-                      <div className="flex justify-between">
-                        <div className="font-medium">
-                          {notification.fromName || notification.toName || notification.friendName || 'System'}
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5">
+                          {notification.type === 'friend_request' ? (
+                            <User className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Bell className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(notification.timestamp).toLocaleString()}
+                          </p>
                         </div>
                         {!notification.read && (
-                          <button 
+                          <button
                             onClick={() => handleMarkAsRead(notification)}
-                            className="text-primary hover:underline text-xs"
+                            className="p-1 rounded-full hover:bg-muted"
+                            aria-label="Mark as read"
                           >
-                            {notificationStatus[notification.timestamp] || 'Mark as read'}
+                            <Check className="h-4 w-4" />
                           </button>
                         )}
                       </div>
-                      <div className="text-muted-foreground mt-1">{notification.message}</div>
-                      <div className="text-muted-foreground text-xs mt-1">
-                        {notification.timestamp && notification.timestamp.toDate 
-                          ? notification.timestamp.toDate().toLocaleString() 
-                          : notification.timestamp 
-                          ? new Date(notification.timestamp).toLocaleString()
-                          : 'Unknown time'}
-                      </div>
+                      {notificationStatus[notification.timestamp] && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {notificationStatus[notification.timestamp]}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -236,109 +272,111 @@ export function RightSidebar({ onUserClick }) {
         </section>
       )}
       
-      {/* Friend Requests Section */}
+      {/* Friend Requests */}
       {friendRequests.length > 0 && (
-        <section className="rounded-xl border bg-card p-3 md:p-4 flex-shrink-0">
-          <div className="mb-3 flex items-center justify-between">
-            <h4 className="text-sm font-medium">Friend Requests</h4>
-            <span className="text-xs text-muted-foreground">{friendRequests.length}</span>
+        <section className="rounded-xl border bg-card p-4 flex-shrink-0 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold">Friend Requests</h3>
+            <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-1">
+              {friendRequests.length}
+            </span>
           </div>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {friendRequests.map((request, index) => (
-              <div key={index} className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
+          <div className="space-y-3 max-h-40 overflow-y-auto">
+            {friendRequests.map((request) => (
+              <div key={request.from} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={request.fromPhotoURL || "/diverse-avatars.png"} alt={request.fromName} />
+                  <AvatarFallback className="bg-secondary">
+                    {request.fromName?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="truncate text-sm font-medium">{request.fromName || request.fromEmail}</div>
-                  <div className="truncate text-xs text-muted-foreground">{request.fromEmail}</div>
+                  <div className="font-medium truncate text-sm">{request.fromName}</div>
+                  <div className="text-xs text-muted-foreground truncate">{request.fromEmail}</div>
                 </div>
                 <div className="flex gap-1">
-                  {friendRequestStatus[request.from] ? (
-                    <div className="text-xs text-muted-foreground px-2 py-1">
-                      {friendRequestStatus[request.from]}
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleAcceptRequest(request)}
-                        className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleDeclineRequest(request)}
-                        className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                      >
-                        Decline
-                      </button>
-                    </>
-                  )}
+                  <button
+                    onClick={() => handleAcceptRequest(request)}
+                    className="p-1.5 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                    aria-label="Accept"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeclineRequest(request)}
+                    className="p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 transition-colors"
+                    aria-label="Decline"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
+                {friendRequestStatus[request.from] && (
+                  <div className="absolute right-2 bottom-0 text-xs text-muted-foreground">
+                    {friendRequestStatus[request.from]}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </section>
       )}
       
-      {/* Quick actions */}
-      <section className="rounded-xl border bg-card p-3 md:p-4 flex-shrink-0">
-        <div className="mb-3 text-sm font-medium">Actions</div>
-        <div className="grid grid-cols-4 gap-2">
-          <button
-            onClick={() => alert('Call feature would be implemented here')}
-            className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
-            aria-label="Call">
-            <Phone className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => alert('Video call feature would be implemented here')}
-            className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
-            aria-label="Video">
-            <Video className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => alert('Screen share feature would be implemented here')}
-            className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
-            aria-label="Screen share">
-            <Camera className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => alert('Links feature would be implemented here')}
-            className="grid aspect-square place-items-center rounded-xl border bg-secondary hover:bg-muted"
-            aria-label="Links">
-            <Link className="h-5 w-5" />
-          </button>
+      {/* Members List */}
+      <section className="flex-1 rounded-xl border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-semibold">People</h3>
+          <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-1">
+            {members.length}
+          </span>
         </div>
-      </section>
-      
-      {/* Members */}
-      <section className="min-h-0 flex-1 rounded-xl border bg-card p-3 md:p-4 flex flex-col">
-        <div className="mb-3 flex items-center justify-between flex-shrink-0">
-          <h4 className="text-sm font-medium">Members</h4>
-          <span className="text-xs text-muted-foreground">{members.length} users</span>
-        </div>
-        <div className="space-y-2 overflow-auto pr-1 flex-grow">
-          {members.map((m, index) => (
+        <div className="space-y-2 overflow-y-auto h-full max-h-[calc(100%-40px)]">
+          {members.map((member) => (
             <div
-              key={m.uid || index}
-              onClick={() => handleUserClick(m)}
-              className="flex items-center gap-3 rounded-lg border bg-secondary/40 p-2 cursor-pointer hover:bg-secondary transition-colors">
+              key={member.uid}
+              onClick={() => handleUserClick(member)}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
+            >
               <div className="relative">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage alt="" src={m.photoURL || "/diverse-avatars.png"} />
-                  <AvatarFallback>
-                    {m.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)}
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={member.photoURL || "/diverse-avatars.png"} alt={member.name} />
+                  <AvatarFallback className="bg-secondary">
+                    {member.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span
-                  aria-hidden
-                  className="absolute bottom-0 right-0 block h-2 w-2 rounded-full border border-background bg-chart-2" />
+                {member.isOnline && (
+                  <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+                )}
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{m.name}</div>
-                <div className="text-xs text-muted-foreground">{m.role || "Member"}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium truncate text-sm">{member.name}</div>
+                  {member.role === "You" && (
+                    <span className="text-xs bg-primary text-primary-foreground rounded px-1.5 py-0.5">
+                      You
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  {member.isOnline ? (
+                    <span className="flex items-center text-green-500">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                      Online
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-1"></div>
+                      {member.lastSeen ? formatLastSeen(member.lastSeen) : 'Offline'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                <button className="p-1.5 rounded-full hover:bg-secondary">
+                  <Phone className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 rounded-full hover:bg-secondary">
+                  <Video className="h-4 w-4" />
+                </button>
               </div>
             </div>
           ))}

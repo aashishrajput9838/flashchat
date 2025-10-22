@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Phone, Mic, MicOff, Video, VideoOff, X } from 'lucide-react';
+import { Phone, Mic, MicOff, Video, VideoOff, X, Monitor, MonitorOff } from 'lucide-react';
 import { getCurrentUser } from '@/lib/userService';
 import {
   rtcConfiguration,
@@ -23,7 +23,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const [isRemoteVideoConnected, setIsRemoteVideoConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [callStatus, setCallStatus] = useState('Connecting...');
+  const [callDuration, setCallDuration] = useState(0);
   const [remoteUser, setRemoteUser] = useState(null); // Store remote user data
   
   const localVideoRef = useRef(null);
@@ -37,6 +39,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const pendingRemoteStreamRef = useRef(null);
   // Track if we've already applied the remote stream
   const remoteStreamAppliedRef = useRef(false);
+  // Call timer ref
+  const callTimerRef = useRef(null);
   
   const user = getCurrentUser();
   // Use remote user name if available, otherwise fallback to selectedChat or default
@@ -118,12 +122,51 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         clearTimeout(cleanupTimeoutRef.current);
       }
       
+      // Clear call timer
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+      }
+      
       // Remove socket listener
       if (window.socket) {
         window.socket.off('call_ended', handleCallEnded);
       }
     };
   }, []);
+
+  // Call duration timer
+  useEffect(() => {
+    if (callStatus === 'Call in progress') {
+      const startTime = Date.now();
+      callTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setCallDuration(elapsed);
+      }, 1000);
+    } else {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+      }
+    };
+  }, [callStatus]);
+
+  // Format call duration
+  const formatCallDuration = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Apply pending remote stream when remoteVideoRef becomes available
   useEffect(() => {
@@ -143,9 +186,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       videoElement.style.objectFit = 'cover';
     }
   }, []);
-
-  // Store reference to the remote stream to handle multiple track events
-  const remoteStreamRef = useRef(null);
 
   // Function to apply remote stream to video element with proper error handling
   const applyRemoteStreamToVideoElement = (stream) => {
@@ -278,6 +318,222 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     } else {
       console.warn('Remote video ref not available when trying to apply stream');
     }
+  };
+
+  // Cleanup media resources
+  const cleanupMedia = () => {
+    console.log('Cleaning up media resources');
+    
+    // Reset all refs and state
+    remoteStreamAppliedRef.current = false;
+    pendingRemoteStreamRef.current = null;
+    
+    // Stop all tracks in local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (err) {
+          console.warn('Error stopping track:', err);
+        }
+      });
+      localStreamRef.current = null;
+    }
+    
+    // Clear video srcObjects
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      console.log('Clearing remote video srcObject');
+      // Stop all tracks in remote stream
+      if (remoteVideoRef.current.srcObject) {
+        const tracks = remoteVideoRef.current.srcObject.getTracks();
+        tracks.forEach(track => {
+          try {
+            track.stop();
+          } catch (err) {
+            console.warn('Error stopping track:', err);
+          }
+        });
+      }
+      remoteVideoRef.current.srcObject = null;
+      
+      // Hide the video element
+      remoteVideoRef.current.classList.remove('block');
+      remoteVideoRef.current.classList.add('hidden');
+      remoteVideoRef.current.style.display = 'none';
+    }
+    
+    // Reset video connection state
+    setIsRemoteVideoConnected(false);
+    
+    // Close RTCPeerConnection
+    if (peerConnectionRef.current) {
+      try {
+        if (peerConnectionRef.current.signalingState !== 'closed') {
+          peerConnectionRef.current.close();
+        }
+      } catch (err) {
+        console.warn('Error closing peer connection:', err);
+      }
+      peerConnectionRef.current = null;
+    }
+  };
+
+  // Cleanup Firestore listeners
+  const cleanupListeners = () => {
+    console.log('Cleaning up listeners');
+    
+    // Unsubscribe all listeners
+    unsubscribersRef.current.forEach((unsubscribe, index) => {
+      if (typeof unsubscribe === 'function') {
+        try {
+          console.log(`Unsubscribing listener ${index}`);
+          unsubscribe();
+        } catch (err) {
+          console.warn('Error unsubscribing:', index, err);
+        }
+      }
+    });
+    unsubscribersRef.current = [];
+  };
+
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioTracks[0].enabled = !isMuted;
+        setIsMuted(!isMuted);
+      }
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStreamRef.current) {
+      const videoTracks = localStreamRef.current.getVideoTracks();
+      if (videoTracks.length > 0) {
+        videoTracks[0].enabled = !isVideoOff;
+        setIsVideoOff(!isVideoOff);
+      }
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      // Stop screen sharing and switch back to camera
+      if (localStreamRef.current) {
+        const videoTracks = localStreamRef.current.getVideoTracks();
+        videoTracks.forEach(track => track.stop());
+      }
+      
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+        localStreamRef.current = stream;
+        
+        // Update peer connection with new stream
+        if (peerConnectionRef.current) {
+          const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            await sender.replaceTrack(stream.getVideoTracks()[0]);
+          }
+        }
+        
+        setIsScreenSharing(false);
+      } catch (error) {
+        console.error('Error switching back to camera:', error);
+      }
+    } else {
+      // Start screen sharing
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+        localStreamRef.current = stream;
+        
+        // Update peer connection with new stream
+        if (peerConnectionRef.current) {
+          const sender = peerConnectionRef.current.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            await sender.replaceTrack(stream.getVideoTracks()[0]);
+          }
+        }
+        
+        // Listen for when screen sharing stops
+        stream.getVideoTracks()[0].addEventListener('ended', () => {
+          toggleScreenShare(); // Switch back to camera
+        });
+        
+        setIsScreenSharing(true);
+      } catch (error) {
+        console.error('Error starting screen sharing:', error);
+      }
+    }
+  };
+
+  const endCall = async (endedByRemote = false) => {
+    console.log('Ending call, endedByRemote:', endedByRemote);
+    
+    if (hasEndedRef.current) {
+      console.log('Call already ended, skipping');
+      return;
+    }
+    
+    hasEndedRef.current = true;
+    
+    // Update UI state immediately
+    setIsCallActive(false);
+    setIsRemoteVideoConnected(false);
+    setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
+    
+    // Cleanup media resources
+    cleanupMedia();
+    
+    // Cleanup listeners immediately
+    cleanupListeners();
+    
+    // Clear call timer
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+    }
+    
+    // Only notify Firestore if we're the ones ending the call
+    if (!endedByRemote) {
+      try {
+        console.log('Notifying other party that call has ended');
+        await endCallService(callId);
+      } catch (error) {
+        console.error('Error ending call:', error);
+      }
+    }
+    
+    // Schedule cleanup of Firestore data
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current);
+    }
+    
+    cleanupTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log('Cleaning up call data from Firestore');
+        await cleanupCallData(callId);
+      } catch (error) {
+        console.error('Error cleaning up call data:', error);
+      }
+    }, 5000);
+    
+    // Notify parent components after a short delay to ensure UI updates
+    setTimeout(() => {
+      if (onCallEnd) {
+        onCallEnd();
+      }
+      if (onClose) {
+        onClose();
+      }
+    }, 100);
   };
 
   const startCall = async () => {
@@ -602,161 +858,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   };
 
-  // Cleanup media resources
-  const cleanupMedia = () => {
-    console.log('Cleaning up media resources');
-    
-    // Reset all refs and state
-    remoteStreamAppliedRef.current = false;
-    pendingRemoteStreamRef.current = null;
-    
-    // Stop all tracks in local stream
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        try {
-          track.stop();
-        } catch (err) {
-          console.warn('Error stopping track:', err);
-        }
-      });
-      localStreamRef.current = null;
-    }
-    
-    // Clear video srcObjects
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
-    if (remoteVideoRef.current) {
-      console.log('Clearing remote video srcObject');
-      // Stop all tracks in remote stream
-      if (remoteVideoRef.current.srcObject) {
-        const tracks = remoteVideoRef.current.srcObject.getTracks();
-        tracks.forEach(track => {
-          try {
-            track.stop();
-          } catch (err) {
-            console.warn('Error stopping track:', err);
-          }
-        });
-      }
-      remoteVideoRef.current.srcObject = null;
-      
-      // Hide the video element
-      remoteVideoRef.current.classList.remove('block');
-      remoteVideoRef.current.classList.add('hidden');
-      remoteVideoRef.current.style.display = 'none';
-    }
-    
-    // Reset video connection state
-    setIsRemoteVideoConnected(false);
-    
-    // Close RTCPeerConnection
-    if (peerConnectionRef.current) {
-      try {
-        if (peerConnectionRef.current.signalingState !== 'closed') {
-          peerConnectionRef.current.close();
-        }
-      } catch (err) {
-        console.warn('Error closing peer connection:', err);
-      }
-      peerConnectionRef.current = null;
-    }
-  };
-
-  // Cleanup Firestore listeners
-  const cleanupListeners = () => {
-    console.log('Cleaning up listeners');
-    
-    // Unsubscribe all listeners
-    unsubscribersRef.current.forEach((unsubscribe, index) => {
-      if (typeof unsubscribe === 'function') {
-        try {
-          console.log(`Unsubscribing listener ${index}`);
-          unsubscribe();
-        } catch (err) {
-          console.warn('Error unsubscribing:', index, err);
-        }
-      }
-    });
-    unsubscribersRef.current = [];
-  };
-
-  const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      if (audioTracks.length > 0) {
-        audioTracks[0].enabled = !isMuted;
-        setIsMuted(!isMuted);
-      }
-    }
-  };
-
-  const toggleVideo = () => {
-    if (localStreamRef.current) {
-      const videoTracks = localStreamRef.current.getVideoTracks();
-      if (videoTracks.length > 0) {
-        videoTracks[0].enabled = !isVideoOff;
-        setIsVideoOff(!isVideoOff);
-      }
-    }
-  };
-
-  const endCall = async (endedByRemote = false) => {
-    console.log('Ending call, endedByRemote:', endedByRemote);
-    
-    if (hasEndedRef.current) {
-      console.log('Call already ended, skipping');
-      return;
-    }
-    
-    hasEndedRef.current = true;
-    
-    // Update UI state immediately
-    setIsCallActive(false);
-    setIsRemoteVideoConnected(false);
-    setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
-    
-    // Cleanup media resources
-    cleanupMedia();
-    
-    // Cleanup listeners immediately
-    cleanupListeners();
-    
-    // Only notify Firestore if we're the ones ending the call
-    if (!endedByRemote) {
-      try {
-        console.log('Notifying other party that call has ended');
-        await endCallService(callId);
-      } catch (error) {
-        console.error('Error ending call:', error);
-      }
-    }
-    
-    // Schedule cleanup of Firestore data
-    if (cleanupTimeoutRef.current) {
-      clearTimeout(cleanupTimeoutRef.current);
-    }
-    
-    cleanupTimeoutRef.current = setTimeout(async () => {
-      try {
-        console.log('Cleaning up call data from Firestore');
-        await cleanupCallData(callId);
-      } catch (error) {
-        console.error('Error cleaning up call data:', error);
-      }
-    }, 5000);
-    
-    // Notify parent components after a short delay to ensure UI updates
-    setTimeout(() => {
-      if (onCallEnd) {
-        onCallEnd();
-      }
-      if (onClose) {
-        onClose();
-      }
-    }, 100);
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-2 sm:p-4">
       <div className="w-full max-w-6xl h-[95vh] bg-card rounded-2xl border border-gray-700 flex flex-col shadow-2xl">
@@ -764,7 +865,14 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
           <div className="min-w-0 flex-1">
             <h3 className="text-lg sm:text-xl font-semibold truncate">{chatTitle}</h3>
-            <p className="text-sm text-muted-foreground truncate">{callStatus}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground truncate">{callStatus}</p>
+              {callStatus === 'Call in progress' && (
+                <span className="text-sm font-medium text-green-500">
+                  {formatCallDuration(callDuration)}
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={() => endCall()}
@@ -871,6 +979,23 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
                 <>
                   <Video className="h-6 w-6 sm:h-7 sm:w-7" />
                   <span className="text-[10px] mt-1">Video On</span>
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={toggleScreenShare}
+              className={`flex flex-col items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full ${isScreenSharing ? 'bg-primary' : 'bg-secondary'} hover:opacity-90 transition-all transform hover:scale-105`}
+              aria-label={isScreenSharing ? "Stop screen share" : "Start screen share"}>
+              {isScreenSharing ? (
+                <>
+                  <MonitorOff className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Stop Share</span>
+                </>
+              ) : (
+                <>
+                  <Monitor className="h-6 w-6 sm:h-7 sm:w-7" />
+                  <span className="text-[10px] mt-1">Share Screen</span>
                 </>
               )}
             </button>

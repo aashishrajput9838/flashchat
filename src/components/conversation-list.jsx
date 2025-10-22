@@ -1,4 +1,4 @@
-import { Search, UserPlus, X } from "lucide-react"
+import { Search, UserPlus, X, MessageCircle, Clock, CheckCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest, subscribeToUsers } from "@/lib/userService"
@@ -39,7 +39,9 @@ export function ConversationList({ onSelectChat }) {
             ? (friend.name || friend.displayName || friend.email).split(" ").map(n => n[0]).join("").slice(0, 2)
             : "U",
           uid: friend.uid,
-          photoURL: friend.photoURL || "/diverse-avatars.png" // Add fallback
+          photoURL: friend.photoURL || "/diverse-avatars.png", // Add fallback
+          lastSeen: friend.lastSeen || null,
+          isOnline: friend.isOnline || false
         }));
       
       // Add current user to the list
@@ -55,7 +57,9 @@ export function ConversationList({ onSelectChat }) {
               ? (currentUser.displayName || currentUser.email).split(" ").map(n => n[0]).join("").slice(0, 2)
               : "U",
             uid: currentUser.uid,
-            photoURL: currentUser.photoURL || "/diverse-avatars.png" // Add fallback
+            photoURL: currentUser.photoURL || "/diverse-avatars.png", // Add fallback
+            lastSeen: new Date(),
+            isOnline: true
           });
         }
       }
@@ -190,7 +194,8 @@ export function ConversationList({ onSelectChat }) {
               ? (user.name || user.displayName || user.email).split(" ").map(n => n[0]).join("").slice(0, 2)
               : "U",
             uid: user.uid,
-            photoURL: user.photoURL || "/diverse-avatars.png"
+            photoURL: user.photoURL || "/diverse-avatars.png",
+            isOnline: user.isOnline || false
           }));
         
         // Combine both lists
@@ -198,130 +203,181 @@ export function ConversationList({ onSelectChat }) {
       })()
     : chats;
 
+  // Format last seen time
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return '';
+    const now = new Date();
+    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
   return (
-    <div
-      className="flex h-[70vh] min-h-[640px] flex-col gap-3 rounded-xl border bg-card p-3 md:p-4 lg:h-[calc(100dvh-48px)]">
+    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <h2 className="text-lg font-semibold">FlashChat</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowAddFriend(!showAddFriend)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm hover:bg-secondary"
-            aria-label="Add friend">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Conversations</h2>
+          <button 
+            onClick={() => setShowAddFriend(true)}
+            className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
+            aria-label="Add friend"
+          >
             <UserPlus className="h-4 w-4" />
-            <span className="hidden md:inline">Add Friend</span>
           </button>
+        </div>
+        
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary"
+          />
         </div>
       </div>
-      
-      {/* Add Friend Form */}
+
+      {/* Add Friend Modal */}
       {showAddFriend && (
-        <div className="rounded-lg border bg-secondary/50 p-3 flex-shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Add New Friend</h3>
-            <button 
-              onClick={() => {
-                setShowAddFriend(false);
-                setFriendRequestStatus('');
-                setUserSearchQuery('');
-                setFilteredUsers([]);
-              }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          
-          {/* User search input - This is now the only input */}
-          <div className="mb-2">
-            <input
-              type="text"
-              value={userSearchQuery}
-              onChange={(e) => setUserSearchQuery(e.target.value)}
-              placeholder="Search users by name or email"
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-          
-          {/* Filtered users list */}
-          {filteredUsers.length > 0 && (
-            <div className="mb-2 max-h-60 overflow-y-auto border rounded-lg bg-background">
-              {filteredUsers.map(user => (
-                <div
-                  key={user.uid}
-                  onClick={() => handleSelectUser(user)}
-                  className="flex items-center gap-2 p-2 hover:bg-secondary cursor-pointer"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage alt={user.name} src={user.photoURL || "/diverse-avatars.png"} />
-                    <AvatarFallback>
-                      {user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="text-sm font-medium">{user.name || user.displayName || user.email}</div>
-                    <div className="text-xs text-muted-foreground">{user.email}</div>
+        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-card rounded-2xl border shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Add Friend</h3>
+              <button
+                onClick={() => {
+                  setShowAddFriend(false);
+                  setFriendRequestStatus('');
+                  setUserSearchQuery('');
+                  setFilteredUsers([]);
+                }}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by email or name..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              
+              {friendRequestStatus && (
+                <div className="mb-4 p-3 rounded-lg bg-secondary text-center">
+                  {friendRequestStatus}
+                </div>
+              )}
+              
+              {filteredUsers.length > 0 && (
+                <div className="max-h-60 overflow-y-auto">
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Search Results</h4>
+                  <div className="space-y-2">
+                    {filteredUsers.map((user) => (
+                      <div 
+                        key={user.uid}
+                        onClick={() => handleSelectUser(user)}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={user.photoURL} alt={user.name} />
+                          <AvatarFallback className="bg-secondary">
+                            {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{user.name || user.displayName || user.email}</div>
+                          <div className="text-sm text-muted-foreground truncate">{user.email}</div>
+                        </div>
+                        <button className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                          Add
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+              
+              {userSearchQuery && filteredUsers.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <UserPlus className="h-12 w-12 mx-auto mb-2" />
+                  <p>No users found</p>
+                  <p className="text-sm">Try a different search term</p>
+                </div>
+              )}
             </div>
-          )}
-          
-          {/* Status message */}
-          {friendRequestStatus && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              {friendRequestStatus}
-            </div>
-          )}
+          </div>
         </div>
       )}
-      
-      {/* Search */}
-      <label className="group relative block flex-shrink-0">
-        <span className="sr-only">Search chats</span>
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-lg border bg-secondary/60 py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:bg-secondary"
-          placeholder="Search chats or users..." />
-      </label>
-      {/* Chats list */}
-      <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
-        {filteredChats.map((c, i) => (
-          <button
-            key={c.uid || i}
-            onClick={() => handleSelectChat(c)}
-            className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-              c.preview === "Not a friend yet - Click to start chat" 
-                ? "bg-warning/20 hover:bg-warning/30 border-warning/30" 
-                : "bg-secondary/50 hover:bg-secondary"
-            }`}>
-            <div className="relative">
-              <Avatar className="h-9 w-9">
-                <AvatarImage alt={`${c.name} avatar`} src={c.photoURL} />
-                <AvatarFallback>{c.initials}</AvatarFallback>
-              </Avatar>
-              {/* Presence dot */}
-              <span
-                aria-hidden
-                className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full border border-background bg-chart-2" />
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium">
-                {c.name}
-                {c.uid === currentUser?.uid && " (You)"}
+
+      {/* Chat list */}
+      <div className="flex-1 overflow-y-auto">
+        {filteredChats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
+            <MessageCircle className="h-12 w-12 mb-4" />
+            <h3 className="text-lg font-medium mb-1">No conversations yet</h3>
+            <p className="text-sm">Start a conversation with a friend or add new friends</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {filteredChats.map((chat) => (
+              <div
+                key={chat.uid}
+                onClick={() => handleSelectChat(chat)}
+                className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors group"
+              >
+                <div className="relative">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={chat.photoURL} alt={chat.name} />
+                    <AvatarFallback className="bg-secondary">
+                      {chat.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  {chat.isOnline && (
+                    <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium truncate">{chat.name}</div>
+                    {chat.lastSeen && (
+                      <div className="text-xs text-muted-foreground">
+                        {formatLastSeen(chat.lastSeen)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm text-muted-foreground truncate">{chat.preview}</p>
+                    {chat.isOnline ? (
+                      <div className="flex items-center text-xs text-green-500">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                        <span>Online</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span>Offline</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="truncate text-xs text-muted-foreground">{c.preview}</div>
-            </div>
-          </button>
-        ))}
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
