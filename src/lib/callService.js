@@ -16,11 +16,15 @@ import {
   limit
 } from 'firebase/firestore';
 
-// STUN servers for WebRTC
+// Enhanced STUN/TURN servers for WebRTC with better compatibility
 export const rtcConfiguration = {
   iceServers: [
     { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
-  ]
+  ],
+  // Add these for better compatibility
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
 };
 
 // Improved rate limiting with more reasonable thresholds

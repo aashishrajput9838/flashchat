@@ -142,9 +142,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   }, []);
 
+  // Store reference to the remote stream to handle multiple track events
+  const remoteStreamRef = useRef(null);
+
   // Function to apply remote stream to video element
   const applyRemoteStreamToVideoElement = (stream) => {
     if (remoteVideoRef.current) {
+      // Store reference to the stream
+      remoteStreamRef.current = stream;
+      
       // Ensure any existing stream is stopped
       if (remoteVideoRef.current.srcObject) {
         const tracks = remoteVideoRef.current.srcObject.getTracks();
@@ -166,6 +172,21 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         videoTrackEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false
       });
       
+      // Additional debugging for video tracks
+      if (videoTracks.length > 0) {
+        const videoTrack = videoTracks[0];
+        console.log('Video track constraints:', videoTrack.getConstraints());
+        console.log('Video track settings:', videoTrack.getSettings());
+        
+        // Check if the video track has proper dimensions
+        const settings = videoTrack.getSettings();
+        if (settings.width && settings.height) {
+          console.log('Video track dimensions:', settings.width, 'x', settings.height);
+        } else {
+          console.warn('Video track has no dimension settings');
+        }
+      }
+      
       // Add event listeners to the video element to ensure it plays
       const videoElement = remoteVideoRef.current;
       
@@ -175,11 +196,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       videoElement.style.display = 'block';
       videoElement.style.width = '100%';
       videoElement.style.height = '100%';
-      videoElement.style.objectFit = 'cover'; // This will make the video cover the container properly
+      videoElement.style.objectFit = 'cover';
       
       videoElement.onloadedmetadata = () => {
         console.log('Remote video metadata loaded');
         console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+        
+        // Try to play the video if it's not already playing
+        if (videoElement.paused) {
+          videoElement.play().catch(e => {
+            console.error('Error playing video:', e);
+          });
+        }
       };
       
       videoElement.onplay = () => {
@@ -207,6 +235,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         console.error('Remote video error:', e);
       };
       
+      // Try to play the video immediately
+      videoElement.play().catch(e => {
+        console.error('Error playing video:', e);
+      });
+      
       // Force a re-render to ensure the video element is displayed
       setIsRemoteVideoConnected(true);
       console.log('Remote video connected, stream tracks:', stream.getTracks());
@@ -217,12 +250,33 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
   const startCall = async () => {
     try {
-      // Access media devices
+      // Access media devices with better constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        }, 
         audio: true 
       });
       
+      // Log local stream information
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      console.log('Local stream info:', {
+        id: stream.id,
+        tracks: stream.getTracks(),
+        videoTracks: videoTracks,
+        audioTracks: audioTracks
+      });
+      
+      if (videoTracks.length > 0) {
+        const videoTrack = videoTracks[0];
+        console.log('Local video track constraints:', videoTrack.getConstraints());
+        console.log('Local video track settings:', videoTrack.getSettings());
+      }
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
@@ -232,12 +286,40 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       setIsRemoteVideoConnected(false);
       hasEndedRef.current = false;
       
-      // Create RTCPeerConnection
+      // Create RTCPeerConnection with enhanced configuration
       const pc = new RTCPeerConnection(rtcConfiguration);
       peerConnectionRef.current = pc;
+      
+      // Add debugging for peer connection events
+      pc.onconnectionstatechange = () => {
+        console.log('Peer connection state:', pc.connectionState);
+        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          console.error('Peer connection failed');
+          setCallStatus('Connection failed');
+        }
+      };
+      
+      pc.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+          console.error('ICE connection failed');
+          setCallStatus('Connection failed');
+        }
+      };
+      
+      pc.onsignalingstatechange = () => {
+        console.log('Signaling state:', pc.signalingState);
+      };
+      
+      pc.onicegatheringstatechange = () => {
+        console.log('ICE gathering state:', pc.iceGatheringState);
+      };
 
       // Add local tracks
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track) => {
+        console.log('Adding local track:', track.kind, track.id);
+        pc.addTrack(track, stream);
+      });
 
       // Remote track handler
       pc.ontrack = (event) => {
@@ -273,15 +355,19 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           });
         }
         
+        // With WebRTC, we can receive multiple track events for the same stream
+        // We need to ensure we're working with the complete stream that has all tracks
+        const stream = event.streams[0];
+        
         // If remoteVideoRef is not available yet, store the stream temporarily
         if (!remoteVideoRef.current) {
           console.log('Storing remote stream temporarily until video ref is available');
-          pendingRemoteStreamRef.current = event.streams[0];
+          pendingRemoteStreamRef.current = stream;
           return;
         }
         
         // Apply the stream directly if ref is available
-        applyRemoteStreamToVideoElement(event.streams[0]);
+        applyRemoteStreamToVideoElement(stream);
       };
 
       // Firestore signaling
