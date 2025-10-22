@@ -778,12 +778,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
               )}
             </div>
           </div>
-          <button
-            onClick={() => endCall()}
-            className="flex items-center justify-center h-10 w-10 rounded-full bg-destructive hover:bg-destructive/90 transition-colors"
-            aria-label="End call">
-            <Phone className="h-5 w-5 text-white" />
-          </button>
         </div>
 
         {/* Video area - responsive layout */}
