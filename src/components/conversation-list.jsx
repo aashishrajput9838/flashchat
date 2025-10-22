@@ -153,8 +153,13 @@ export function ConversationList({ onSelectChat }) {
         setFilteredUsers([]);
       }, 2000);
     } catch (error) {
+      console.error('Friend request error:', error);
       if (error.message === 'User with this email not found') {
         setFriendRequestStatus('User not found. Please check the email address.');
+      } else if (error.message === 'Permission denied. You may not have access to send friend requests.') {
+        setFriendRequestStatus('Permission denied. Please check your account permissions.');
+      } else if (error.message === 'Too many requests. Please wait a moment and try again.') {
+        setFriendRequestStatus('Too many requests. Please wait a moment and try again.');
       } else {
         setFriendRequestStatus('Failed to send friend request. Please try again.');
       }

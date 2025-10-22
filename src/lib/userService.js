@@ -334,7 +334,30 @@ export const sendFriendRequest = async (friendEmail) => {
     return friendData;
   } catch (error) {
     console.error('Error sending friend request:', error);
-    throw error;
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack,
+      friendEmail: friendEmail,
+      currentUser: currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName
+      } : null
+    });
+    
+    // Handle specific Firebase errors
+    if (error.code === 'permission-denied') {
+      throw new Error('Permission denied. You may not have access to send friend requests.');
+    } else if (error.code === 'not-found') {
+      throw new Error('User not found. Please check the email address.');
+    } else if (error.code === 'resource-exhausted') {
+      throw new Error('Too many requests. Please wait a moment and try again.');
+    } else if (error.message === 'User with this email not found') {
+      throw new Error('User with this email not found');
+    } else {
+      throw new Error('Failed to send friend request. Please try again.');
+    }
   }
 };
 
