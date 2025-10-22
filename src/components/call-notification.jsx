@@ -262,6 +262,27 @@ export function CallNotification({ onAccept, onDecline }) {
           </button>
         </div>
         
+        {/* Caller profile picture */}
+        <div className="flex justify-center my-4">
+          <div className="relative">
+            {incomingCall.callerPhotoURL ? (
+              <img 
+                src={incomingCall.callerPhotoURL} 
+                alt={incomingCall.callerName || 'Caller'}
+                className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-secondary flex items-center justify-center border-2 border-primary">
+                <span className="text-2xl font-bold text-primary">
+                  {incomingCall.callerName 
+                    ? incomingCall.callerName.charAt(0).toUpperCase() 
+                    : 'U'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        
         <div className="flex gap-2 mt-4">
           <button
             type="button"
