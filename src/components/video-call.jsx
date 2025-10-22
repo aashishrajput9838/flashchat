@@ -303,13 +303,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   };
 
-  // Function to handle attach file
-  const handleAttachFile = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   // Function to clean up media resources
   const cleanupMedia = () => {
     console.log('Cleaning up media resources');

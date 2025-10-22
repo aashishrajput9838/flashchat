@@ -102,6 +102,13 @@ ${emojis.join(' ')}`);
     }
   };
 
+  // Function to handle attach file
+  const handleAttachFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   // Function to start video call
   const startVideoCall = async () => {
     if (!selectedChat) return;
