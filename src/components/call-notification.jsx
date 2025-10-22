@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, Video, X } from 'lucide-react';
 import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from '@/lib/userService';
@@ -6,12 +6,31 @@ import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from
 export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const user = getCurrentUser();
+  const shouldHidePopup = useRef(false);
 
   // Subscribe to notifications to listen for incoming calls
   useEffect(() => {
     if (!user) return;
 
     const unsubscribe = subscribeToNotifications((notifications) => {
+      // If we've explicitly hidden the popup, don't show it again until new notifications arrive
+      if (shouldHidePopup.current) {
+        // Check if there are any new notifications that aren't the ones we already handled
+        const hasNewNotifications = notifications.some(notif => 
+          notif && !notif.read && 
+          (notif.type === 'video_call' || notif.type === 'audio_call') && 
+          notif.status === 'ringing'
+        );
+        
+        // If there are no new notifications, keep the popup hidden
+        if (!hasNewNotifications) {
+          return;
+        }
+        
+        // If there are new notifications, reset the flag
+        shouldHidePopup.current = false;
+      }
+
       // Only consider very recent, unread, ringing call notifications
       const now = Date.now();
       const RECENCY_MS = 2 * 60 * 1000; // 2 minutes
@@ -49,12 +68,7 @@ export function CallNotification({ onAccept, onDecline }) {
           return validCalls[0];
         });
       } else {
-        // Only clear the call if we don't have any valid calls
-        setIncomingCall(prevCall => {
-          // Don't clear if there are still valid calls
-          if (validCalls.length > 0) return prevCall;
-          return null;
-        });
+        setIncomingCall(null);
       }
     });
 
@@ -68,22 +82,22 @@ export function CallNotification({ onAccept, onDecline }) {
   const handleAccept = async () => {
     if (incomingCall && onAccept) {
       try { await markNotificationAsRead(incomingCall); } catch {}
-      // Store the call data before clearing the state
-      const callData = {...incomingCall};
+      // Set flag to prevent popup from reappearing
+      shouldHidePopup.current = true;
       setIncomingCall(null);
       // Pass the call data to the handler
-      onAccept(callData);
+      onAccept(incomingCall);
     }
   };
 
   const handleDecline = async () => {
     if (incomingCall && onDecline) {
       try { await markNotificationAsRead(incomingCall); } catch {}
-      // Store the call data before clearing the state
-      const callData = {...incomingCall};
+      // Set flag to prevent popup from reappearing
+      shouldHidePopup.current = true;
       setIncomingCall(null);
       // Pass the call data to the handler
-      onDecline(callData);
+      onDecline(incomingCall);
     }
   };
 
