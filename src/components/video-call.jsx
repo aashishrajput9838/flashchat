@@ -35,6 +35,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const hasEndedRef = useRef(false);
   // Store remote stream temporarily if ref is not available yet
   const pendingRemoteStreamRef = useRef(null);
+  // Track if we've already applied the remote stream
+  const remoteStreamAppliedRef = useRef(false);
   
   const user = getCurrentUser();
   // Use remote user name if available, otherwise fallback to selectedChat or default
@@ -145,16 +147,30 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   // Store reference to the remote stream to handle multiple track events
   const remoteStreamRef = useRef(null);
 
-  // Function to apply remote stream to video element
+  // Function to apply remote stream to video element with proper error handling
   const applyRemoteStreamToVideoElement = (stream) => {
+    // Prevent applying the same stream multiple times
+    if (remoteStreamAppliedRef.current) {
+      console.log('Remote stream already applied, skipping');
+      return;
+    }
+    
     if (remoteVideoRef.current) {
-      // Store reference to the stream
-      remoteStreamRef.current = stream;
+      console.log('Applying remote stream to video element');
+      
+      // Mark that we've applied the stream
+      remoteStreamAppliedRef.current = true;
       
       // Ensure any existing stream is stopped
       if (remoteVideoRef.current.srcObject) {
         const tracks = remoteVideoRef.current.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach(track => {
+          try {
+            track.stop();
+          } catch (e) {
+            console.warn('Error stopping track:', e);
+          }
+        });
       }
       
       // Set the new stream
@@ -172,21 +188,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         videoTrackEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false
       });
       
-      // Additional debugging for video tracks
-      if (videoTracks.length > 0) {
-        const videoTrack = videoTracks[0];
-        console.log('Video track constraints:', videoTrack.getConstraints());
-        console.log('Video track settings:', videoTrack.getSettings());
-        
-        // Check if the video track has proper dimensions
-        const settings = videoTrack.getSettings();
-        if (settings.width && settings.height) {
-          console.log('Video track dimensions:', settings.width, 'x', settings.height);
-        } else {
-          console.warn('Video track has no dimension settings');
-        }
-      }
-      
       // Add event listeners to the video element to ensure it plays
       const videoElement = remoteVideoRef.current;
       
@@ -198,24 +199,20 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       videoElement.style.height = '100%';
       videoElement.style.objectFit = 'cover';
       
-      videoElement.onloadedmetadata = () => {
+      // Handle metadata loading
+      const onLoadedMetadata = () => {
         console.log('Remote video metadata loaded');
         console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-        
-        // Try to play the video if it's not already playing
-        if (videoElement.paused) {
-          videoElement.play().catch(e => {
-            console.error('Error playing video:', e);
-          });
-        }
       };
       
-      videoElement.onplay = () => {
+      // Handle play events
+      const onPlay = () => {
         console.log('Remote video started playing');
         console.log('Video playing state:', videoElement.paused, videoElement.ended);
       };
       
-      videoElement.onplaying = () => {
+      // Handle playing events
+      const onPlaying = () => {
         console.log('Remote video is now playing');
         console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
         
@@ -224,24 +221,59 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           console.warn('Video has no dimensions - might be an issue with the stream');
         }
         
-        // Force reflow to ensure proper display
-        videoElement.style.visibility = 'hidden';
-        setTimeout(() => {
-          videoElement.style.visibility = 'visible';
-        }, 10);
+        // Update state to show remote video is connected
+        setIsRemoteVideoConnected(true);
       };
       
-      videoElement.onerror = (e) => {
+      // Handle errors
+      const onError = (e) => {
         console.error('Remote video error:', e);
       };
       
-      // Try to play the video immediately
-      videoElement.play().catch(e => {
-        console.error('Error playing video:', e);
-      });
+      // Add event listeners
+      videoElement.onloadedmetadata = onLoadedMetadata;
+      videoElement.onplay = onPlay;
+      videoElement.onplaying = onPlaying;
+      videoElement.onerror = onError;
       
-      // Force a re-render to ensure the video element is displayed
-      setIsRemoteVideoConnected(true);
+      // Try to play the video with proper error handling
+      const playVideo = async () => {
+        try {
+          // Wait a bit for the element to be ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (videoElement.paused) {
+            await videoElement.play();
+            console.log('Remote video play successful');
+          }
+        } catch (error) {
+          // Handle AbortError specifically
+          if (error.name === 'AbortError') {
+            console.warn('Video play was aborted, retrying...');
+            // Retry once after a short delay
+            setTimeout(async () => {
+              try {
+                if (videoElement.paused) {
+                  await videoElement.play();
+                  console.log('Remote video play retry successful');
+                }
+              } catch (retryError) {
+                console.error('Video play failed after retry:', retryError);
+                // Even if play fails, we still want to show the video element
+                setIsRemoteVideoConnected(true);
+              }
+            }, 300);
+          } else {
+            console.error('Video play failed:', error);
+            // Even if play fails, we still want to show the video element
+            setIsRemoteVideoConnected(true);
+          }
+        }
+      };
+      
+      // Play the video
+      playVideo();
+      
       console.log('Remote video connected, stream tracks:', stream.getTracks());
     } else {
       console.warn('Remote video ref not available when trying to apply stream');
@@ -284,6 +316,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       localStreamRef.current = stream;
       setIsCallActive(true);
       setIsRemoteVideoConnected(false);
+      // Reset the remote stream applied flag when starting a new call
+      remoteStreamAppliedRef.current = false;
       hasEndedRef.current = false;
       
       // Create RTCPeerConnection with enhanced configuration
@@ -572,6 +606,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const cleanupMedia = () => {
     console.log('Cleaning up media resources');
     
+    // Reset all refs and state
+    remoteStreamAppliedRef.current = false;
+    pendingRemoteStreamRef.current = null;
+    
     // Stop all tracks in local stream
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
@@ -593,7 +631,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Stop all tracks in remote stream
       if (remoteVideoRef.current.srcObject) {
         const tracks = remoteVideoRef.current.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach(track => {
+          try {
+            track.stop();
+          } catch (err) {
+            console.warn('Error stopping track:', err);
+          }
+        });
       }
       remoteVideoRef.current.srcObject = null;
       
