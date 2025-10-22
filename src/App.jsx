@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import { LeftRail } from '@/components/left-rail';
 import { ConversationList } from '@/components/conversation-list';
