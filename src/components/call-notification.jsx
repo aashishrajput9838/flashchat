@@ -159,10 +159,20 @@ export function CallNotification({ onAccept, onDecline }) {
   // Auto-dismiss popup if call status changes to non-ringing
   useEffect(() => {
     if (incomingCall && incomingCall.callId) {
+      // Track if we've already dismissed the call
+      let isDismissed = false;
+      
       const unsubscribe = listenForCallStatus(incomingCall.callId, (data) => {
         console.log('Incoming call status changed:', data); // Debug log
+        
+        // Skip if already dismissed
+        if (isDismissed) {
+          return;
+        }
+        
         // If the call is no longer ringing or has ended, dismiss the popup
         if (data.status !== 'ringing' || data.status === 'ended' || data.status === 'declined') {
+          isDismissed = true;
           setIncomingCall(null);
           // Clean up the listener
           if (callStatusUnsubscribeRef.current) {
@@ -175,6 +185,7 @@ export function CallNotification({ onAccept, onDecline }) {
       callStatusUnsubscribeRef.current = unsubscribe;
       
       return () => {
+        isDismissed = true;
         if (unsubscribe) {
           unsubscribe();
         }

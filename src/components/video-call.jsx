@@ -139,6 +139,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           }
         };
 
+        // Track if we've already handled an answer
+        let hasHandledAnswer = false;
+
         // Create and set local offer
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -146,17 +149,43 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
         // Listen for remote answer
         const unsubAnswer = listenForAnswer(callId, async (answer) => {
-          const rtcAnswer = new RTCSessionDescription(answer);
-          if (!pc.currentRemoteDescription) {
-            try {
-              await pc.setRemoteDescription(rtcAnswer);
-              setCallStatus('Call in progress');
-              // Update call status to accepted
-              await updateCallStatus(callId, 'accepted');
-            } catch (err) {
-              console.error('Error setting remote description:', err);
-              setCallStatus('Failed to connect');
+          // Skip if we've already handled an answer
+          if (hasHandledAnswer) {
+            console.log('Already handled answer, skipping');
+            return;
+          }
+          
+          // Check if we already have a remote description
+          if (pc.currentRemoteDescription) {
+            console.log('Already have remote description, skipping');
+            return;
+          }
+          
+          try {
+            // Mark that we've handled the answer
+            hasHandledAnswer = true;
+            
+            // Check peer connection state
+            if (!pc || pc.signalingState === 'closed') {
+              console.log('Peer connection is closed, skipping answer handling');
+              return;
             }
+            
+            const rtcAnswer = new RTCSessionDescription(answer);
+            
+            // Check signaling state before setting remote description
+            if (pc.signalingState !== 'have-local-offer' && pc.signalingState !== 'stable') {
+              console.log('Invalid signaling state for setting remote description:', pc.signalingState);
+              return;
+            }
+            
+            await pc.setRemoteDescription(rtcAnswer);
+            setCallStatus('Call in progress');
+            // Update call status to accepted
+            await updateCallStatus(callId, 'accepted');
+          } catch (err) {
+            console.error('Error setting remote description:', err);
+            setCallStatus('Failed to connect');
           }
         });
         unsubscribersRef.current.push(unsubAnswer);
@@ -164,6 +193,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Listen for callee ICE
         const unsubAnsCand = listenForIceCandidates(answerCandidatesRef, async (c) => {
           try {
+            // Check if peer connection is still valid
+            if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
           } catch (err) {
             console.error('Error adding answer ICE', err);
@@ -184,11 +215,43 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           }
         };
 
+        // Track if we've already handled an offer
+        let hasHandledOffer = false;
+
         // Wait for offer then answer
         const unsubOffer = listenForOffer(callId, async (offer) => {
+          // Skip if we've already handled an offer
+          if (hasHandledOffer) {
+            console.log('Already handled offer, skipping');
+            return;
+          }
+          
           try {
+            // Mark that we've handled the offer
+            hasHandledOffer = true;
+            
+            // Check peer connection state
+            if (!pc || pc.signalingState === 'closed') {
+              console.log('Peer connection is closed, skipping offer handling');
+              return;
+            }
+            
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            
+            // Check signaling state before creating answer
+            if (pc.signalingState !== 'have-remote-offer') {
+              console.log('Invalid signaling state for creating answer:', pc.signalingState);
+              return;
+            }
+            
             const answer = await pc.createAnswer();
+            
+            // Check signaling state before setting local description
+            if (pc.signalingState !== 'have-remote-offer') {
+              console.log('Invalid signaling state for setting local description:', pc.signalingState);
+              return;
+            }
+            
             await pc.setLocalDescription(answer);
             await setAnswer(callId, { sdp: answer.sdp, type: answer.type });
             setCallStatus('Call in progress');
@@ -204,6 +267,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Listen for caller ICE
         const unsubOffCand = listenForIceCandidates(offerCandidatesRef, async (c) => {
           try {
+            // Check if peer connection is still valid
+            if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
           } catch (err) {
             console.error('Error adding offer ICE', err);
@@ -223,6 +288,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
   // Cleanup media resources
   const cleanupMedia = () => {
+    console.log('Cleaning up media resources');
+    
     // Stop all tracks in local stream
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
@@ -246,7 +313,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     // Close RTCPeerConnection
     if (peerConnectionRef.current) {
       try {
-        peerConnectionRef.current.close();
+        if (peerConnectionRef.current.signalingState !== 'closed') {
+          peerConnectionRef.current.close();
+        }
       } catch (err) {
         console.warn('Error closing peer connection:', err);
       }
@@ -256,13 +325,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
   // Cleanup Firestore listeners
   const cleanupListeners = () => {
+    console.log('Cleaning up listeners');
+    
     // Unsubscribe all listeners
-    unsubscribersRef.current.forEach(unsubscribe => {
+    unsubscribersRef.current.forEach((unsubscribe, index) => {
       if (typeof unsubscribe === 'function') {
         try {
           unsubscribe();
         } catch (err) {
-          console.warn('Error unsubscribing:', err);
+          console.warn('Error unsubscribing:', index, err);
         }
       }
     });
@@ -292,6 +363,12 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const endCall = async (endedByRemote = false) => {
     console.log('Ending call, endedByRemote:', endedByRemote); // Debug log
     
+    // Check if call is already ended
+    if (!isCallActive) {
+      console.log('Call already ended, skipping');
+      return;
+    }
+    
     // Update UI state immediately
     setIsCallActive(false);
     setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
@@ -305,6 +382,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     // Only notify Firestore if we're the ones ending the call
     if (!endedByRemote) {
       try {
+        console.log('Notifying other party that call has ended');
         // Notify the other party that the call has ended
         await endCallService(callId);
       } catch (error) {
@@ -319,6 +397,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     
     cleanupTimeoutRef.current = setTimeout(async () => {
       try {
+        console.log('Cleaning up call data from Firestore');
         await cleanupCallData(callId);
       } catch (error) {
         console.error('Error cleaning up call data:', error);

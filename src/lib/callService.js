@@ -119,10 +119,18 @@ export async function setAnswer(callId, answer) {
 
 export function listenForAnswer(callId, callback) {
   const callRef = doc(db, 'calls', callId);
+  // Track the last answer we've seen to prevent duplicate callbacks
+  let lastAnswer = null;
+  
   return onSnapshot(callRef, (snapshot) => {
     const data = snapshot.data();
     if (data && data.answer) {
-      callback(data.answer);
+      // Create a simple hash of the answer to detect changes
+      const answerStr = JSON.stringify(data.answer);
+      if (lastAnswer !== answerStr) {
+        lastAnswer = answerStr;
+        callback(data.answer);
+      }
     }
   }, (error) => {
     console.error('Error listening for answer:', error);
@@ -131,10 +139,18 @@ export function listenForAnswer(callId, callback) {
 
 export function listenForOffer(callId, callback) {
   const callRef = doc(db, 'calls', callId);
+  // Track the last offer we've seen to prevent duplicate callbacks
+  let lastOffer = null;
+  
   return onSnapshot(callRef, (snapshot) => {
     const data = snapshot.data();
     if (data && data.offer) {
-      callback(data.offer);
+      // Create a simple hash of the offer to detect changes
+      const offerStr = JSON.stringify(data.offer);
+      if (lastOffer !== offerStr) {
+        lastOffer = offerStr;
+        callback(data.offer);
+      }
     }
   }, (error) => {
     console.error('Error listening for offer:', error);
@@ -160,8 +176,27 @@ export function listenForCallStatus(callId, callback) {
   });
 }
 
-// Function to update call status with retry logic
+// Function to update call status with retry logic and duplicate prevention
+const callStatusCache = new Map();
+
 export async function updateCallStatus(callId, status, additionalData = {}) {
+  // Create a cache key for this specific call and status
+  const cacheKey = `${callId}-${status}`;
+  const now = Date.now();
+  
+  // Check if we've recently updated this status
+  if (callStatusCache.has(cacheKey)) {
+    const lastUpdate = callStatusCache.get(cacheKey);
+    // If less than 1 second ago, skip to prevent duplicates
+    if (now - lastUpdate < 1000) {
+      console.log(`Skipping duplicate status update for ${callId} to ${status}`);
+      return true;
+    }
+  }
+  
+  // Update the cache
+  callStatusCache.set(cacheKey, now);
+  
   try {
     const callRef = doc(db, 'calls', callId);
     
