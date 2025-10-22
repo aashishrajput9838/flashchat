@@ -58,6 +58,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           // Listen to call document to get caller/callee info
           const { listenForCallStatus } = await import('@/lib/callService');
           const unsubscribe = listenForCallStatus(callId, async (data) => {
+            console.log('Call status changed:', data);
+            
+            // Check if call has ended
+            if (data && (data.status === 'ended' || (data.endedAt && data.endedAt !== null))) {
+              console.log('Call ended detected, closing call');
+              setCallStatus('Call ended by other party');
+              setTimeout(() => {
+                endCall(true);
+              }, 1000);
+              return;
+            }
+            
             if (data && (data.callerUid || data.calleeUid)) {
               // Determine remote user ID based on role
               let remoteUserId;
@@ -199,26 +211,51 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       console.log('Applying remote stream to video element');
       
       // Set the stream to the video element
-      remoteVideoRef.current.srcObject = stream;
-      
-      // Mark that we've applied the stream
-      remoteStreamAppliedRef.current = true;
-      
-      // Set remote video connected state
-      setIsRemoteVideoConnected(true);
-      
-      // Add event listeners for better UX
-      remoteVideoRef.current.onloadedmetadata = () => {
-        console.log('Remote video metadata loaded');
-        if (remoteVideoRef.current) {
-          console.log('Video dimensions:', remoteVideoRef.current.videoWidth, 'x', remoteVideoRef.current.videoHeight);
-        }
-      };
-      
-      remoteVideoRef.current.onplay = () => {
-        console.log('Remote video started playing');
+      try {
+        remoteVideoRef.current.srcObject = stream;
+        
+        // Force play the video
+        remoteVideoRef.current.play().catch(error => {
+          console.log('Error playing remote video:', error);
+        });
+        
+        // Mark that we've applied the stream
+        remoteStreamAppliedRef.current = true;
+        
+        // Set remote video connected state
         setIsRemoteVideoConnected(true);
-      };
+        
+        // Add event listeners for better UX
+        remoteVideoRef.current.onloadedmetadata = () => {
+          console.log('Remote video metadata loaded');
+          if (remoteVideoRef.current) {
+            console.log('Video dimensions:', remoteVideoRef.current.videoWidth, 'x', remoteVideoRef.current.videoHeight);
+          }
+        };
+        
+        remoteVideoRef.current.onplay = () => {
+          console.log('Remote video started playing');
+          console.log('Video playing state:', remoteVideoRef.current?.paused, remoteVideoRef.current?.ended);
+          setIsRemoteVideoConnected(true);
+        };
+        
+        // Handle video errors
+        remoteVideoRef.current.onerror = (error) => {
+          console.error('Remote video error:', error);
+        };
+        
+        // Handle video load start
+        remoteVideoRef.current.onloadstart = () => {
+          console.log('Remote video load started');
+        };
+        
+        // Handle video can play
+        remoteVideoRef.current.oncanplay = () => {
+          console.log('Remote video can play');
+        };
+      } catch (error) {
+        console.error('Error applying remote stream to video element:', error);
+      }
     } else {
       // Store stream temporarily if ref is not available yet
       console.log('Remote video ref not available yet, storing stream temporarily');
@@ -231,6 +268,11 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = stream;
       localStreamRef.current = stream;
+      
+      // Force play the local video
+      localVideoRef.current.play().catch(error => {
+        console.log('Error playing local video:', error);
+      });
     }
   };
 
@@ -359,6 +401,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     hasEndedRef.current = true;
     console.log('Ending call, endedByRemote:', endedByRemote);
     
+    // Update UI immediately
+    setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
+    
     // Clean up resources
     cleanupMedia();
     cleanupListeners();
@@ -377,15 +422,17 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       }
     }
     
-    // Notify parent component
-    if (onCallEnd) {
-      onCallEnd();
-    }
-    
-    // Close modal
-    if (onClose) {
-      onClose();
-    }
+    // Notify parent component after a short delay to ensure UI updates
+    setTimeout(() => {
+      if (onCallEnd) {
+        console.log('Notifying parent component that call ended via onCallEnd');
+        onCallEnd();
+      }
+      if (onClose) {
+        console.log('Notifying parent component that call ended via onClose');
+        onClose();
+      }
+    }, 100);
   };
 
   // Function to start call
@@ -434,8 +481,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             } else {
               await addIceCandidate(callId, event.candidate, 'answer');
             }
+            console.log('ICE candidate added to Firestore successfully');
           } catch (err) {
-            console.error('Error sending ICE candidate', err);
+            console.error('Error sending ICE candidate:', err);
+            // Don't show alert for ICE candidate errors as they're often non-fatal
           }
         }
       };
