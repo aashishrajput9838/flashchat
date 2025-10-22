@@ -797,7 +797,7 @@ export const sendVideoCallNotification = async (recipientUid, callerData, callId
 };
 
 // Function to send an audio call notification to a user
-export const sendAudioCallNotification = async (recipientUid, callerData) => {
+export const sendAudioCallNotification = async (recipientUid, callerData, callId) => {
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -809,6 +809,7 @@ export const sendAudioCallNotification = async (recipientUid, callerData) => {
       callerUid: currentUser.uid,
       callerName: currentUser.displayName || currentUser.email,
       callerPhotoURL: currentUser.photoURL,
+      callId: callId || null,
       timestamp: new Date().toISOString(),
       status: 'ringing', // ringing, accepted, declined, missed
       read: false

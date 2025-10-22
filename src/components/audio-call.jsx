@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Phone, Mic, MicOff, X } from 'lucide-react';
 import { getCurrentUser, sendAudioCallNotification } from '@/lib/userService';
 
-export function AudioCall({ selectedChat, onClose, onCallEnd }) {
+export function AudioCall({ selectedChat, onClose, onCallEnd, callId }) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [callStatus, setCallStatus] = useState('Connecting...');
@@ -28,7 +28,7 @@ export function AudioCall({ selectedChat, onClose, onCallEnd }) {
           callerUid: user.uid,
           callerName: user.displayName || user.email,
           callerPhotoURL: user.photoURL
-        });
+        }, callId); // Pass callId if available
         console.log('Audio call notification sent:', callNotification);
       }
       

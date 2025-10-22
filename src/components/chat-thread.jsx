@@ -16,6 +16,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [showAudioCall, setShowAudioCall] = useState(false)
   const [isCalling, setIsCalling] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  const [activeCallId, setActiveCallId] = useState(null) // Store the active call ID
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const user = getCurrentUser()
@@ -33,150 +34,42 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     scrollToBottom();
   }, [chatMessages]);
 
-  // Close dropdown when clicking outside
+  // Subscribe to messages when selectedChat changes
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
-          ellipsisRef.current && !ellipsisRef.current.contains(event.target)) {
-        setShowDropdown(false);
+    if (selectedChat && selectedChat.id) {
+      // Clean up previous subscription
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current();
       }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
+      
+      // Subscribe to new messages
+      messageSubscriptionRef.current = subscribeToMessages(selectedChat.id, (messages) => {
+        setChatMessages(messages);
+      });
+      
+      // Set chat title
+      setUserName(selectedChat.name || selectedChat.displayName || "Unknown User");
+    }
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Set user name
-    if (user) {
-      setUserName(user.displayName || user.email || `User${user.uid.substring(0, 5)}`)
-    }
-
-    // Clean up previous subscription
-    if (messageSubscriptionRef.current) {
-      messageSubscriptionRef.current();
-      messageSubscriptionRef.current = null;
-    }
-
-    // If no selected chat, clear messages and return
-    if (!selectedChat || !user) {
-      setChatMessages([]);
-      return () => {};
-    }
-
-    // Subscribe to messages from Firestore for the selected user
-    messageSubscriptionRef.current = subscribeToMessages(selectedChat?.uid, (messages) => {
-      setChatMessages(messages);
-    });
-
-    // Clean up listeners on component unmount
-    return () => {
+      // Clean up subscription on unmount or when chat changes
       if (messageSubscriptionRef.current) {
         messageSubscriptionRef.current();
         messageSubscriptionRef.current = null;
       }
-    }
-  }, [currentUserId, selectedChat])
+    };
+  }, [selectedChat]);
 
+  // Handle sending a message
   const handleSendMessage = async (e) => {
-    e.preventDefault()
-    if (message.trim() === "" || !selectedChat) return
-
-    // Get current user data to ensure it's up to date
-    const currentUser = getCurrentUser();
-    
-    // Create message object with real user data
-    const newMessage = {
-      name: currentUser ? (currentUser.displayName || currentUser.email || `User${currentUser.uid.substring(0, 5)}`) : "Anonymous",
-      you: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: message,
-      userId: currentUser ? currentUser.uid : "anonymous",
-      recipientId: selectedChat ? selectedChat.uid : null, // Add recipient ID
-      photoURL: currentUser ? currentUser.photoURL : null, // Add photoURL
-      status: "sent" // Add message status
-    }
-
-    try {
-      // Send message to Firebase with recipient ID
-      const messageId = await sendMessage(newMessage, selectedChat?.uid)
-      
-      // Clear input
-      setMessage("")
-    } catch (error) {
-      console.error("Error sending message:", error)
-      setMessage("")
-    }
-  }
-
-  const handleSignOut = async () => {
-    try {
-      await signOutUser();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
-
-  // Function to unfriend the selected user
-  const handleUnfriend = async () => {
-    if (!selectedChat) return;
+    e.preventDefault();
+    if (!message.trim() || !selectedChat) return;
     
     try {
-      await unfriendUser(selectedChat.uid);
-      // Close the chat after unfriending
-      if (onClose) {
-        onClose();
-      }
+      await sendMessage(selectedChat.id, message.trim());
+      setMessage("");
     } catch (error) {
-      console.error("Error unfriending user:", error);
-    }
-    
-    setShowDropdown(false);
-  };
-
-  // Function to toggle dropdown menu
-  const toggleDropdown = (e) => {
-    e.stopPropagation();
-    setShowDropdown(!showDropdown);
-  };
-
-  // Determine the chat title to display
-  const chatTitle = selectedChat 
-    ? selectedChat.name 
-    : "FlashChat";
-
-  // Determine the chat avatar to display
-  const chatAvatar = selectedChat 
-    ? (selectedChat.photoURL || (user ? user.photoURL : null) || "/diverse-avatars.png")
-    : (user ? user.photoURL : "/images/flashchat-hero.png") || "/diverse-avatars.png";
-
-  // Function to get the correct photoURL for a message
-  const getMessagePhotoURL = (message) => {
-    // If the message has its own photoURL, use it
-    if (message.photoURL) {
-      return message.photoURL;
-    }
-    
-    // If it's your message, use your photoURL
-    if (message.you && user && user.photoURL) {
-      return user.photoURL;
-    }
-    
-    // If it's the selected chat user's message, use their photoURL
-    if (!message.you && selectedChat && selectedChat.photoURL) {
-      return selectedChat.photoURL;
-    }
-    
-    // Fallback to default avatar
-    return "/diverse-avatars.png";
-  };
-
-  // Function to handle file attachment
-  const handleAttachFile = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+      console.error("Error sending message:", error);
     }
   };
 
@@ -202,7 +95,8 @@ In a real application, this file would be uploaded and sent as a message.`);
   // Function to show emoji picker
   const showEmojiPicker = () => {
     const emojis = ['😀', '😂', '😍', '😎', '👍', '👏', '❤️', '🔥', '🎉', '✨'];
-    const selectedEmoji = prompt(`Select an emoji:\n${emojis.join(' ')}`);
+    const selectedEmoji = prompt(`Select an emoji:
+${emojis.join(' ')}`);
     if (selectedEmoji && emojis.includes(selectedEmoji)) {
       handleEmojiSelect(selectedEmoji);
     }
@@ -217,9 +111,10 @@ In a real application, this file would be uploaded and sent as a message.`);
     try {
       // Create call document in Firestore
       const callId = await createCallDocument(user.uid, selectedChat.uid);
+      setActiveCallId(callId); // Store the call ID
       
       // Send video call notification
-      await sendVideoCallNotification(selectedChat.uid, callId, 'video_call');
+      await sendVideoCallNotification(selectedChat.uid, user, callId);
       
       // Show video call interface
       setShowVideoCall(true);
@@ -240,9 +135,10 @@ In a real application, this file would be uploaded and sent as a message.`);
     try {
       // Create call document in Firestore
       const callId = await createCallDocument(user.uid, selectedChat.uid);
+      setActiveCallId(callId); // Store the call ID
       
       // Send audio call notification
-      await sendVideoCallNotification(selectedChat.uid, callId, 'audio_call');
+      await sendVideoCallNotification(selectedChat.uid, user, callId);
       
       // Show audio call interface
       setShowAudioCall(true);
@@ -273,6 +169,58 @@ In a real application, this file would be uploaded and sent as a message.`);
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  // Handle unfriend action
+  const handleUnfriend = async () => {
+    if (!selectedChat) return;
+    
+    try {
+      await unfriendUser(selectedChat.uid);
+      setShowDropdown(false);
+    } catch (error) {
+      console.error("Error unfriending user:", error);
+      alert("Failed to unfriend user. Please try again.");
+    }
+  };
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      setShowDropdown(false);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      alert("Failed to sign out. Please try again.");
+    }
+  };
+
+  // Toggle dropdown menu
+  const toggleDropdown = () => {
+    setShowDropdown(prev => !prev);
+  };
+
+  // Handle attach file
+  const handleAttachFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Get photo URL for messages
+  const getMessagePhotoURL = (msg) => {
+    if (msg.you) {
+      return user?.photoURL;
+    }
+    return selectedChat?.photoURL;
+  };
+
+  // Get chat title
+  const chatTitle = selectedChat 
+    ? selectedChat.name || selectedChat.displayName || selectedChat.email || "Unknown User"
+    : "FlashChat";
+
+  // Get chat avatar
+  const chatAvatar = selectedChat 
+    ? selectedChat.photoURL || ""
+    : "";
 
   // If no chat is selected, show welcome message
   if (!selectedChat) {
@@ -514,8 +462,15 @@ In a real application, this file would be uploaded and sent as a message.`);
         <VideoCall
           selectedChat={selectedChat}
           role="caller"
-          onClose={() => setShowVideoCall(false)}
-          onCallEnd={() => setShowVideoCall(false)}
+          callId={activeCallId}
+          onClose={() => {
+            setShowVideoCall(false);
+            setActiveCallId(null);
+          }}
+          onCallEnd={() => {
+            setShowVideoCall(false);
+            setActiveCallId(null);
+          }}
         />
       )}
       
@@ -524,8 +479,15 @@ In a real application, this file would be uploaded and sent as a message.`);
         <AudioCall
           selectedChat={selectedChat}
           role="caller"
-          onClose={() => setShowAudioCall(false)}
-          onCallEnd={() => setShowAudioCall(false)}
+          callId={activeCallId}
+          onClose={() => {
+            setShowAudioCall(false);
+            setActiveCallId(null);
+          }}
+          onCallEnd={() => {
+            setShowAudioCall(false);
+            setActiveCallId(null);
+          }}
         />
       )}
     </div>
