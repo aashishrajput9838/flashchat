@@ -16,13 +16,15 @@ import {
   cleanupCallData,
   updateCallStatus
 } from '@/lib/callService';
+import { getUserById } from '@/lib/userService';
 
 export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', callId }) {
   const [isCallActive, setIsCallActive] = useState(false);
-  const [isRemoteVideoConnected, setIsRemoteVideoConnected] = useState(false); // Track remote video connection
+  const [isRemoteVideoConnected, setIsRemoteVideoConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [callStatus, setCallStatus] = useState('Connecting...');
+  const [remoteUser, setRemoteUser] = useState(null); // Store remote user data
   
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -30,12 +32,59 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const peerConnectionRef = useRef(null);
   const unsubscribersRef = useRef([]);
   const cleanupTimeoutRef = useRef(null);
-  const hasEndedRef = useRef(false); // Track if call has already ended
+  const hasEndedRef = useRef(false);
   
   const user = getCurrentUser();
-  const chatTitle = selectedChat 
-    ? selectedChat.name 
-    : "FlashChat";
+  // Use remote user name if available, otherwise fallback to selectedChat or default
+  const chatTitle = remoteUser 
+    ? remoteUser.name || remoteUser.displayName || remoteUser.email || "Unknown User"
+    : (selectedChat 
+        ? selectedChat.name 
+        : "FlashChat");
+
+  // Fetch remote user data based on role
+  useEffect(() => {
+    const fetchRemoteUserData = async () => {
+      try {
+        if (callId) {
+          // Listen to call document to get caller/callee info
+          const { listenForCallStatus } = await import('@/lib/callService');
+          const unsubscribe = listenForCallStatus(callId, async (data) => {
+            if (data && (data.callerUid || data.calleeUid)) {
+              // Determine remote user ID based on role
+              let remoteUserId;
+              if (role === 'caller' && data.calleeUid) {
+                remoteUserId = data.calleeUid;
+              } else if (role === 'callee' && data.callerUid) {
+                remoteUserId = data.callerUid;
+              }
+              
+              // Fetch remote user data
+              if (remoteUserId && remoteUserId !== user?.uid) {
+                const userData = await getUserById(remoteUserId);
+                if (userData) {
+                  setRemoteUser(userData);
+                }
+              }
+            }
+          });
+          
+          unsubscribersRef.current.push(unsubscribe);
+        } else if (selectedChat) {
+          // For caller, use selectedChat as remote user
+          setRemoteUser(selectedChat);
+        }
+      } catch (error) {
+        console.error('Error fetching remote user data:', error);
+        // Fallback to selectedChat if available
+        if (selectedChat) {
+          setRemoteUser(selectedChat);
+        }
+      }
+    };
+    
+    fetchRemoteUserData();
+  }, [callId, role, selectedChat, user?.uid]);
 
   // Initialize media devices and set up signaling
   useEffect(() => {
@@ -46,7 +95,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       console.log('Received call ended event:', data);
       setCallStatus('Call ended by other party');
       setTimeout(() => {
-        endCall(true); // true indicates it was ended by remote party
+        endCall(true);
       }, 2000);
     };
     
@@ -85,8 +134,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       localStreamRef.current = stream;
       setIsCallActive(true);
-      setIsRemoteVideoConnected(false); // Reset remote video connection state
-      hasEndedRef.current = false; // Reset ended flag
+      setIsRemoteVideoConnected(false);
+      hasEndedRef.current = false;
       
       // Create RTCPeerConnection
       const pc = new RTCPeerConnection(rtcConfiguration);
@@ -100,7 +149,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         console.log('Remote track received:', event);
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = event.streams[0];
-          setIsRemoteVideoConnected(true); // Mark remote video as connected
+          setIsRemoteVideoConnected(true);
         }
       };
 
@@ -110,7 +159,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
       // Listen for call status changes to detect when other party ends call
       const unsubStatus = listenForCallStatus(callId, async (data) => {
-        console.log('Call status changed:', data); // Debug log
+        console.log('Call status changed:', data);
         
         // Check if call has already ended to prevent duplicate handling
         if (hasEndedRef.current) {
@@ -120,15 +169,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         
         if (data.status === 'ended' || (data.endedAt && data.endedAt !== null)) {
           setCallStatus('Call ended by other party');
-          // Wait a moment to show the status message
           setTimeout(() => {
-            endCall(true); // true indicates it was ended by remote party
+            endCall(true);
           }, 2000);
         } else if (data.status === 'declined') {
           setCallStatus('Call declined by other party');
-          // Wait a moment to show the status message
           setTimeout(() => {
-            endCall(true); // true indicates it was ended by remote party
+            endCall(true);
           }, 2000);
         } else if (data.status === 'ringing') {
           setCallStatus('Ringing...');
@@ -162,23 +209,19 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
         // Listen for remote answer
         const unsubAnswer = listenForAnswer(callId, async (answer) => {
-          // Skip if we've already handled an answer
           if (hasHandledAnswer) {
             console.log('Already handled answer, skipping');
             return;
           }
           
-          // Check if we already have a remote description
           if (pc.currentRemoteDescription) {
             console.log('Already have remote description, skipping');
             return;
           }
           
           try {
-            // Mark that we've handled the answer
             hasHandledAnswer = true;
             
-            // Check peer connection state
             if (!pc || pc.signalingState === 'closed') {
               console.log('Peer connection is closed, skipping answer handling');
               return;
@@ -186,7 +229,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             
             const rtcAnswer = new RTCSessionDescription(answer);
             
-            // Check signaling state before setting remote description
             if (pc.signalingState !== 'have-local-offer' && pc.signalingState !== 'stable') {
               console.log('Invalid signaling state for setting remote description:', pc.signalingState);
               return;
@@ -194,7 +236,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             
             await pc.setRemoteDescription(rtcAnswer);
             setCallStatus('Call in progress');
-            // Update call status to accepted
             await updateCallStatus(callId, 'accepted');
           } catch (err) {
             console.error('Error setting remote description:', err);
@@ -206,7 +247,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Listen for callee ICE
         const unsubAnsCand = listenForIceCandidates(answerCandidatesRef, async (c) => {
           try {
-            // Check if peer connection is still valid
             if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
           } catch (err) {
@@ -233,17 +273,14 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
         // Wait for offer then answer
         const unsubOffer = listenForOffer(callId, async (offer) => {
-          // Skip if we've already handled an offer
           if (hasHandledOffer) {
             console.log('Already handled offer, skipping');
             return;
           }
           
           try {
-            // Mark that we've handled the offer
             hasHandledOffer = true;
             
-            // Check peer connection state
             if (!pc || pc.signalingState === 'closed') {
               console.log('Peer connection is closed, skipping offer handling');
               return;
@@ -251,7 +288,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             
-            // Check signaling state before creating answer
             if (pc.signalingState !== 'have-remote-offer') {
               console.log('Invalid signaling state for creating answer:', pc.signalingState);
               return;
@@ -259,7 +295,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             
             const answer = await pc.createAnswer();
             
-            // Check signaling state before setting local description
             if (pc.signalingState !== 'have-remote-offer') {
               console.log('Invalid signaling state for setting local description:', pc.signalingState);
               return;
@@ -268,7 +303,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             await pc.setLocalDescription(answer);
             await setAnswer(callId, { sdp: answer.sdp, type: answer.type });
             setCallStatus('Call in progress');
-            // Update call status to accepted
             await updateCallStatus(callId, 'accepted');
           } catch (err) {
             console.error('Error handling offer', err);
@@ -280,7 +314,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         // Listen for caller ICE
         const unsubOffCand = listenForIceCandidates(offerCandidatesRef, async (c) => {
           try {
-            // Check if peer connection is still valid
             if (!peerConnectionRef.current) return;
             await pc.addIceCandidate(new RTCIceCandidate(c));
           } catch (err) {
@@ -292,7 +325,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     } catch (error) {
       console.error('Error starting call:', error);
       setCallStatus('Failed to start call');
-      // Close the call interface after showing error
       setTimeout(() => {
         endCall();
       }, 3000);
@@ -377,20 +409,18 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   };
 
   const endCall = async (endedByRemote = false) => {
-    console.log('Ending call, endedByRemote:', endedByRemote); // Debug log
+    console.log('Ending call, endedByRemote:', endedByRemote);
     
-    // Check if call has already ended to prevent duplicate handling
     if (hasEndedRef.current) {
       console.log('Call already ended, skipping');
       return;
     }
     
-    // Mark call as ended
     hasEndedRef.current = true;
     
     // Update UI state immediately
     setIsCallActive(false);
-    setIsRemoteVideoConnected(false); // Reset remote video connection state
+    setIsRemoteVideoConnected(false);
     setCallStatus(endedByRemote ? 'Call ended by other party' : 'Call ended');
     
     // Cleanup media resources
@@ -403,7 +433,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     if (!endedByRemote) {
       try {
         console.log('Notifying other party that call has ended');
-        // Notify the other party that the call has ended
         await endCallService(callId);
       } catch (error) {
         console.error('Error ending call:', error);
@@ -422,7 +451,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       } catch (error) {
         console.error('Error cleaning up call data:', error);
       }
-    }, 5000); // Wait 5 seconds to ensure both parties have received the end signal
+    }, 5000);
     
     // Notify parent components after a short delay to ensure UI updates
     setTimeout(() => {
@@ -453,9 +482,9 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
         <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
-          {selectedChat?.photoURL ? (
+          {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
             <img 
-              src={selectedChat.photoURL} 
+              src={remoteUser?.photoURL || selectedChat?.photoURL} 
               alt={chatTitle} 
               className="w-32 h-32 rounded-full object-cover"
             />

@@ -137,7 +137,7 @@ export default function App() {
       {/* Incoming video call interface */}
       {activeIncomingVideoCall && (
         <VideoCall
-          selectedChat={selectedChat}
+          // For incoming calls, we need to fetch caller data
           role={activeIncomingVideoCall.role}
           callId={activeIncomingVideoCall.callId}
           onClose={() => setActiveIncomingVideoCall(null)}
