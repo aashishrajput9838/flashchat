@@ -102,6 +102,17 @@ export function listenForOffer(callId, callback) {
   });
 }
 
+// Listen for call status changes
+export function listenForCallStatus(callId, callback) {
+  const callRef = doc(db, 'calls', callId);
+  return onSnapshot(callRef, (snapshot) => {
+    const data = snapshot.data();
+    if (data) {
+      callback(data);
+    }
+  });
+}
+
 export function offerCandidatesCollection(callId) {
   return collection(doc(db, 'calls', callId), 'offerCandidates');
 }

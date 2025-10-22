@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, Video, X } from 'lucide-react';
 import { subscribeToNotifications, getCurrentUser, markNotificationAsRead } from '@/lib/userService';
+import { listenForCallStatus } from '@/lib/callService';
 
 export function CallNotification({ onAccept, onDecline }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const user = getCurrentUser();
   const shouldHidePopup = useRef(false);
+  const unsubscribeCallStatusRef = useRef(null);
 
   // Subscribe to notifications to listen for incoming calls
   useEffect(() => {
@@ -76,6 +78,10 @@ export function CallNotification({ onAccept, onDecline }) {
       if (unsubscribe) {
         unsubscribe();
       }
+      // Clean up call status listener if it exists
+      if (unsubscribeCallStatusRef.current) {
+        unsubscribeCallStatusRef.current();
+      }
     };
   }, [user]);
 
@@ -84,6 +90,16 @@ export function CallNotification({ onAccept, onDecline }) {
       try { await markNotificationAsRead(incomingCall); } catch {}
       // Set flag to prevent popup from reappearing
       shouldHidePopup.current = true;
+      
+      // If this is a video call with a callId, listen for call status changes
+      if (incomingCall.type === 'video_call' && incomingCall.callId) {
+        unsubscribeCallStatusRef.current = listenForCallStatus(incomingCall.callId, (data) => {
+          if (data.status === 'ended') {
+            setIncomingCall(null);
+          }
+        });
+      }
+      
       setIncomingCall(null);
       // Pass the call data to the handler
       onAccept(incomingCall);

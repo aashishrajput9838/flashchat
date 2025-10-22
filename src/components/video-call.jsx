@@ -9,8 +9,10 @@ import {
   listenForIceCandidates,
   listenForOffer,
   listenForAnswer,
+  listenForCallStatus,
   setOffer,
-  setAnswer
+  setAnswer,
+  endCall as endCallService
 } from '@/lib/callService';
 
 export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', callId }) {
@@ -78,6 +80,17 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Firestore signaling
       const offerCandidatesRef = offerCandidatesCollection(callId);
       const answerCandidatesRef = answerCandidatesCollection(callId);
+
+      // Listen for call status changes
+      const unsubStatus = listenForCallStatus(callId, async (data) => {
+        if (data.status === 'ended') {
+          setCallStatus('Call ended by other party');
+          setTimeout(() => {
+            endCall();
+          }, 2000);
+        }
+      });
+      unsubscribersRef.current.push(unsubStatus);
 
       if (role === 'caller') {
         // Push ICE candidates to offerCandidates
@@ -178,7 +191,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }
   };
 
-  const endCall = () => {
+  const endCall = async () => {
     cleanupMedia();
     setIsCallActive(false);
     
@@ -187,6 +200,13 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       setCallStatus('Call missed');
     } else {
       setCallStatus('Call ended');
+    }
+    
+    // Notify the other party that the call has ended
+    try {
+      await endCallService(callId);
+    } catch (error) {
+      console.error('Error ending call:', error);
     }
     
     // Cleanup signaling listeners
@@ -282,9 +302,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           <div className="flex items-center justify-center gap-6">
             <button
               onClick={toggleMute}
-              className={`grid h-12 w-12 place-items-center rounded-full ${
-                isMuted ? 'bg-destructive' : 'bg-secondary'
-              } hover:opacity-90`}
+              className={`grid h-12 w-12 place-items-center rounded-full ${isMuted ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90`}
               aria-label={isMuted ? "Unmute" : "Mute"}>
               {isMuted ? (
                 <MicOff className="h-5 w-5" />
@@ -295,9 +313,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
             
             <button
               onClick={toggleVideo}
-              className={`grid h-12 w-12 place-items-center rounded-full ${
-                isVideoOff ? 'bg-destructive' : 'bg-secondary'
-              } hover:opacity-90`}
+              className={`grid h-12 w-12 place-items-center rounded-full ${isVideoOff ? 'bg-destructive' : 'bg-secondary'} hover:opacity-90`}
               aria-label={isVideoOff ? "Turn on camera" : "Turn off camera"}>
               {isVideoOff ? (
                 <VideoOff className="h-5 w-5" />
