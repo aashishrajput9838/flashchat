@@ -29,6 +29,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const peerConnectionRef = useRef(null);
   const unsubscribersRef = useRef([]);
   const cleanupTimeoutRef = useRef(null);
+  const hasEndedRef = useRef(false); // Track if call has already ended
   
   const user = getCurrentUser();
   const chatTitle = selectedChat 
@@ -83,6 +84,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       
       localStreamRef.current = stream;
       setIsCallActive(true);
+      hasEndedRef.current = false; // Reset ended flag
       
       // Create RTCPeerConnection
       const pc = new RTCPeerConnection(rtcConfiguration);
@@ -105,7 +107,14 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Listen for call status changes to detect when other party ends call
       const unsubStatus = listenForCallStatus(callId, async (data) => {
         console.log('Call status changed:', data); // Debug log
-        if (data.status === 'ended') {
+        
+        // Check if call has already ended to prevent duplicate handling
+        if (hasEndedRef.current) {
+          console.log('Call already ended, skipping status update');
+          return;
+        }
+        
+        if (data.status === 'ended' || (data.endedAt && data.endedAt !== null)) {
           setCallStatus('Call ended by other party');
           // Wait a moment to show the status message
           setTimeout(() => {
@@ -363,11 +372,14 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const endCall = async (endedByRemote = false) => {
     console.log('Ending call, endedByRemote:', endedByRemote); // Debug log
     
-    // Check if call is already ended
-    if (!isCallActive) {
+    // Check if call has already ended to prevent duplicate handling
+    if (hasEndedRef.current) {
       console.log('Call already ended, skipping');
       return;
     }
+    
+    // Mark call as ended
+    hasEndedRef.current = true;
     
     // Update UI state immediately
     setIsCallActive(false);
@@ -404,13 +416,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       }
     }, 5000); // Wait 5 seconds to ensure both parties have received the end signal
     
-    // Notify parent components
-    if (onCallEnd) {
-      onCallEnd();
-    }
-    if (onClose) {
-      onClose();
-    }
+    // Notify parent components after a short delay to ensure UI updates
+    setTimeout(() => {
+      if (onCallEnd) {
+        onCallEnd();
+      }
+      if (onClose) {
+        onClose();
+      }
+    }, 100);
   };
 
   return (

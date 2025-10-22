@@ -163,7 +163,7 @@ export function listenForCallStatus(callId, callback) {
   return onSnapshot(callRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.data();
-      // Ensure we're properly detecting all status changes
+      // Ensure we're properly detecting all status changes including endedAt
       callback(data);
     } else {
       // Document was deleted, treat as ended call

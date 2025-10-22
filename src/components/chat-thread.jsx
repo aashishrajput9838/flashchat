@@ -214,6 +214,7 @@ In a real application, this file would be uploaded and sent as a message.`);
 
   // Function to end video call
   const endVideoCall = () => {
+    console.log('Ending video call from chat thread');
     setShowVideoCall(false);
     setIsCalling(false);
   };
