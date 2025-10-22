@@ -1,4 +1,4 @@
-import { Search, UserPlus, X, MessageCircle, Clock, CheckCircle } from "lucide-react"
+import { Search, UserPlus, X, Clock } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest, subscribeToUsers } from "@/lib/userService"
@@ -327,7 +327,7 @@ export function ConversationList({ onSelectChat }) {
       <div className="flex-1 overflow-y-auto">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-            <MessageCircle className="h-12 w-12 mb-4" />
+            <Search className="h-12 w-12 mb-4 mx-auto" />
             <h3 className="text-lg font-medium mb-1">No conversations yet</h3>
             <p className="text-sm">Start a conversation with a friend or add new friends</p>
           </div>
