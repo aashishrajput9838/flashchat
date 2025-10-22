@@ -358,37 +358,55 @@ export async function addIceCandidate(candidatesRef, candidate) {
   try {
     console.log('Adding ICE candidate to Firestore:', candidate);
     
-    // Validate the candidate object before adding to Firestore
-    if (!candidate || typeof candidate !== 'object') {
+    // Convert RTCIceCandidate to plain object before storing in Firestore
+    let candidateData;
+    if (candidate instanceof RTCIceCandidate) {
+      // Extract properties from RTCIceCandidate
+      candidateData = {
+        candidate: candidate.candidate,
+        sdpMid: candidate.sdpMid,
+        sdpMLineIndex: candidate.sdpMLineIndex,
+        usernameFragment: candidate.usernameFragment
+      };
+    } else if (candidate && typeof candidate === 'object') {
+      // Already a plain object
+      candidateData = candidate;
+    } else {
       console.warn('Invalid ICE candidate object, skipping:', candidate);
       return;
     }
     
+    // Validate the candidate object before adding to Firestore
+    if (!candidateData || typeof candidateData !== 'object') {
+      console.warn('Invalid ICE candidate object, skipping:', candidateData);
+      return;
+    }
+    
     // Ensure the candidate has the required properties
-    if (candidate.candidate === undefined && candidate.sdpMid === undefined) {
-      console.warn('ICE candidate missing required properties, skipping:', candidate);
+    if (candidateData.candidate === undefined && candidateData.sdpMid === undefined) {
+      console.warn('ICE candidate missing required properties, skipping:', candidateData);
       return;
     }
     
     // Additional validation for candidate structure
-    if (candidate.candidate !== null && candidate.candidate !== undefined && typeof candidate.candidate !== 'string') {
-      console.warn('ICE candidate has invalid candidate property, skipping:', candidate);
+    if (candidateData.candidate !== null && candidateData.candidate !== undefined && typeof candidateData.candidate !== 'string') {
+      console.warn('ICE candidate has invalid candidate property, skipping:', candidateData);
       return;
     }
     
     // Validate sdpMid if present
-    if (candidate.sdpMid !== undefined && candidate.sdpMid !== null && typeof candidate.sdpMid !== 'string') {
-      console.warn('ICE candidate has invalid sdpMid property, skipping:', candidate);
+    if (candidateData.sdpMid !== undefined && candidateData.sdpMid !== null && typeof candidateData.sdpMid !== 'string') {
+      console.warn('ICE candidate has invalid sdpMid property, skipping:', candidateData);
       return;
     }
     
     // Validate sdpMLineIndex if present
-    if (candidate.sdpMLineIndex !== undefined && typeof candidate.sdpMLineIndex !== 'number') {
-      console.warn('ICE candidate has invalid sdpMLineIndex property, skipping:', candidate);
+    if (candidateData.sdpMLineIndex !== undefined && typeof candidateData.sdpMLineIndex !== 'number') {
+      console.warn('ICE candidate has invalid sdpMLineIndex property, skipping:', candidateData);
       return;
     }
     
-    await addDoc(candidatesRef, candidate);
+    await addDoc(candidatesRef, candidateData);
     console.log('Successfully added ICE candidate to Firestore');
   } catch (error) {
     console.error('Error adding ICE candidate:', error);
