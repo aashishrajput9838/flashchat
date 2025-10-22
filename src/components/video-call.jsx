@@ -148,9 +148,37 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Remote track handler
       pc.ontrack = (event) => {
         console.log('Remote track received:', event);
+        console.log('Remote video ref available:', !!remoteVideoRef.current);
+        
         if (remoteVideoRef.current) {
+          // Ensure any existing stream is stopped
+          if (remoteVideoRef.current.srcObject) {
+            const tracks = remoteVideoRef.current.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+          }
+          
+          // Set the new stream
           remoteVideoRef.current.srcObject = event.streams[0];
+          
+          // Add event listeners to the video element to ensure it plays
+          const videoElement = remoteVideoRef.current;
+          videoElement.onloadedmetadata = () => {
+            console.log('Remote video metadata loaded');
+          };
+          
+          videoElement.onplay = () => {
+            console.log('Remote video started playing');
+          };
+          
+          videoElement.onerror = (e) => {
+            console.error('Remote video error:', e);
+          };
+          
+          // Force a re-render to ensure the video element is displayed
           setIsRemoteVideoConnected(true);
+          console.log('Remote video connected, stream tracks:', event.streams[0].getTracks());
+        } else {
+          console.warn('Remote video ref not available when track received');
         }
       };
 
@@ -182,8 +210,10 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
           setCallStatus('Ringing...');
         } else if (data.status === 'accepted') {
           setCallStatus('Call in progress');
+          console.log('Call accepted, remote video should connect soon');
         }
       });
+
       unsubscribersRef.current.push(unsubStatus);
 
       if (role === 'caller') {
@@ -353,6 +383,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       localVideoRef.current.srcObject = null;
     }
     if (remoteVideoRef.current) {
+      console.log('Clearing remote video srcObject');
       remoteVideoRef.current.srcObject = null;
     }
     
@@ -468,19 +499,27 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
 
   // Function to render the remote video or profile placeholder
   const renderRemoteVideo = () => {
-    // Show remote video if connected, otherwise show profile placeholder
-    if (isRemoteVideoConnected && remoteVideoRef.current && remoteVideoRef.current.srcObject) {
-      return (
-        <video 
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover"
-        />
-      );
+    // Show remote video if connected and we have a valid stream
+    if (isRemoteVideoConnected && remoteVideoRef.current) {
+      // Check if we actually have a stream attached
+      const hasStream = remoteVideoRef.current.srcObject && 
+                        remoteVideoRef.current.srcObject.getTracks().length > 0;
+      
+      if (hasStream) {
+        console.log('Rendering remote video with stream');
+        return (
+          <video 
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        );
+      }
     }
     
     // Show profile placeholder while waiting for video or if video is not connected
+    console.log('Rendering profile placeholder, isRemoteVideoConnected:', isRemoteVideoConnected);
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
         <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
