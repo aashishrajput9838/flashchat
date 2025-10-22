@@ -33,6 +33,8 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
   const unsubscribersRef = useRef([]);
   const cleanupTimeoutRef = useRef(null);
   const hasEndedRef = useRef(false);
+  // Store remote stream temporarily if ref is not available yet
+  const pendingRemoteStreamRef = useRef(null);
   
   const user = getCurrentUser();
   // Use remote user name if available, otherwise fallback to selectedChat or default
@@ -121,6 +123,78 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     };
   }, []);
 
+  // Apply pending remote stream when remoteVideoRef becomes available
+  useEffect(() => {
+    if (remoteVideoRef.current && pendingRemoteStreamRef.current) {
+      console.log('Applying pending remote stream to video element');
+      applyRemoteStreamToVideoElement(pendingRemoteStreamRef.current);
+      pendingRemoteStreamRef.current = null;
+    }
+  }, [remoteVideoRef.current]);
+
+  // Function to apply remote stream to video element
+  const applyRemoteStreamToVideoElement = (stream) => {
+    if (remoteVideoRef.current) {
+      // Ensure any existing stream is stopped
+      if (remoteVideoRef.current.srcObject) {
+        const tracks = remoteVideoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      
+      // Set the new stream
+      remoteVideoRef.current.srcObject = stream;
+      
+      // Log stream information
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      console.log('Remote stream info:', {
+        id: stream.id,
+        tracks: stream.getTracks(),
+        videoTracks: videoTracks,
+        audioTracks: audioTracks,
+        videoTrackEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false
+      });
+      
+      // Add event listeners to the video element to ensure it plays
+      const videoElement = remoteVideoRef.current;
+      videoElement.onloadedmetadata = () => {
+        console.log('Remote video metadata loaded');
+        console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+      };
+      
+      videoElement.onplay = () => {
+        console.log('Remote video started playing');
+        console.log('Video playing state:', videoElement.paused, videoElement.ended);
+      };
+      
+      videoElement.onplaying = () => {
+        console.log('Remote video is now playing');
+        console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+        
+        // Check if video actually has content
+        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+          console.warn('Video has no dimensions - might be an issue with the stream');
+        }
+      };
+      
+      videoElement.onerror = (e) => {
+        console.error('Remote video error:', e);
+      };
+      
+      // Force a re-render to ensure the video element is displayed
+      setIsRemoteVideoConnected(true);
+      console.log('Remote video connected, stream tracks:', stream.getTracks());
+      
+      // Make sure the video element is visible
+      videoElement.classList.remove('hidden');
+      videoElement.classList.add('block');
+      videoElement.style.display = 'block';
+    } else {
+      console.warn('Remote video ref not available when trying to apply stream');
+    }
+  };
+
   const startCall = async () => {
     try {
       // Access media devices
@@ -150,76 +224,15 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         console.log('Remote track received:', event);
         console.log('Remote video ref available:', !!remoteVideoRef.current);
         
-        if (remoteVideoRef.current) {
-          // Ensure any existing stream is stopped
-          if (remoteVideoRef.current.srcObject) {
-            const tracks = remoteVideoRef.current.srcObject.getTracks();
-            tracks.forEach(track => track.stop());
-          }
-          
-          // Set the new stream
-          remoteVideoRef.current.srcObject = event.streams[0];
-          
-          // Log stream information
-          const videoTracks = event.streams[0].getVideoTracks();
-          const audioTracks = event.streams[0].getAudioTracks();
-          
-          console.log('Remote stream info:', {
-            id: event.streams[0].id,
-            tracks: event.streams[0].getTracks(),
-            videoTracks: videoTracks,
-            audioTracks: audioTracks,
-            videoTrackEnabled: videoTracks.length > 0 ? videoTracks[0].enabled : false
-          });
-          
-          // Add event listeners to the video element to ensure it plays
-          const videoElement = remoteVideoRef.current;
-          videoElement.onloadedmetadata = () => {
-            console.log('Remote video metadata loaded');
-            console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-          };
-          
-          videoElement.onplay = () => {
-            console.log('Remote video started playing');
-            console.log('Video playing state:', videoElement.paused, videoElement.ended);
-          };
-          
-          videoElement.onplaying = () => {
-            console.log('Remote video is now playing');
-            console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-            
-            // Check if video actually has content
-            if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
-              console.warn('Video has no dimensions - might be an issue with the stream');
-            }
-          };
-          
-          videoElement.onerror = (e) => {
-            console.error('Remote video error:', e);
-          };
-          
-          // Force a re-render to ensure the video element is displayed
-          setIsRemoteVideoConnected(true);
-          console.log('Remote video connected, stream tracks:', event.streams[0].getTracks());
-          
-          // Make sure the video element is visible
-          videoElement.classList.remove('hidden');
-          videoElement.classList.add('block');
-          
-          // Ensure the video element has the correct styling
-          videoElement.style.display = 'block';
-          videoElement.style.width = '100%';
-          videoElement.style.height = '100%';
-          
-          // Log parent container info
-          console.log('Parent container info:', {
-            offsetWidth: videoElement.parentElement.offsetWidth,
-            offsetHeight: videoElement.parentElement.offsetHeight,
-            computedStyle: window.getComputedStyle(videoElement.parentElement)
-          });
-        } else {
-          console.warn('Remote video ref not available when track received');
+        // If remoteVideoRef is not available yet, store the stream temporarily
+        if (!remoteVideoRef.current) {
+          console.log('Storing remote stream temporarily until video ref is available');
+          pendingRemoteStreamRef.current = event.streams[0];
+          return;
         }
+        
+        // Apply the stream directly if ref is available
+        applyRemoteStreamToVideoElement(event.streams[0]);
       };
 
       // Firestore signaling
@@ -434,6 +447,7 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
       // Hide the video element
       remoteVideoRef.current.classList.remove('block');
       remoteVideoRef.current.classList.add('hidden');
+      remoteVideoRef.current.style.display = 'none';
     }
     
     // Reset video connection state
@@ -546,65 +560,6 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     }, 100);
   };
 
-  // Function to render the remote video or profile placeholder
-  const renderRemoteVideo = () => {
-    // Show remote video if connected and we have a valid stream
-    if (isRemoteVideoConnected && remoteVideoRef.current) {
-      // Check if we actually have a stream attached
-      const hasStream = remoteVideoRef.current.srcObject && 
-                        remoteVideoRef.current.srcObject.getTracks().length > 0;
-      
-      if (hasStream) {
-        console.log('Rendering remote video with stream');
-        console.log('Video element visibility check:', {
-          offsetWidth: remoteVideoRef.current.offsetWidth,
-          offsetHeight: remoteVideoRef.current.offsetHeight,
-          clientWidth: remoteVideoRef.current.clientWidth,
-          clientHeight: remoteVideoRef.current.clientHeight,
-          computedStyle: window.getComputedStyle(remoteVideoRef.current)
-        });
-        
-        return (
-          <video 
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover block"
-          />
-        );
-      }
-    }
-    
-    // Show profile placeholder while waiting for video or if video is not connected
-    console.log('Rendering profile placeholder, isRemoteVideoConnected:', isRemoteVideoConnected);
-    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
-        <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
-          {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
-            <img 
-              src={remoteUser?.photoURL || selectedChat?.photoURL} 
-              alt={chatTitle} 
-              className="w-32 h-32 rounded-full object-cover"
-            />
-          ) : (
-            <span className="text-4xl font-bold">
-              {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
-            </span>
-          )}
-        </div>
-        <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
-        <p className="text-muted-foreground mb-6">
-          {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
-        </p>
-        <div className="flex items-center justify-center">
-          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl h-[80vh] bg-card rounded-xl border flex flex-col">
@@ -626,7 +581,41 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
         <div className="flex-1 relative flex flex-col md:flex-row gap-4 p-4">
           {/* Remote video or recipient info during ringing */}
           <div className="flex-1 bg-muted rounded-lg overflow-hidden relative">
-            {renderRemoteVideo()}
+            {/* Always render the video element but conditionally show/hide */}
+            <video 
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${isRemoteVideoConnected ? 'block' : 'hidden'}`}
+            />
+          
+            {/* Show profile placeholder when video is not connected */}
+            {!isRemoteVideoConnected && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
+                <div className="bg-secondary rounded-full w-32 h-32 flex items-center justify-center mb-6">
+                  {(remoteUser?.photoURL || selectedChat?.photoURL) ? (
+                    <img 
+                      src={remoteUser?.photoURL || selectedChat?.photoURL} 
+                      alt={chatTitle} 
+                      className="w-32 h-32 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl font-bold">
+                      {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl font-semibold mb-2">{chatTitle}</h2>
+                <p className="text-muted-foreground mb-6">
+                  {callStatus === 'Ringing...' ? 'Calling...' : callStatus}
+                </p>
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full mx-1 animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Local video */}
