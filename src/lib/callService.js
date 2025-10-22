@@ -13,8 +13,7 @@ import {
   query,
   where,
   orderBy,
-  limit,
-  runTransaction
+  limit
 } from 'firebase/firestore';
 
 // STUN servers for WebRTC
@@ -28,34 +27,40 @@ export const rtcConfiguration = {
 const RATE_LIMIT_WINDOW = 10000; // 10 seconds
 const MAX_CALLS_PER_WINDOW = 3; // Allow 3 calls per window
 
-// Check rate limit based on recent call attempts
+// Check rate limit based on recent call attempts (simplified to avoid index requirement)
 export const checkRateLimit = async (userId) => {
   try {
     const callsRef = collection(db, 'calls');
     const tenSecondsAgo = new Date(Date.now() - RATE_LIMIT_WINDOW);
     
-    // Query for recent calls initiated by this user
+    // Simplified query to avoid composite index requirement
     const q = query(
       callsRef,
       where('callerUid', '==', userId),
       where('createdAt', '>', tenSecondsAgo),
-      orderBy('createdAt', 'desc'),
-      limit(MAX_CALLS_PER_WINDOW)
+      limit(MAX_CALLS_PER_WINDOW * 2) // Get more to filter manually
     );
     
     const querySnapshot = await getDocs(q);
     
-    // If we have reached the limit, reject the call
-    if (querySnapshot.size >= MAX_CALLS_PER_WINDOW) {
-      const oldestCall = querySnapshot.docs[querySnapshot.docs.length - 1];
-      const oldestCallData = oldestCall.data();
-      const timeSinceOldestCall = Date.now() - oldestCallData.createdAt.toDate().getTime();
-      const timeLeft = RATE_LIMIT_WINDOW - timeSinceOldestCall;
-      
-      if (timeLeft > 0) {
-        console.warn(`Rate limit exceeded. Please wait ${Math.ceil(timeLeft / 1000)} seconds.`);
-        return { allowed: false, timeLeft: Math.ceil(timeLeft / 1000) };
+    // Manually filter and count recent calls
+    let recentCallCount = 0;
+    const now = Date.now();
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.createdAt && data.createdAt.toDate) {
+        const callTime = data.createdAt.toDate().getTime();
+        if (now - callTime < RATE_LIMIT_WINDOW) {
+          recentCallCount++;
+        }
       }
+    });
+    
+    // If we have reached the limit, reject the call
+    if (recentCallCount >= MAX_CALLS_PER_WINDOW) {
+      console.warn(`Rate limit exceeded. Recent calls: ${recentCallCount}`);
+      return { allowed: false, timeLeft: Math.ceil(RATE_LIMIT_WINDOW / 1000) };
     }
     
     return { allowed: true };
@@ -85,21 +90,31 @@ export async function createCallDocument(callerUid, calleeUid) {
 }
 
 export async function setOffer(callId, offer) {
-  const callRef = doc(db, 'calls', callId);
-  await updateDoc(callRef, { 
-    offer, 
-    status: 'ringing',
-    ringingAt: serverTimestamp()
-  });
+  try {
+    const callRef = doc(db, 'calls', callId);
+    await updateDoc(callRef, { 
+      offer, 
+      status: 'ringing',
+      ringingAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error setting offer:', error);
+    throw error;
+  }
 }
 
 export async function setAnswer(callId, answer) {
-  const callRef = doc(db, 'calls', callId);
-  await updateDoc(callRef, { 
-    answer, 
-    status: 'accepted',
-    acceptedAt: serverTimestamp()
-  });
+  try {
+    const callRef = doc(db, 'calls', callId);
+    await updateDoc(callRef, { 
+      answer, 
+      status: 'accepted',
+      acceptedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error setting answer:', error);
+    throw error;
+  }
 }
 
 export function listenForAnswer(callId, callback) {
@@ -141,35 +156,50 @@ export function listenForCallStatus(callId, callback) {
   });
 }
 
-// Function to update call status with transaction for atomicity
+// Function to update call status with retry logic
 export async function updateCallStatus(callId, status, additionalData = {}) {
   try {
     const callRef = doc(db, 'calls', callId);
     
-    await runTransaction(db, async (transaction) => {
-      const callDoc = await transaction.get(callRef);
-      if (!callDoc.exists()) {
-        throw new Error('Call document not found');
-      }
-      
+    // Simple update without transaction to avoid precondition failures
+    const updateData = { status, ...additionalData };
+    
+    // Add timestamp based on status
+    if (status === 'ended') {
+      updateData.endedAt = serverTimestamp();
+    } else if (status === 'accepted') {
+      updateData.acceptedAt = serverTimestamp();
+    } else if (status === 'declined') {
+      updateData.declinedAt = serverTimestamp();
+    } else if (status === 'ringing') {
+      updateData.ringingAt = serverTimestamp();
+    }
+    
+    await updateDoc(callRef, updateData);
+    return true;
+  } catch (error) {
+    console.error('Error updating call status:', error);
+    // Try one more time
+    try {
+      const callRef = doc(db, 'calls', callId);
       const updateData = { status, ...additionalData };
       
-      // Add timestamp based on status
       if (status === 'ended') {
         updateData.endedAt = serverTimestamp();
       } else if (status === 'accepted') {
         updateData.acceptedAt = serverTimestamp();
+      } else if (status === 'declined') {
+        updateData.declinedAt = serverTimestamp();
       } else if (status === 'ringing') {
         updateData.ringingAt = serverTimestamp();
       }
       
-      transaction.update(callRef, updateData);
-    });
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating call status:', error);
-    return false;
+      await updateDoc(callRef, updateData);
+      return true;
+    } catch (retryError) {
+      console.error('Retry failed for updating call status:', retryError);
+      return false;
+    }
   }
 }
 

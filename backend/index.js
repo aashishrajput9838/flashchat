@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { initializeApp } = require('firebase/app');
-const { getFirestore, doc, updateDoc, serverTimestamp, runTransaction } = require('firebase/firestore');
+const { getFirestore, doc, updateDoc, serverTimestamp } = require('firebase/firestore');
 
 const app = express();
 const server = http.createServer(app);
@@ -174,20 +174,31 @@ io.on('connection', (socket) => {
   });
 });
 
-// Helper function to update call status in Firestore with transaction for atomicity
+// Helper function to update call status in Firestore with retry logic
 async function updateCallStatus(callId, status) {
   try {
     const callRef = doc(db, 'calls', callId);
+    const updateData = { status };
     
-    await runTransaction(db, async (transaction) => {
-      const callDoc = await transaction.get(callRef);
-      if (!callDoc.exists()) {
-        throw new Error('Call document not found');
-      }
-      
+    // Add timestamp for specific statuses
+    if (status === 'ended') {
+      updateData.endedAt = serverTimestamp();
+    } else if (status === 'accepted') {
+      updateData.acceptedAt = serverTimestamp();
+    } else if (status === 'declined') {
+      updateData.declinedAt = serverTimestamp();
+    } else if (status === 'ringing') {
+      updateData.ringingAt = serverTimestamp();
+    }
+    
+    await updateDoc(callRef, updateData);
+  } catch (error) {
+    console.error(`Error updating call ${callId} status to ${status}:`, error);
+    // Try one more time
+    try {
+      const callRef = doc(db, 'calls', callId);
       const updateData = { status };
       
-      // Add timestamp based on status
       if (status === 'ended') {
         updateData.endedAt = serverTimestamp();
       } else if (status === 'accepted') {
@@ -198,10 +209,10 @@ async function updateCallStatus(callId, status) {
         updateData.ringingAt = serverTimestamp();
       }
       
-      transaction.update(callRef, updateData);
-    });
-  } catch (error) {
-    console.error(`Error updating call ${callId} status to ${status}:`, error);
+      await updateDoc(callRef, updateData);
+    } catch (retryError) {
+      console.error(`Retry failed for updating call ${callId} status to ${status}:`, retryError);
+    }
   }
 }
 
