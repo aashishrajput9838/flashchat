@@ -266,11 +266,9 @@ ${emojis.join(' ')}`);
                 {chatTitle?.charAt(0)?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="absolute bottom-0 right-0 h-3 w-3 sm:h-3 sm:w-3 bg-green-500 rounded-full border-2 border-card"></div>
           </div>
           <div>
             <h3 className="font-semibold text-responsive-sm sm:font-semibold sm:text-responsive-base">{chatTitle}</h3>
-            <p className="text-muted-foreground text-responsive-xs">Online</p>
           </div>
         </div>
         
