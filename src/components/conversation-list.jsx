@@ -357,7 +357,7 @@ export function ConversationList({ onSelectChat }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium truncate text-responsive-sm">{chat.name}</div>
+                    <div className="font-medium truncate text-responsive-sm">{chat.uid === currentUser?.uid ? 'Me' : chat.name}</div>
                     {chat.lastSeen && (
                       <div className="text-muted-foreground text-responsive-xs">
                         {formatLastSeen(chat.lastSeen)}
