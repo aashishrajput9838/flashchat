@@ -209,6 +209,7 @@ ${emojis.join(' ')}`);
     } catch (error) {
       console.error("Error unfriending user:", error);
       alert("Failed to unfriend user. Please try again.");
+      setShowDropdown(false);
     }
   };
 
@@ -219,11 +220,12 @@ ${emojis.join(' ')}`);
       const newAppearOfflineStatus = !currentUser?.appearOffline;
       await setAppearOffline(newAppearOfflineStatus);
       setShowDropdown(false);
-      // Refresh the user data to reflect the change
-      window.location.reload();
+      // Instead of reloading the page, just update the user state
+      // window.location.reload();
     } catch (error) {
       console.error("Error toggling appear offline:", error);
       alert("Failed to update appear offline status. Please try again.");
+      setShowDropdown(false);
     }
   };
 
@@ -235,6 +237,7 @@ ${emojis.join(' ')}`);
     } catch (error) {
       console.error("Error signing out:", error);
       alert("Failed to sign out. Please try again.");
+      setShowDropdown(false);
     }
   };
 
@@ -242,6 +245,24 @@ ${emojis.join(' ')}`);
   const toggleDropdown = () => {
     setShowDropdown(prev => !prev);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          ellipsisRef.current && !ellipsisRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   // Close chat on mobile
   const handleClose = () => {
@@ -332,17 +353,24 @@ ${emojis.join(' ')}`);
             {showDropdown && (
               <div 
                 ref={dropdownRef}
-                className="absolute right-0 top-full mt-2 w-48 bg-card border rounded-lg shadow-lg z-10"
+                className="absolute right-0 top-full mt-2 w-48 bg-card border rounded-lg shadow-lg z-50"
+                style={{ position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem' }}
               >
                 <button
-                  onClick={handleUnfriend}
+                  onClick={() => {
+                    handleUnfriend();
+                    setShowDropdown(false);
+                  }}
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <XCircle className="h-4 w-4" />
                   <span className="text-responsive-sm">Unfriend</span>
                 </button>
                 <button
-                  onClick={toggleAppearOffline}
+                  onClick={() => {
+                    toggleAppearOffline();
+                    setShowDropdown(false);
+                  }}
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <span className="text-responsive-sm">
@@ -350,7 +378,10 @@ ${emojis.join(' ')}`);
                   </span>
                 </button>
                 <button
-                  onClick={handleSignOut}
+                  onClick={() => {
+                    handleSignOut();
+                    setShowDropdown(false);
+                  }}
                   className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
