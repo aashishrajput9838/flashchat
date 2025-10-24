@@ -1,12 +1,13 @@
-import { Phone, Video, Camera, Link, User, Mail, Bell, X, Check, XCircle } from "lucide-react"
+import { Phone, Video, Camera, Link, User, Mail, Bell, X, Check, XCircle, Search as SearchIcon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
-import { Search } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead, updateUserOnlineStatusPrivacy, sendFriendRequest, isUserFriend } from "@/features/user/services/userService"
 
 export function RightSidebar({ onUserClick }) {
   const [members, setMembers] = useState([])
+  const [filteredMembers, setFilteredMembers] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [friendRequests, setFriendRequests] = useState([])
   const [notifications, setNotifications] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
@@ -90,6 +91,21 @@ export function RightSidebar({ onUserClick }) {
       }
     };
   }, []);
+
+  // Filter members based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredMembers(members);
+    } else {
+      // If there's a search query, filter all users
+      const lowerCaseQuery = searchQuery.toLowerCase();
+      const filtered = members.filter(member => 
+        member.name?.toLowerCase().includes(lowerCaseQuery) || 
+        member.email?.toLowerCase().includes(lowerCaseQuery)
+      );
+      setFilteredMembers(filtered);
+    }
+  }, [searchQuery, members]);
 
   // Monitor online/offline status
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -434,14 +450,26 @@ export function RightSidebar({ onUserClick }) {
       
       {/* Members List */}
       <section className="flex-1 rounded-xl border bg-card p-4 shadow-sm flex flex-col min-h-0">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold">People</h3>
-          <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-1">
-            {members.length}
-          </span>
+        <div className="p-3 sm:p-4 md:p-5 border-b">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-responsive-lg font-semibold">Conversations</h2>
+            <button className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors" aria-label="Add friend">
+              <User className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          </div>
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input 
+              placeholder="Search conversations..." 
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm" 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="space-y-2 overflow-y-auto flex-1 min-h-0">
-          {members.map((member) => (
+        <div className="space-y-2 overflow-y-auto flex-1 min-h-0 mt-3">
+          {filteredMembers.map((member) => (
             <div
               key={member.uid}
               onClick={() => handleUserClick(member)}

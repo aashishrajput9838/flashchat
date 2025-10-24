@@ -355,6 +355,7 @@ export default function App() {
           ${screenSize.isMobile ? 'block' : 'grid'}
           ${screenSize.isTablet ? 'grid-cols-[80px_1fr] gap-4 p-4' : ''}
           ${screenSize.isDesktop ? 'grid-cols-[80px_350px_1fr_350px] gap-6 p-6' : ''}
+          ${screenSize.isDesktop ? 'h-[90vh]' : ''}
           ${screenSize.isLargeScreen ? 'grid-cols-[80px_400px_1fr_400px] gap-8 p-8' : ''}
           ${screenSize.isFoldable ? 'flex flex-row h-[90vh]' : ''}
         `}>
@@ -379,11 +380,11 @@ export default function App() {
           `}>
             {screenSize.isMobile ? (
               selectedChat ? (
-                <div className="h-[calc(100vh-120px)]">
+                <div className="h-[calc(90vh-108px)]">
                   <ChatThread selectedChat={selectedChat} onClose={handleCloseChat} showCloseButton={true} />
                 </div>
               ) : (
-                <div className="h-[calc(100vh-120px)] flex items-center justify-center p-4">
+                <div className="h-[calc(90vh-108px)] flex items-center justify-center p-4">
                   <div className="text-center max-w-md">
                     <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>

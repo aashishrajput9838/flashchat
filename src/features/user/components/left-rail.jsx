@@ -63,7 +63,7 @@ export function LeftRail() {
   };
 
   return (
-    <div className="flex h-full flex-row gap-3 lg:flex-col">
+    <div className="flex h-[90vh] flex-row gap-3 lg:flex-col">
       {/* Brand coin */}
       <div
         className="grid h-12 w-12 place-items-center rounded-full border bg-secondary">

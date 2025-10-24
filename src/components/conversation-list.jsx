@@ -1,30 +1,46 @@
-import { Search, UserPlus, X, Clock } from "lucide-react"
+import { Search, UserPlus, X, Clock, User } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest } from "@/features/user/services/userService"
 
 export function ConversationList({ onSelectChat }) {
   const [chats, setChats] = useState([])
   const [showAddFriend, setShowAddFriend] = useState(false)
   const [friendRequestStatus, setFriendRequestStatus] = useState('')
-  const [searchQuery, setSearchQuery] = useState('') // Add search state
-  const [userSearchQuery, setUserSearchQuery] = useState('') // Search for users in add friend section
-  const [filteredUsers, setFilteredUsers] = useState([]) // Filtered users for add friend section
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
   const currentUser = getCurrentUser()
-  const currentUserId = currentUser?.uid // Extract the UID for dependency array
+  const currentUserId = currentUser?.uid
   const friendsSubscriptionRef = useRef(null)
+  const searchTimeoutRef = useRef(null)
+
+  // Debounced search to optimize performance
+  const debouncedSearch = useCallback((query) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      setIsSearching(false)
+    }, 300)
+    
+    setIsSearching(true)
+  }, [])
+
+  useEffect(() => {
+    debouncedSearch(searchQuery)
+  }, [searchQuery, debouncedSearch])
 
   useEffect(() => {
     // Clean up previous subscriptions
     if (friendsSubscriptionRef.current) {
-      friendsSubscriptionRef.current();
-      friendsSubscriptionRef.current = null;
+      friendsSubscriptionRef.current()
+      friendsSubscriptionRef.current = null
     }
 
     // Subscribe to friends only from Firestore to create chat list
     friendsSubscriptionRef.current = subscribeToFriends((friends) => {
-      console.log('Friends updated:', friends); // Debug log
       // Transform friends data to match the expected format
       const chatList = (Array.isArray(friends) ? friends : [])
         .map(friend => ({
@@ -34,19 +50,17 @@ export function ConversationList({ onSelectChat }) {
             ? (friend.name || friend.displayName || friend.email).split(" ").map(n => n[0]).join("").slice(0, 2)
             : "U",
           uid: friend.uid,
-          photoURL: friend.photoURL || "/diverse-avatars.png", // Add fallback
+          photoURL: friend.photoURL || "/diverse-avatars.png",
           lastSeen: friend.lastSeen || null,
           isOnline: friend.isOnline || false,
           // Pass the entire friend object so OnlineStatus can access all properties
           ...friend
-        }));
-      
-      console.log('Chat list:', chatList); // Debug log
+        }))
       
       // Add current user to the list
       if (currentUser) {
         // Check if current user is already in the list
-        const currentUserInList = chatList.find(chat => chat.uid === currentUser.uid);
+        const currentUserInList = chatList.find(chat => chat.uid === currentUser.uid)
         if (!currentUserInList) {
           // Add current user if not in the list
           chatList.push({
@@ -56,108 +70,117 @@ export function ConversationList({ onSelectChat }) {
               ? (currentUser.displayName || currentUser.email).split(" ").map(n => n[0]).join("").slice(0, 2)
               : "U",
             uid: currentUser.uid,
-            photoURL: currentUser.photoURL || "/diverse-avatars.png", // Add fallback
+            photoURL: currentUser.photoURL || "/diverse-avatars.png",
             lastSeen: new Date(),
             isOnline: true,
             // Pass the entire currentUser object so OnlineStatus can access all properties
             ...currentUser
-          });
+          })
         }
       }
       
-      setChats(chatList);
-    });
+      setChats(chatList)
+    })
 
     // Clean up listeners on component unmount
     return () => {
       if (friendsSubscriptionRef.current) {
-        friendsSubscriptionRef.current();
-        friendsSubscriptionRef.current = null;
+        friendsSubscriptionRef.current()
+        friendsSubscriptionRef.current = null
       }
-    };
-  }, [currentUserId]); // Use currentUserId instead of currentUser object
+      
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [currentUserId])
+
+  // Filter chats based on search query - ONLY search friends
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return chats
+    }
+    
+    const query = searchQuery.toLowerCase().trim()
+    return chats.filter(chat => 
+      chat.name.toLowerCase().includes(query) ||
+      (chat.email && chat.email.toLowerCase().includes(query))
+    )
+  }, [chats, searchQuery])
 
   // Function to handle chat selection
   const handleSelectChat = (chat) => {
     if (onSelectChat) {
-      onSelectChat(chat);
+      onSelectChat(chat)
     }
-  };
+  }
 
   // Function to handle adding a new friend
   const handleAddFriend = async (email) => {
     if (!email) {
-      setFriendRequestStatus('Please select a user');
-      return;
+      setFriendRequestStatus('Please enter an email address')
+      return
     }
 
     // Simple email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      setFriendRequestStatus('Invalid email address');
-      return;
+      setFriendRequestStatus('Invalid email address')
+      return
     }
 
     // Prevent users from adding themselves
     if (currentUser && email === currentUser.email) {
-      setFriendRequestStatus('You cannot add yourself as a friend');
-      return;
+      setFriendRequestStatus('You cannot add yourself as a friend')
+      return
     }
 
-    setFriendRequestStatus('Sending friend request...');
+    setFriendRequestStatus('Sending friend request...')
     
     try {
       // Send friend request
-      await sendFriendRequest(email);
+      await sendFriendRequest(email)
       
-      setFriendRequestStatus(`Friend request sent to ${email}!`);
+      setFriendRequestStatus(`Friend request sent to ${email}!`)
       
       // Hide the add friend form after 2 seconds
       setTimeout(() => {
-        setShowAddFriend(false);
-        setFriendRequestStatus('');
-        setUserSearchQuery('');
-        setFilteredUsers([]);
-      }, 2000);
+        setShowAddFriend(false)
+        setFriendRequestStatus('')
+      }, 2000)
     } catch (error) {
-      console.error('Friend request error:', error);
+      console.error('Friend request error:', error)
       if (error.message === 'User with this email not found') {
-        setFriendRequestStatus('User not found. Please check the email address.');
+        setFriendRequestStatus('User not found. Please check the email address.')
       } else if (error.message === 'Permission denied. You may not have access to send friend requests.') {
-        setFriendRequestStatus('Permission denied. Please check your account permissions.');
+        setFriendRequestStatus('Permission denied. Please check your account permissions.')
       } else if (error.message === 'Too many requests. Please wait a moment and try again.') {
-        setFriendRequestStatus('Too many requests. Please wait a moment and try again.');
+        setFriendRequestStatus('Too many requests. Please wait a moment and try again.')
       } else {
-        setFriendRequestStatus('Failed to send friend request. Please try again.');
+        setFriendRequestStatus('Failed to send friend request. Please try again.')
       }
     }
-  };
-
-  // Function to select a user from search results
-  const handleSelectUser = (user) => {
-    handleAddFriend(user.email);
-  };
-
-  // Filter chats based on search query - only search friends
-  const filteredChats = searchQuery 
-    ? chats.filter(chat => 
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        chat.preview.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : chats;
+  }
 
   // Format last seen time
   const formatLastSeen = (lastSeen) => {
-    if (!lastSeen) return '';
-    const now = new Date();
-    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
-    const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+    if (!lastSeen) return ''
+    const now = new Date()
+    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen)
+    const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60))
     
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-  };
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    return `${Math.floor(diffInMinutes / 1440)}d ago`
+  }
+
+  // Accessibility: Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setSearchQuery('')
+    }
+  }
 
   return (
     <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-list">
@@ -168,22 +191,29 @@ export function ConversationList({ onSelectChat }) {
           <button 
             onClick={() => setShowAddFriend(true)}
             className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
-            aria-label="Add friend"
-          >
+            aria-label="Add friend">
             <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
         
-        {/* Search bar */}
+        {/* Search bar - Enhanced with accessibility and performance */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search conversations..."
+            placeholder="Search Friends"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
+            aria-label="Search friends"
+            role="searchbox"
           />
+          {isSearching && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -195,27 +225,31 @@ export function ConversationList({ onSelectChat }) {
               <h3 className="text-responsive-lg font-semibold">Add Friend</h3>
               <button
                 onClick={() => {
-                  setShowAddFriend(false);
-                  setFriendRequestStatus('');
-                  setUserSearchQuery('');
-                  setFilteredUsers([]);
+                  setShowAddFriend(false)
+                  setFriendRequestStatus('')
                 }}
                 className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
-                aria-label="Close"
-              >
+                aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </div>
             
             <div className="p-3 sm:p-4">
               <div className="relative mb-3 sm:mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <input
-                  type="text"
-                  placeholder="Search by email or name..."
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  type="email"
+                  placeholder="Enter friend's email address"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const email = e.target.value
+                      if (email) {
+                        handleAddFriend(email)
+                      }
+                    }
+                  }}
                   className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
+                  aria-label="Friend's email address"
                 />
               </div>
               
@@ -227,10 +261,10 @@ export function ConversationList({ onSelectChat }) {
               
               <button
                 onClick={(e) => {
-                  const input = e.target.closest('.p-3').querySelector('input');
-                  const email = input.value;
+                  const input = e.target.closest('.p-3').querySelector('input')
+                  const email = input.value
                   if (email) {
-                    handleAddFriend(email);
+                    handleAddFriend(email)
                   }
                 }}
                 className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-responsive-sm">
@@ -241,13 +275,26 @@ export function ConversationList({ onSelectChat }) {
         </div>
       )}
 
-      {/* Chat list */}
+      {/* Chat list with enhanced search results */}
       <div className="flex-1 overflow-y-auto">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-6 sm:p-8 text-center text-muted-foreground">
-            <Search className="h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 mx-auto" />
-            <h3 className="text-responsive-lg font-medium mb-1">No conversations yet</h3>
-            <p className="text-responsive-sm">Start a conversation with a friend or add new friends</p>
+            <Search className="h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 mx-auto" aria-hidden="true" />
+            <h3 className="text-responsive-lg font-medium mb-1">
+              {searchQuery ? 'No friends found' : 'No conversations yet'}
+            </h3>
+            <p className="text-responsive-sm">
+              {searchQuery 
+                ? 'No friends match your search. Try a different name or add new friends.' 
+                : 'Start a conversation with a friend or add new friends'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowAddFriend(true)}
+                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-responsive-sm">
+                Add Friend
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y">
@@ -256,7 +303,14 @@ export function ConversationList({ onSelectChat }) {
                 key={chat.uid}
                 onClick={() => handleSelectChat(chat)}
                 className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
-              >
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleSelectChat(chat)
+                  }
+                }}
+                aria-label={`Chat with ${chat.uid === currentUser?.uid ? 'yourself' : chat.name}`}>
                 <div className="relative">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={chat.photoURL} alt={chat.name} />
@@ -264,10 +318,19 @@ export function ConversationList({ onSelectChat }) {
                       {chat.initials}
                     </AvatarFallback>
                   </Avatar>
+                  <OnlineStatus 
+                    isOnline={chat.isOnline} 
+                    lastSeen={chat.lastSeen} 
+                    showText={false} 
+                    size="sm" 
+                    user={chat} 
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium truncate text-responsive-sm">{chat.uid === currentUser?.uid ? 'Me' : chat.name}</div>
+                    <div className="font-medium truncate text-responsive-sm">
+                      {chat.uid === currentUser?.uid ? 'Me' : chat.name}
+                    </div>
                     {chat.lastSeen && (
                       <div className="text-muted-foreground text-responsive-xs">
                         {formatLastSeen(chat.lastSeen)}
@@ -275,8 +338,16 @@ export function ConversationList({ onSelectChat }) {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
-                    <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat} />
+                    <p className="text-muted-foreground truncate text-responsive-xs">
+                      {chat.uid === currentUser?.uid ? 'Your profile' : 'Send a message...'}
+                    </p>
+                    <OnlineStatus 
+                      isOnline={chat.isOnline} 
+                      lastSeen={chat.lastSeen} 
+                      showText={true} 
+                      size="sm" 
+                      user={chat} 
+                    />
                   </div>
                 </div>
               </div>
@@ -285,5 +356,5 @@ export function ConversationList({ onSelectChat }) {
         )}
       </div>
     </div>
-  );
+  )
 }

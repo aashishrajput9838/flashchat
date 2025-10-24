@@ -1,23 +1,16 @@
 import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
-import { VideoCall } from "@/features/call/components/video-call"
-import { AudioCall } from "@/features/call/components/audio-call"
+import { VideoCall } from "@/components/video-call"
+import { AudioCall } from "@/components/audio-call"
 import { useState, useEffect, useRef } from "react"
-import { useChat } from "@/features/chat/hooks/useChat"
+import { sendMessage, subscribeToMessages } from "@/features/chat/services/chatService"
 import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline } from "@/features/user/services/userService"
 import { createCallDocument } from "@/features/call/services/callService"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
-  const { 
-    messages: chatMessages, 
-    message, 
-    setMessage, 
-    handleSendMessage, 
-    formatMessageTime, 
-    messagesEndRef 
-  } = useChat(selectedChat);
-  
+  const [message, setMessage] = useState("")
+  const [chatMessages, setChatMessages] = useState([])
   const [userName, setUserName] = useState("")
   const [showDropdown, setShowDropdown] = useState(false)
   const [showVideoCall, setShowVideoCall] = useState(false)
@@ -30,13 +23,65 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const user = getCurrentUser()
   const currentUserId = user ? user.uid : null
   const fileInputRef = useRef(null)
+  const messageSubscriptionRef = useRef(null)
+  const messagesEndRef = useRef(null)
 
-  // Set chat title when selectedChat changes
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
-    if (selectedChat) {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  // Subscribe to messages when selectedChat changes
+  useEffect(() => {
+    if (selectedChat && selectedChat.id) {
+      // Clean up previous subscription
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current();
+      }
+      
+      // Subscribe to new messages
+      messageSubscriptionRef.current = subscribeToMessages(selectedChat.id, (messages) => {
+        setChatMessages(messages);
+      });
+      
+      // Set chat title
       setUserName(selectedChat.name || selectedChat.displayName || "Unknown User");
     }
+    
+    return () => {
+      // Clean up subscription on unmount or when chat changes
+      if (messageSubscriptionRef.current) {
+        messageSubscriptionRef.current();
+        messageSubscriptionRef.current = null;
+      }
+    };
   }, [selectedChat]);
+
+  // Handle sending a message
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!message.trim() || !selectedChat) return;
+    
+    try {
+      // Create message data object
+      const messageData = {
+        text: message.trim(),
+        name: user?.displayName || 'Anonymous',
+        photoURL: user?.photoURL || null,
+        you: true
+      };
+      
+      // Send message with correct parameters
+      await sendMessage(messageData, selectedChat.uid);
+      setMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
 
   // Function to handle file selection
   const handleFileChange = (e) => {
@@ -134,7 +179,11 @@ ${emojis.join(' ')}`);
     }
   };
 
-
+  // Format message time
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   // Get message status icon
   const getMessageStatusIcon = (status) => {
@@ -245,9 +294,9 @@ ${emojis.join(' ')}`);
     : "FlashChat";
 
   return (
-    <div className="h-[90vh] flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
+    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
       {/* Chat header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b flex-shrink-0">
+      <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b">
         <div className="flex items-center gap-2 sm:gap-3">
           {showCloseButton && (
             <button
@@ -344,8 +393,8 @@ ${emojis.join(' ')}`);
         </div>
       </div>
       
-      {/* Messages area - Fixed height with scrollable content */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 max-h-[calc(90vh-180px)]">
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         {chatMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -399,7 +448,7 @@ ${emojis.join(' ')}`);
       )}
       
       {/* Input area */}
-      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t flex-shrink-0">
+      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t">
         <div className="flex items-center gap-2">
           <button
             type="button"
