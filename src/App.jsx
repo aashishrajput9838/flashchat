@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { LeftRail } from "@/components/left-rail";
-import { ConversationList } from "@/components/conversation-list";
-import { ChatThread } from "@/components/chat-thread";
-import { RightSidebar } from "@/components/right-sidebar";
-import { CallNotification } from "@/components/call-notification";
-import { VideoCall } from "@/components/video-call";
+import { LeftRail } from "@/features/user/components/left-rail";
+import { ConversationList } from "@/features/chat/components/conversation-list";
+import { ChatThread } from "@/features/chat/components/chat-thread";
+import { RightSidebar } from "@/features/user/components/right-sidebar";
+import { CallNotification } from "@/features/call/components/call-notification";
+import { VideoCall } from "@/features/call/components/video-call";
 import { X, Phone, MessageCircle, User } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity } from '@/lib/userService';
+import { auth } from '@/config/firebase';
+import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity, updateUserOnlineStatus } from '@/features/user/services/userService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -177,7 +177,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     // Import and use the signInWithGoogle function directly
-                    import('@/lib/userService').then(({ signInWithGoogle }) => {
+                    import('@/features/auth/services/authService').then(({ signInWithGoogle }) => {
                       signInWithGoogle().catch(error => {
                         console.error('Sign in error:', error);
                       });
