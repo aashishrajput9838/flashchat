@@ -84,6 +84,23 @@ export function RightSidebar({ onUserClick }) {
     };
   }, []);
 
+  // Monitor online/offline status
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Function to handle user click
   const handleUserClick = (user) => {
     if (onUserClick) {
@@ -214,7 +231,7 @@ export function RightSidebar({ onUserClick }) {
                     .slice(0, 2) || currentUser.email?.substring(0, 2).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+              <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{currentUser.displayName || "User"}</div>
@@ -364,7 +381,7 @@ export function RightSidebar({ onUserClick }) {
                     {member.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                {member.isOnline && (
+                {member.isOnline && member.role !== "You" && (
                   <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
                 )}
               </div>
