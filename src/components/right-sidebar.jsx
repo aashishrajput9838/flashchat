@@ -1,0 +1,387 @@
+import { Phone, Video, Camera, Link, User, Mail, Bell, X, Check, XCircle } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState, useEffect, useRef } from "react"
+import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead } from "@/lib/userService"
+
+export function RightSidebar({ onUserClick }) {
+  const [members, setMembers] = useState([])
+  const [friendRequests, setFriendRequests] = useState([])
+  const [notifications, setNotifications] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [friendRequestStatus, setFriendRequestStatus] = useState({})
+  const [notificationStatus, setNotificationStatus] = useState({})
+  const currentUser = getCurrentUser()
+  const usersSubscriptionRef = useRef(null)
+  const friendRequestsSubscriptionRef = useRef(null)
+  const notificationsSubscriptionRef = useRef(null)
+
+  useEffect(() => {
+    // Clean up previous subscriptions
+    if (usersSubscriptionRef.current) {
+      usersSubscriptionRef.current();
+      usersSubscriptionRef.current = null;
+    }
+    
+    if (friendRequestsSubscriptionRef.current) {
+      friendRequestsSubscriptionRef.current();
+      friendRequestsSubscriptionRef.current = null;
+    }
+    
+    if (notificationsSubscriptionRef.current) {
+      notificationsSubscriptionRef.current();
+      notificationsSubscriptionRef.current = null;
+    }
+
+    // Subscribe to all users from Firestore
+    usersSubscriptionRef.current = subscribeToUsers((users) => {
+      // Transform users data to match the expected format
+      const memberList = (Array.isArray(users) ? users : []).map(user => ({
+        name: user.name || user.displayName || user.email || `User${user.uid.substring(0, 5)}`,
+        role: user.uid === currentUser?.uid ? "You" : "",
+        email: user.email,
+        photoURL: user.photoURL,
+        uid: user.uid,
+        isOnline: user.isOnline || false,
+        lastSeen: user.lastSeen || null
+      }));
+      
+      // Sort to put current user at the top
+      memberList.sort((a, b) => {
+        if (a.role === "You") return -1;
+        if (b.role === "You") return 1;
+        return 0;
+      });
+      
+      setMembers(memberList);
+    });
+
+    // Subscribe to friend requests
+    friendRequestsSubscriptionRef.current = subscribeToFriendRequests((requests) => {
+      setFriendRequests(Array.isArray(requests) ? requests : []);
+    });
+
+    // Subscribe to notifications
+    notificationsSubscriptionRef.current = subscribeToNotifications((notifications) => {
+      setNotifications(Array.isArray(notifications) ? notifications : []);
+    });
+
+    // Clean up listeners on component unmount
+    return () => {
+      if (usersSubscriptionRef.current) {
+        usersSubscriptionRef.current();
+        usersSubscriptionRef.current = null;
+      }
+      
+      if (friendRequestsSubscriptionRef.current) {
+        friendRequestsSubscriptionRef.current();
+        friendRequestsSubscriptionRef.current = null;
+      }
+      
+      if (notificationsSubscriptionRef.current) {
+        notificationsSubscriptionRef.current();
+        notificationsSubscriptionRef.current = null;
+      }
+    };
+  }, []);
+
+  // Function to handle user click
+  const handleUserClick = (user) => {
+    if (onUserClick) {
+      onUserClick(user);
+    }
+  };
+
+  // Function to accept a friend request
+  const handleAcceptRequest = async (request) => {
+    try {
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Accepting...' }));
+      await acceptFriendRequest(request);
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Accepted!' }));
+      // Remove status message after 2 seconds
+      setTimeout(() => {
+        setFriendRequestStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[request.from];
+          return newStatus;
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Failed to accept' }));
+    }
+  };
+
+  // Function to decline a friend request
+  const handleDeclineRequest = async (request) => {
+    try {
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Declining...' }));
+      await declineFriendRequest(request);
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Declined!' }));
+      // Remove status message after 2 seconds
+      setTimeout(() => {
+        setFriendRequestStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[request.from];
+          return newStatus;
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Failed to decline' }));
+    }
+  };
+
+  // Function to mark a notification as read
+  const handleMarkAsRead = async (notification) => {
+    try {
+      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Marking as read...' }));
+      await markNotificationAsRead(notification);
+      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Marked as read!' }));
+      // Remove status message after 2 seconds
+      setTimeout(() => {
+        setNotificationStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[notification.timestamp];
+          return newStatus;
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Failed to mark as read' }));
+    }
+  };
+
+  // Function to toggle notifications visibility
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
+  };
+
+  // Format last seen time
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return '';
+    const now = new Date();
+    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  return (
+    <div className="flex h-[70vh] min-h-[640px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm lg:h-[calc(100dvh-48px)]">
+      {/* User Profile */}
+      {currentUser && (
+        <section className="rounded-xl border bg-card p-4 flex-shrink-0 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Avatar className="h-12 w-12">
+                <AvatarImage alt="Your avatar" src={currentUser.photoURL || "/diverse-avatars.png"} />
+                <AvatarFallback className="bg-secondary">
+                  {currentUser.displayName
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2) || currentUser.email?.substring(0, 2).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{currentUser.displayName || "User"}</div>
+              <div className="truncate text-xs text-muted-foreground">{currentUser.email}</div>
+            </div>
+            {/* Notifications Bell */}
+            <div className="relative">
+              <button
+                onClick={toggleNotifications}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 block h-5 w-5 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Notifications Panel */}
+          {showNotifications && (
+            <div className="mt-4 rounded-xl border bg-secondary/50 p-4 max-h-80 overflow-y-auto shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold">Notifications</h4>
+                <button 
+                  onClick={() => setShowNotifications(false)}
+                  className="p-1 rounded-full hover:bg-muted"
+                  aria-label="Close notifications"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {notifications.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Bell className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">No notifications</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div 
+                      key={notification.timestamp} 
+                      className={`p-3 rounded-lg ${notification.read ? 'bg-muted/50' : 'bg-white dark:bg-card border'}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5">
+                          {notification.type === 'friend_request' ? (
+                            <User className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Bell className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(notification.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <button
+                            onClick={() => handleMarkAsRead(notification)}
+                            className="p-1 rounded-full hover:bg-muted"
+                            aria-label="Mark as read"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      {notificationStatus[notification.timestamp] && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {notificationStatus[notification.timestamp]}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      
+      {/* Friend Requests */}
+      {friendRequests.length > 0 && (
+        <section className="rounded-xl border bg-card p-4 flex-shrink-0 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold">Friend Requests</h3>
+            <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-1">
+              {friendRequests.length}
+            </span>
+          </div>
+          <div className="space-y-3 max-h-40 overflow-y-auto">
+            {friendRequests.map((request) => (
+              <div key={request.from} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={request.fromPhotoURL || "/diverse-avatars.png"} alt={request.fromName} />
+                  <AvatarFallback className="bg-secondary">
+                    {request.fromName?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate text-sm">{request.fromName}</div>
+                  <div className="text-xs text-muted-foreground truncate">{request.fromEmail}</div>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleAcceptRequest(request)}
+                    className="p-1.5 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                    aria-label="Accept"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeclineRequest(request)}
+                    className="p-1.5 rounded-full bg-destructive text-white hover:bg-destructive/90 transition-colors"
+                    aria-label="Decline"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {friendRequestStatus[request.from] && (
+                  <div className="absolute right-2 bottom-0 text-xs text-muted-foreground">
+                    {friendRequestStatus[request.from]}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      
+      {/* Members List */}
+      <section className="flex-1 rounded-xl border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-semibold">People</h3>
+          <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-1">
+            {members.length}
+          </span>
+        </div>
+        <div className="space-y-2 overflow-y-auto h-full max-h-[calc(100%-40px)]">
+          {members.map((member) => (
+            <div
+              key={member.uid}
+              onClick={() => handleUserClick(member)}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
+            >
+              <div className="relative">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={member.photoURL || "/diverse-avatars.png"} alt={member.name} />
+                  <AvatarFallback className="bg-secondary">
+                    {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {member.isOnline && (
+                  <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium truncate text-sm">{member.name}</div>
+                  {member.role === "You" && (
+                    <span className="text-xs bg-primary text-primary-foreground rounded px-1.5 py-0.5">
+                      You
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  {member.isOnline ? (
+                    <span className="flex items-center text-green-500">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                      Online
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-1"></div>
+                      {member.lastSeen ? formatLastSeen(member.lastSeen) : 'Offline'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                <button className="p-1.5 rounded-full hover:bg-secondary">
+                  <Phone className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 rounded-full hover:bg-secondary">
+                  <Video className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
