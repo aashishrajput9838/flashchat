@@ -372,12 +372,6 @@ export function ConversationList({ onSelectChat }) {
                         <span>Online</span>
                       </div>
                     )}
-                    {chat.uid !== currentUser?.uid && chat.isOnline === false && (
-                      <div className="flex items-center text-muted-foreground text-responsive-xs">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span>Offline</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
