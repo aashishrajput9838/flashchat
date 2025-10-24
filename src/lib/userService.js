@@ -662,43 +662,46 @@ export const subscribeToNotifications = (callback) => {
         const MAX_NOTIFICATION_AGE = 30 * 1000; // 30 seconds
         
         const validNotifications = notifications.filter(notif => {
-          // Skip if already read
-          if (notif.read) return false;
-          
-          // Skip if not a call notification
-          if (!(notif.type === 'video_call' || notif.type === 'audio_call')) return true; // Non-call notifications are always valid
-          
-          // For call notifications, check additional criteria
-          // Check if status is ringing
-          if (notif.status !== 'ringing') return false;
-          
-          // Check timestamp validity
-          let timestampMs;
-          try {
-            if (notif.timestamp?.toDate) {
-              timestampMs = notif.timestamp.toDate().getTime();
-            } else if (typeof notif.timestamp === 'string') {
-              timestampMs = new Date(notif.timestamp).getTime();
-            } else if (notif.timestamp instanceof Date) {
-              timestampMs = notif.timestamp.getTime();
-            } else {
-              return false; // Invalid timestamp format
+          // For call notifications, apply special filtering
+          if (notif.type === 'video_call' || notif.type === 'audio_call') {
+            // Skip if already read
+            if (notif.read) return false;
+            
+            // Check if status is ringing
+            if (notif.status !== 'ringing') return false;
+            
+            // Check timestamp validity
+            let timestampMs;
+            try {
+              if (notif.timestamp?.toDate) {
+                timestampMs = notif.timestamp.toDate().getTime();
+              } else if (typeof notif.timestamp === 'string') {
+                timestampMs = new Date(notif.timestamp).getTime();
+              } else if (notif.timestamp instanceof Date) {
+                timestampMs = notif.timestamp.getTime();
+              } else {
+                return false; // Invalid timestamp format
+              }
+            } catch (e) {
+              return false; // Error parsing timestamp
             }
-          } catch (e) {
-            return false; // Error parsing timestamp
+            
+            // Check if notification is too old
+            if (now - timestampMs > MAX_NOTIFICATION_AGE) {
+              return false;
+            }
+            
+            // Check if callee is current user (for call notifications)
+            if (notif.calleeUid && notif.calleeUid !== currentUser.uid) {
+              return false;
+            }
+            
+            return true;
+          } else {
+            // For non-call notifications, show all notifications (both read and unread)
+            // This ensures the notification badge shows the correct count of unread notifications
+            return true;
           }
-          
-          // Check if notification is too old
-          if (now - timestampMs > MAX_NOTIFICATION_AGE) {
-            return false;
-          }
-          
-          // Check if callee is current user (for call notifications)
-          if (notif.calleeUid && notif.calleeUid !== currentUser.uid) {
-            return false;
-          }
-          
-          return true;
         });
         
         // Sort notifications by timestamp (newest first)
@@ -741,21 +744,35 @@ export const markNotificationAsRead = async (notification) => {
       
       // Find the notification to update by comparing relevant fields
       const updatedNotifications = notifications.map(notif => {
-        // For call notifications, compare by type, callerUid, and timestamp
-        if ((notif.type === 'video_call' || notif.type === 'audio_call') && 
-            notif.callerUid === notification.callerUid &&
-            notif.timestamp === notification.timestamp) {
-          return { ...notif, read: true };
+        // Create a more reliable comparison by converting timestamps to milliseconds
+        let notifTimestampMs, targetTimestampMs;
+        
+        // Handle notification timestamp
+        if (notif.timestamp?.toDate) {
+          notifTimestampMs = notif.timestamp.toDate().getTime();
+        } else if (typeof notif.timestamp === 'string') {
+          notifTimestampMs = new Date(notif.timestamp).getTime();
+        } else if (notif.timestamp instanceof Date) {
+          notifTimestampMs = notif.timestamp.getTime();
+        } else {
+          notifTimestampMs = notif.timestamp;
         }
-        // For other notifications, use the existing comparison logic
-        else if (notif.type === notification.type && 
+        
+        // Handle target notification timestamp
+        if (notification.timestamp?.toDate) {
+          targetTimestampMs = notification.timestamp.toDate().getTime();
+        } else if (typeof notification.timestamp === 'string') {
+          targetTimestampMs = new Date(notification.timestamp).getTime();
+        } else if (notification.timestamp instanceof Date) {
+          targetTimestampMs = notification.timestamp.getTime();
+        } else {
+          targetTimestampMs = notification.timestamp;
+        }
+        
+        // Compare notifications based on type, message, and timestamp
+        if (notif.type === notification.type && 
             notif.message === notification.message &&
-            ((notif.timestamp && notification.timestamp && 
-              notif.timestamp.toDate && notification.timestamp.toDate &&
-              notif.timestamp.toDate().getTime() === notification.timestamp.toDate().getTime()) ||
-             (notif.timestamp && notification.timestamp &&
-              notif.timestamp.getTime && notification.timestamp.getTime &&
-              notif.timestamp.getTime() === notification.timestamp.getTime()))) {
+            notifTimestampMs === targetTimestampMs) {
           return { ...notif, read: true };
         }
         return notif;

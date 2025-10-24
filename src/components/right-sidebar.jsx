@@ -156,6 +156,12 @@ export function RightSidebar({ onUserClick }) {
     setShowNotifications(!showNotifications);
   };
 
+  // Debugging: Log notifications when they change
+  useEffect(() => {
+    console.log('Notifications updated:', notifications);
+    console.log('Unread notifications count:', notifications.filter(n => !n.read).length);
+  }, [notifications]);
+
   // Format last seen time
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return '';
