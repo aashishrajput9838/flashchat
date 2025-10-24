@@ -310,7 +310,7 @@ export const sendFriendRequest = async (friendEmail) => {
       message: `You sent a friend request to ${friendData.name || friendData.displayName || friendData.email}`,
       to: friendData.uid,
       toName: friendData.name || friendData.displayName || friendData.email,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -420,7 +420,7 @@ export const acceptFriendRequest = async (request) => {
       message: `You accepted ${request.fromName || request.fromEmail}'s friend request`,
       from: request.from,
       fromName: request.fromName || request.fromEmail,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -447,7 +447,7 @@ export const acceptFriendRequest = async (request) => {
       message: `${currentUser.displayName || currentUser.email} accepted your friend request`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -498,7 +498,7 @@ export const declineFriendRequest = async (request) => {
       message: `You declined ${request.fromName || request.fromEmail}'s friend request`,
       from: request.from,
       fromName: request.fromName || request.fromEmail,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -525,7 +525,7 @@ export const declineFriendRequest = async (request) => {
       message: `${currentUser.displayName || currentUser.email} declined your friend request`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -586,7 +586,7 @@ export const unfriendUser = async (friendUid) => {
       message: `You unfriended ${friendName}`,
       friendUid: friendUid,
       friendName: friendName,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
@@ -613,7 +613,7 @@ export const unfriendUser = async (friendUid) => {
       message: `${currentUser.displayName || currentUser.email} unfriended you`,
       from: currentUser.uid,
       fromName: currentUser.displayName || currentUser.email,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       read: false
     };
     
