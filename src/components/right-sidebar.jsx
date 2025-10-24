@@ -242,13 +242,6 @@ export function RightSidebar({ onUserClick }) {
             <div className="mt-4 rounded-xl border bg-secondary/50 p-4 max-h-80 overflow-y-auto shadow-lg">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-base font-semibold">Notifications</h4>
-                <button 
-                  onClick={() => setShowNotifications(false)}
-                  className="p-1 rounded-full hover:bg-muted"
-                  aria-label="Close notifications"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
               {notifications.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
