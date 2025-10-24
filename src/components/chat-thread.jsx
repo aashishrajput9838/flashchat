@@ -67,7 +67,16 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     if (!message.trim() || !selectedChat) return;
     
     try {
-      await sendMessage(selectedChat.id, message.trim());
+      // Create message data object
+      const messageData = {
+        text: message.trim(),
+        name: user?.displayName || 'Anonymous',
+        photoURL: user?.photoURL || null,
+        you: true
+      };
+      
+      // Send message with correct parameters
+      await sendMessage(messageData, selectedChat.uid);
       setMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
@@ -367,21 +376,21 @@ ${emojis.join(' ')}`);
           chatMessages.map((msg) => (
             <div 
               key={msg.id} 
-              className={`flex ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
             >
               <div 
                 className={`max-w-xs sm:max-w-md lg:max-w-lg xl:max-w-xl rounded-2xl px-4 py-2 ${
-                  msg.senderId === currentUserId 
+                  msg.userId === currentUserId 
                     ? 'bg-primary text-primary-foreground rounded-br-none' 
                     : 'bg-muted rounded-bl-none'
                 }`}
               >
                 <p className="text-responsive-sm">{msg.text}</p>
                 <div className={`flex items-center justify-end gap-1 mt-1 ${
-                  msg.senderId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                 }`}>
                   <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
-                  {msg.senderId === currentUserId && getMessageStatusIcon(msg.status)}
+                  {msg.userId === currentUserId && getMessageStatusIcon('sent')}
                 </div>
               </div>
             </div>

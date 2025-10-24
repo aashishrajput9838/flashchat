@@ -9,17 +9,24 @@ export const sendMessage = async (messageData, recipientUserId) => {
   if (db) {
     try {
       const user = getCurrentUser();
+      
+      // Validate required data
+      if (!user || !recipientUserId) {
+        console.error('Missing user or recipient data');
+        return null;
+      }
+      
       const messagesRef = collection(db, 'messages');
       
-      // Simplified message object without custom ID generation
+      // Create message object
       const message = {
         text: messageData.text,
-        name: messageData.name || (user && user.displayName) ? user.displayName : 'Anonymous',
-        userId: user ? user.uid : 'anonymous',
+        name: messageData.name || (user.displayName) || 'Anonymous',
+        userId: user.uid,
         recipientId: recipientUserId,
         timestamp: serverTimestamp(), // Use server timestamp for better consistency
         you: messageData.you || false,
-        photoURL: messageData.photoURL || (user && user.photoURL) ? user.photoURL : null
+        photoURL: messageData.photoURL || (user.photoURL) || null
       };
       
       // Use addDoc to let Firestore generate the ID
@@ -27,6 +34,7 @@ export const sendMessage = async (messageData, recipientUserId) => {
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error);
+      console.error('Error sending message:', error);
       // Don't throw error, just return null to indicate failure
       return null;
     }

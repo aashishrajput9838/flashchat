@@ -112,60 +112,66 @@ export function RightSidebar({ onUserClick }) {
   // Function to accept a friend request
   const handleAcceptRequest = async (request) => {
     try {
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Accepting...' }));
+      const requestKey = `${request.from}-${request.timestamp}`;
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Accepting...' }));
       await acceptFriendRequest(request);
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Accepted!' }));
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Accepted!' }));
       // Remove status message after 2 seconds
       setTimeout(() => {
         setFriendRequestStatus(prev => {
           const newStatus = { ...prev };
-          delete newStatus[request.from];
+          delete newStatus[requestKey];
           return newStatus;
         });
       }, 2000);
     } catch (error) {
       console.error('Error accepting friend request:', error);
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Failed to accept' }));
+      const requestKey = `${request.from}-${request.timestamp}`;
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Failed to accept' }));
     }
   };
 
   // Function to decline a friend request
   const handleDeclineRequest = async (request) => {
     try {
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Declining...' }));
+      const requestKey = `${request.from}-${request.timestamp}`;
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Declining...' }));
       await declineFriendRequest(request);
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Declined!' }));
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Declined!' }));
       // Remove status message after 2 seconds
       setTimeout(() => {
         setFriendRequestStatus(prev => {
           const newStatus = { ...prev };
-          delete newStatus[request.from];
+          delete newStatus[requestKey];
           return newStatus;
         });
       }, 2000);
     } catch (error) {
       console.error('Error declining friend request:', error);
-      setFriendRequestStatus(prev => ({ ...prev, [request.from]: 'Failed to decline' }));
+      const requestKey = `${request.from}-${request.timestamp}`;
+      setFriendRequestStatus(prev => ({ ...prev, [requestKey]: 'Failed to decline' }));
     }
   };
 
   // Function to mark a notification as read
   const handleMarkAsRead = async (notification) => {
     try {
-      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Marking as read...' }));
+      const notificationKey = `${notification.timestamp}-${notification.type}-${notification.message}`;
+      setNotificationStatus(prev => ({ ...prev, [notificationKey]: 'Marking as read...' }));
       await markNotificationAsRead(notification);
-      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Marked as read!' }));
+      setNotificationStatus(prev => ({ ...prev, [notificationKey]: 'Marked as read!' }));
       // Remove status message after 2 seconds
       setTimeout(() => {
         setNotificationStatus(prev => {
           const newStatus = { ...prev };
-          delete newStatus[notification.timestamp];
+          delete newStatus[notificationKey];
           return newStatus;
         });
       }, 2000);
     } catch (error) {
       console.error('Error marking notification as read:', error);
-      setNotificationStatus(prev => ({ ...prev, [notification.timestamp]: 'Failed to mark as read' }));
+      const notificationKey = `${notification.timestamp}-${notification.type}-${notification.message}`;
+      setNotificationStatus(prev => ({ ...prev, [notificationKey]: 'Failed to mark as read' }));
     }
   };
 
@@ -178,6 +184,12 @@ export function RightSidebar({ onUserClick }) {
   useEffect(() => {
     console.log('Notifications updated:', notifications);
     console.log('Unread notifications count:', notifications.filter(n => !n.read).length);
+    // Log the read property of each notification for debugging
+    notifications.forEach((n, index) => {
+      console.log(`Notification ${index}:`, n);
+      console.log(`  Has read property:`, 'read' in n);
+      console.log(`  Read value:`, n.read);
+    });
   }, [notifications]);
 
   // Function to update online status privacy
@@ -302,7 +314,7 @@ export function RightSidebar({ onUserClick }) {
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {notifications.map((notification) => (
                 <div 
-                  key={notification.timestamp} 
+                  key={`${notification.timestamp}-${notification.type}-${notification.message}`} 
                   className={`p-3 rounded-lg ${notification.read ? 'bg-muted/50' : 'bg-white dark:bg-card border'}`}
                 >
                   <div className="flex items-start gap-2">
@@ -329,9 +341,9 @@ export function RightSidebar({ onUserClick }) {
                       </button>
                     )}
                   </div>
-                  {notificationStatus[notification.timestamp] && (
+                  {notificationStatus[`${notification.timestamp}-${notification.type}-${notification.message}`] && (
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {notificationStatus[notification.timestamp]}
+                      {notificationStatus[`${notification.timestamp}-${notification.type}-${notification.message}`]}
                     </div>
                   )}
                 </div>
@@ -352,7 +364,7 @@ export function RightSidebar({ onUserClick }) {
           </div>
           <div className="space-y-3 max-h-40 overflow-y-auto">
             {friendRequests.map((request) => (
-              <div key={request.from} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
+              <div key={`${request.from}-${request.timestamp}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={request.fromPhotoURL || "/diverse-avatars.png"} alt={request.fromName} />
                   <AvatarFallback className="bg-secondary">
@@ -379,9 +391,9 @@ export function RightSidebar({ onUserClick }) {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                {friendRequestStatus[request.from] && (
+                {friendRequestStatus[`${request.from}-${request.timestamp}`] && (
                   <div className="absolute right-2 bottom-0 text-xs text-muted-foreground">
-                    {friendRequestStatus[request.from]}
+                    {friendRequestStatus[`${request.from}-${request.timestamp}`]}
                   </div>
                 )}
               </div>

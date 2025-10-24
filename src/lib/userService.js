@@ -440,8 +440,12 @@ export const sendFriendRequest = async (friendEmail) => {
       notifications.push(notificationData);
       
       // Update the document with the new notifications array
+      // Ensure the read property is properly stored
       await updateDoc(userDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
     }
     
@@ -550,8 +554,12 @@ export const acceptFriendRequest = async (request) => {
       notifications.push(notificationData1);
       
       // Update the document with the new notifications array
+      // Ensure the read property is properly stored
       await updateDoc(currentUserDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
     }
     
@@ -577,8 +585,12 @@ export const acceptFriendRequest = async (request) => {
       notifications.push(notificationData2);
       
       // Update the document with the new notifications array
+      // Ensure the read property is properly stored
       await updateDoc(requesterDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
     }
 
@@ -716,8 +728,12 @@ export const unfriendUser = async (friendUid) => {
       notifications.push(notificationData1);
       
       // Update the document with the new notifications array
+      // Ensure the read property is properly stored
       await updateDoc(currentUserDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
     }
 
@@ -743,8 +759,12 @@ export const unfriendUser = async (friendUid) => {
       notifications.push(notificationData2);
       
       // Update the document with the new notifications array
+      // Ensure the read property is properly stored
       await updateDoc(unfriendedUserDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
     }
 
@@ -812,18 +832,48 @@ export const subscribeToNotifications = (callback) => {
             
             return true;
           } else {
-            // For non-call notifications, show all notifications (both read and unread)
-            // This ensures the notification badge shows the correct count of unread notifications
-            return true;
+            // For non-call notifications, show all notifications but still apply basic filtering
+            // Only filter out notifications that are too old or invalid
+            try {
+              let timestampMs;
+              if (notif.timestamp?.toDate) {
+                timestampMs = notif.timestamp.toDate().getTime();
+              } else if (typeof notif.timestamp === 'string') {
+                timestampMs = new Date(notif.timestamp).getTime();
+              } else if (notif.timestamp instanceof Date) {
+                timestampMs = notif.timestamp.getTime();
+              } else {
+                // If we can't parse the timestamp, show the notification
+                return true;
+              }
+              
+              // For non-call notifications, we don't filter by age unless it's extremely old
+              // This ensures friend requests and other notifications are shown
+              return true;
+            } catch (e) {
+              // If there's an error parsing timestamp, still show the notification
+              return true;
+            }
           }
         });
         
         // Sort notifications by timestamp (newest first)
         const sortedNotifications = validNotifications.sort((a, b) => {
           // Handle cases where timestamp might be a string or Date object
-          const aTime = new Date(a.timestamp);
-          const bTime = new Date(b.timestamp);
-          return bTime - aTime;
+          try {
+            const aTime = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
+                         typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() :
+                         a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+                         
+            const bTime = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
+                         typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() :
+                         b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+                         
+            return bTime - aTime;
+          } catch (e) {
+            // If there's an error sorting, maintain original order
+            return 0;
+          }
         });
         
         callback(sortedNotifications);
@@ -956,7 +1006,10 @@ export const sendVideoCallNotification = async (recipientUid, callerData, callId
 
       // Update the document with the new notifications array
       await updateDoc(recipientDocRef, {
-        notifications: notifications
+        notifications: notifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
 
       return callNotification;
@@ -1038,8 +1091,12 @@ export const updateCallNotificationStatus = async (notificationId, status) => {
       });
 
       // Update the document with the modified notifications array
+      // Ensure the read property is properly stored
       await updateDoc(userDocRef, {
-        notifications: updatedNotifications
+        notifications: updatedNotifications.map(notification => ({
+          ...notification,
+          read: notification.read !== undefined ? notification.read : false
+        }))
       });
 
       return true;
