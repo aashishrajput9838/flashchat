@@ -198,7 +198,7 @@ export function RightSidebar({ onUserClick }) {
   };
 
   return (
-    <div className="flex h-[70vh] min-h-[640px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm lg:h-[calc(100dvh-48px)]">
+    <div className="flex h-[70vh] min-h-[640px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm lg:h-[calc(100dvh-48px)] relative">
       {/* User Profile */}
       {currentUser && (
         <section className="rounded-xl border bg-card p-4 flex-shrink-0 shadow-sm">
@@ -236,61 +236,61 @@ export function RightSidebar({ onUserClick }) {
               </button>
             </div>
           </div>
-          
-          {/* Notifications Panel */}
-          {showNotifications && (
-            <div className="mt-4 rounded-xl border bg-secondary/50 p-4 max-h-80 overflow-y-auto shadow-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-semibold">Notifications</h4>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Bell className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm">No notifications</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.timestamp} 
-                      className={`p-3 rounded-lg ${notification.read ? 'bg-muted/50' : 'bg-white dark:bg-card border'}`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="mt-0.5">
-                          {notification.type === 'friend_request' ? (
-                            <User className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Bell className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm">{notification.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatNotificationTime(notification.timestamp)}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <button
-                            onClick={() => handleMarkAsRead(notification)}
-                            className="p-1 rounded-full hover:bg-muted"
-                            aria-label="Mark as read"
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      {notificationStatus[notification.timestamp] && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {notificationStatus[notification.timestamp]}
-                        </div>
+        </section>
+      )}
+      
+      {/* Notifications Panel - Overlay */}
+      {showNotifications && currentUser && (
+        <div className="absolute top-20 right-4 z-10 w-[calc(100%-2rem)] max-w-md rounded-xl border bg-secondary/50 p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-base font-semibold">Notifications</h4>
+          </div>
+          {notifications.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Bell className="h-8 w-8 mx-auto mb-2" />
+              <p className="text-sm">No notifications</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {notifications.map((notification) => (
+                <div 
+                  key={notification.timestamp} 
+                  className={`p-3 rounded-lg ${notification.read ? 'bg-muted/50' : 'bg-white dark:bg-card border'}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="mt-0.5">
+                      {notification.type === 'friend_request' ? (
+                        <User className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Bell className="h-4 w-4 text-primary" />
                       )}
                     </div>
-                  ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{notification.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatNotificationTime(notification.timestamp)}
+                      </p>
+                    </div>
+                    {!notification.read && (
+                      <button
+                        onClick={() => handleMarkAsRead(notification)}
+                        className="p-1 rounded-full hover:bg-muted"
+                        aria-label="Mark as read"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {notificationStatus[notification.timestamp] && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {notificationStatus[notification.timestamp]}
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           )}
-        </section>
+        </div>
       )}
       
       {/* Friend Requests */}
