@@ -371,12 +371,12 @@ export function ConversationList({ onSelectChat }) {
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
                         <span>Online</span>
                       </div>
-                    ) : (
+                    ) : chat.uid !== currentUser?.uid ? (
                       <div className="flex items-center text-muted-foreground text-responsive-xs">
                         <Clock className="h-3 w-3 mr-1" />
                         <span>Offline</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
