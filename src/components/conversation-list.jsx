@@ -372,6 +372,11 @@ export function ConversationList({ onSelectChat }) {
                         <span>Online</span>
                       </div>
                     )}
+                    {chat.uid !== currentUser?.uid && chat.isOnline !== true && chat.lastSeen && (
+                      <div className="flex items-center text-muted-foreground text-responsive-xs">
+                        <span>{formatLastSeen(chat.lastSeen)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
