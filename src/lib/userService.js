@@ -300,7 +300,7 @@ export const sendFriendRequest = async (friendEmail) => {
         from: currentUser.uid,
         fromEmail: currentUser.email,
         fromName: currentUser.displayName,
-        timestamp: serverTimestamp()
+        timestamp: new Date()
       })
     });
     
