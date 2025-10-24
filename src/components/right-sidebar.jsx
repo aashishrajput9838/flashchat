@@ -322,14 +322,14 @@ export function RightSidebar({ onUserClick }) {
       )}
       
       {/* Members List */}
-      <section className="flex-1 rounded-xl border bg-card p-4 shadow-sm">
+      <section className="flex-1 rounded-xl border bg-card p-4 shadow-sm flex flex-col">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold">People</h3>
           <span className="text-xs bg-secondary text-secondary-foreground rounded-full px-2 py-1">
             {members.length}
           </span>
         </div>
-        <div className="space-y-2 overflow-y-auto h-full max-h-[calc(100%-40px)]">
+        <div className="space-y-2 overflow-y-auto flex-1 min-h-0">
           {members.map((member) => (
             <div
               key={member.uid}
