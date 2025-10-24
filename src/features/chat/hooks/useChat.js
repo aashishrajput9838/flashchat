@@ -75,6 +75,13 @@ export const useChat = (selectedChat) => {
   // Format message time
   const formatMessageTime = useCallback((timestamp) => {
     if (!timestamp) return '';
+    
+    // Handle Firestore timestamp objects
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Handle regular Date objects or timestamp strings
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 

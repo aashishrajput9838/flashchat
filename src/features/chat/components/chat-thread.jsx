@@ -245,9 +245,9 @@ ${emojis.join(' ')}`);
     : "FlashChat";
 
   return (
-    <div className="h-full flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
+    <div className="h-screen flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
       {/* Chat header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b">
+      <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
           {showCloseButton && (
             <button
@@ -344,8 +344,8 @@ ${emojis.join(' ')}`);
         </div>
       </div>
       
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+      {/* Messages area - Fixed height with scrollable content */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 max-h-[calc(100vh-180px)]">
         {chatMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -399,7 +399,7 @@ ${emojis.join(' ')}`);
       )}
       
       {/* Input area */}
-      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t">
+      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t flex-shrink-0">
         <div className="flex items-center gap-2">
           <button
             type="button"
