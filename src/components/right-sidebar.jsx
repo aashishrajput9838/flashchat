@@ -1,7 +1,8 @@
 import { Phone, Video, Camera, Link, User, Mail, Bell, X, Check, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { OnlineStatus } from "@/components/ui/online-status"
 import { useState, useEffect, useRef } from "react"
-import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead } from "@/lib/userService"
+import { subscribeToUsers, getCurrentUser, subscribeToFriendRequests, acceptFriendRequest, declineFriendRequest, subscribeToNotifications, markNotificationAsRead, updateUserOnlineStatusPrivacy } from "@/lib/userService"
 
 export function RightSidebar({ onUserClick }) {
   const [members, setMembers] = useState([])
@@ -179,6 +180,20 @@ export function RightSidebar({ onUserClick }) {
     console.log('Unread notifications count:', notifications.filter(n => !n.read).length);
   }, [notifications]);
 
+  // Function to update online status privacy
+  const updatePrivacySetting = async (setting) => {
+    try {
+      await updateUserOnlineStatusPrivacy(setting);
+      // Update local user state to reflect the change
+      if (currentUser) {
+        currentUser.onlineStatusPrivacy = setting;
+      }
+    } catch (error) {
+      console.error("Error updating privacy setting:", error);
+      alert("Failed to update privacy setting. Please try again.");
+    }
+  };
+
   // Format last seen time
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return '';
@@ -231,7 +246,7 @@ export function RightSidebar({ onUserClick }) {
                     .slice(0, 2) || currentUser.email?.substring(0, 2).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <OnlineStatus isOnline={!currentUser.appearOffline && currentUser.isOnline} lastSeen={currentUser.lastSeen} size="sm" user={currentUser} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{currentUser.displayName || "User"}</div>
@@ -251,6 +266,22 @@ export function RightSidebar({ onUserClick }) {
                   </span>
                 )}
               </button>
+            </div>
+          </div>
+          
+          {/* Online Status Privacy Settings */}
+          <div className="mt-3 pt-3 border-t">
+            <div className="text-xs text-muted-foreground mb-2">Online Status Privacy</div>
+            <div className="flex gap-2">
+              <select 
+                value={currentUser.onlineStatusPrivacy || 'friends'}
+                onChange={(e) => updatePrivacySetting(e.target.value)}
+                className="flex-1 text-xs bg-muted border rounded px-2 py-1"
+              >
+                <option value="everyone">Everyone</option>
+                <option value="friends">Friends Only</option>
+                <option value="nobody">Nobody</option>
+              </select>
             </div>
           </div>
         </section>
@@ -387,7 +418,7 @@ export function RightSidebar({ onUserClick }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="font-medium truncate text-sm">{member.name}</div>
+                  <div className="font-medium truncate text-sm">{member.role === "You" ? "Me" : member.name}</div>
                   {member.role === "You" && (
                     <span className="text-xs bg-primary text-primary-foreground rounded px-1.5 py-0.5">
                       You
@@ -395,17 +426,7 @@ export function RightSidebar({ onUserClick }) {
                   )}
                 </div>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  {member.isOnline ? (
-                    <span className="flex items-center text-green-500">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                      Online
-                    </span>
-                  ) : (
-                    <span className="flex items-center">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-1"></div>
-                      {member.lastSeen ? formatLastSeen(member.lastSeen) : 'Offline'}
-                    </span>
-                  )}
+                  <OnlineStatus isOnline={member.isOnline} lastSeen={member.lastSeen} showText={true} size="sm" user={member} />
                 </div>
               </div>
               <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">

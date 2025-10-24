@@ -1,5 +1,6 @@
 import { Search, UserPlus, X, Clock } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { OnlineStatus } from "@/components/ui/online-status"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest, subscribeToUsers } from "@/lib/userService"
 
@@ -351,9 +352,6 @@ export function ConversationList({ onSelectChat }) {
                       {chat.initials}
                     </AvatarFallback>
                   </Avatar>
-                  {chat.isOnline && chat.uid !== currentUser?.uid && (
-                    <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card"></div>
-                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -366,17 +364,7 @@ export function ConversationList({ onSelectChat }) {
                   </div>
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
-                    {chat.uid !== currentUser?.uid && chat.isOnline === true && (
-                      <div className="flex items-center text-green-500 text-responsive-xs">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                        <span>Online</span>
-                      </div>
-                    )}
-                    {chat.uid !== currentUser?.uid && chat.isOnline !== true && chat.lastSeen && (
-                      <div className="flex items-center text-muted-foreground text-responsive-xs">
-                        <span>{formatLastSeen(chat.lastSeen)}</span>
-                      </div>
-                    )}
+                    <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat.uid === currentUser?.uid ? currentUser : chat} />
                   </div>
                 </div>
               </div>

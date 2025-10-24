@@ -55,6 +55,8 @@ const getHighQualityPhotoURL = (photoURL) => {
 // Current user state - now stores the full user data including Firestore data
 let currentUser = null;
 let currentUserFirestoreData = null; // Store Firestore data separately
+let userActivityTimer = null; // Timer to track user activity
+let isUserActive = true; // Track if user is actively using the app
 
 // Function to initialize authentication
 export const initAuth = () => {
@@ -81,7 +83,12 @@ export const initAuth = () => {
                 friends: [], // Initialize empty friends array
                 friendRequests: [], // Initialize empty friend requests array
                 notifications: [], // Initialize empty notifications array
-                createdAt: new Date()
+                createdAt: new Date(),
+                // Online status privacy settings
+                onlineStatusPrivacy: 'friends', // 'everyone', 'friends', 'nobody'
+                isOnline: true, // Set as online when creating account
+                lastSeen: new Date(),
+                appearOffline: false // Default to not appearing offline
               };
               
               await setDoc(doc(db, 'users', user.uid), userData);
@@ -125,6 +132,14 @@ export const initAuth = () => {
               };
               
               await setDoc(doc(db, 'users', user.uid), updatedData, { merge: true });
+              
+              // Set user as online when they sign in, unless they've chosen to appear offline
+              if (!userData.appearOffline) {
+                await updateUserOnlineStatus(true);
+              } else {
+                // Ensure they're marked as offline if they've chosen to appear offline
+                await updateUserOnlineStatus(false);
+              }
             }
           } catch (error) {
             handleFirestoreError(error);
@@ -163,11 +178,20 @@ export const signInWithGoogle = async () => {
           displayName: currentUser.displayName,
           email: currentUser.email,
           photoURL: getHighQualityPhotoURL(currentUser.photoURL) || currentUser.photoURL || '', // Keep original if processing fails
-          lastLogin: new Date()
+          lastLogin: new Date(),
+          appearOffline: false // Default to not appearing offline
         };
         
         await setDoc(doc(db, 'users', currentUser.uid), userData, { merge: true });
         currentUserFirestoreData = userData;
+        
+        // Set user as online when they sign in, unless they've chosen to appear offline
+        if (!userData.appearOffline) {
+          await updateUserOnlineStatus(true);
+        } else {
+          // Ensure they're marked as offline if they've chosen to appear offline
+          await updateUserOnlineStatus(false);
+        }
       } catch (error) {
         handleFirestoreError(error);
         // Continue with authentication even if Firestore fails
@@ -184,12 +208,102 @@ export const signInWithGoogle = async () => {
 // Function to sign out
 export const signOutUser = async () => {
   try {
+    // Set user as offline before signing out
+    await updateUserOnlineStatus(false);
+    
     await signOut(auth);
     currentUser = null;
   } catch (error) {
     console.error('Sign out error:', error);
     throw error;
   }
+};
+
+// Function to update user's online status
+export const updateUserOnlineStatus = async (isOnline) => {
+  if (!currentUser || !db) return;
+
+  try {
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    const updateData = {
+      isOnline: isOnline,
+      lastSeen: isOnline ? serverTimestamp() : new Date()
+    };
+    
+    await updateDoc(userDocRef, updateData);
+  } catch (error) {
+    console.error('Error updating user online status:', error);
+  }
+};
+
+// Function to set user to appear offline
+export const setAppearOffline = async (appearOffline) => {
+  if (!currentUser || !db) return;
+
+  try {
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userDocRef, {
+      appearOffline: appearOffline
+    });
+  } catch (error) {
+    console.error('Error updating appear offline status:', error);
+  }
+};
+
+// Function to update user's online status privacy settings
+export const updateUserOnlineStatusPrivacy = async (privacySetting) => {
+  if (!currentUser || !db) return;
+
+  try {
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userDocRef, {
+      onlineStatusPrivacy: privacySetting
+    });
+  } catch (error) {
+    console.error('Error updating user online status privacy:', error);
+  }
+};
+
+// Function to check if current user can see another user's online status
+export const canSeeOnlineStatus = (targetUser) => {
+  if (!currentUser || !targetUser) return false;
+  
+  // Always can see own status
+  if (currentUser.uid === targetUser.uid) return true;
+  
+  // Check privacy settings
+  const privacy = targetUser.onlineStatusPrivacy || 'friends';
+  
+  switch (privacy) {
+    case 'everyone':
+      return true;
+    case 'nobody':
+      return false;
+    case 'friends':
+    default:
+      // Check if current user is in target user's friends list
+      return Array.isArray(targetUser.friends) && targetUser.friends.includes(currentUser.uid);
+  }
+};
+
+// Function to track user activity
+export const trackUserActivity = () => {
+  if (!currentUser || !db) return;
+
+  // Clear existing timer
+  if (userActivityTimer) {
+    clearTimeout(userActivityTimer);
+  }
+
+  // Set user as active
+  isUserActive = true;
+  updateUserOnlineStatus(true);
+
+  // Set timer to mark user as inactive after 30 seconds of inactivity
+  userActivityTimer = setTimeout(() => {
+    isUserActive = false;
+    updateUserOnlineStatus(false);
+  }, 30000); // 30 seconds
 };
 
 // Function to get current user - returns combined auth and Firestore data

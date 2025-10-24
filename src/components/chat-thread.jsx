@@ -1,10 +1,11 @@
 import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { OnlineStatus } from "@/components/ui/online-status"
 import { VideoCall } from "@/components/video-call"
 import { AudioCall } from "@/components/audio-call"
 import { useState, useEffect, useRef } from "react"
 import { sendMessage, subscribeToMessages } from "@/lib/chatService"
-import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification } from "@/lib/userService"
+import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline } from "@/lib/userService"
 import { createCallDocument } from "@/lib/callService"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
@@ -202,6 +203,21 @@ ${emojis.join(' ')}`);
     }
   };
 
+  // Toggle appear offline mode
+  const toggleAppearOffline = async () => {
+    try {
+      const currentUser = getCurrentUser();
+      const newAppearOfflineStatus = !currentUser?.appearOffline;
+      await setAppearOffline(newAppearOfflineStatus);
+      setShowDropdown(false);
+      // Refresh the user data to reflect the change
+      window.location.reload();
+    } catch (error) {
+      console.error("Error toggling appear offline:", error);
+      alert("Failed to update appear offline status. Please try again.");
+    }
+  };
+
   // Handle sign out
   const handleSignOut = async () => {
     try {
@@ -242,7 +258,9 @@ ${emojis.join(' ')}`);
 
   // Get chat title
   const chatTitle = selectedChat 
-    ? selectedChat.name || selectedChat.displayName || selectedChat.email || "Unknown User"
+    ? selectedChat.uid === user?.uid 
+      ? "Me" 
+      : selectedChat.name || selectedChat.displayName || selectedChat.email || "Unknown User"
     : "FlashChat";
 
   return (
@@ -269,6 +287,9 @@ ${emojis.join(' ')}`);
           </div>
           <div>
             <h3 className="font-semibold text-responsive-sm sm:font-semibold sm:text-responsive-base">{chatTitle}</h3>
+            <div className="flex items-center text-muted-foreground text-responsive-xs">
+              <OnlineStatus isOnline={selectedChat.isOnline} lastSeen={selectedChat.lastSeen} showText={true} size="sm" user={selectedChat} />
+            </div>
           </div>
         </div>
         
@@ -310,6 +331,14 @@ ${emojis.join(' ')}`);
                 >
                   <XCircle className="h-4 w-4" />
                   <span className="text-responsive-sm">Unfriend</span>
+                </button>
+                <button
+                  onClick={toggleAppearOffline}
+                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                >
+                  <span className="text-responsive-sm">
+                    {user?.appearOffline ? "Appear Online" : "Appear Offline"}
+                  </span>
                 </button>
                 <button
                   onClick={handleSignOut}

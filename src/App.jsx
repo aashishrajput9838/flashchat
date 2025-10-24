@@ -8,7 +8,7 @@ import { VideoCall } from "@/components/video-call";
 import { X, Phone, MessageCircle, User } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getCurrentUser, subscribeToFriends, initAuth } from '@/lib/userService';
+import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity } from '@/lib/userService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -72,6 +72,42 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
+  
+  // Track user activity for online status
+  useEffect(() => {
+    if (user) {
+      // Check if user has chosen to appear offline
+      const shouldAppearOffline = user.appearOffline || false;
+      
+      if (shouldAppearOffline) {
+        // If user chose to appear offline, set them as offline
+        updateUserOnlineStatus(false);
+      } else {
+        // Track initial activity
+        trackUserActivity();
+        
+        // Set up event listeners for user activity
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        const handleActivity = () => trackUserActivity();
+        
+        events.forEach(event => {
+          window.addEventListener(event, handleActivity);
+        });
+        
+        // Cleanup
+        return () => {
+          events.forEach(event => {
+            window.removeEventListener(event, handleActivity);
+          });
+          
+          // Clear activity timer on unmount
+          if (window.userActivityTimer) {
+            clearTimeout(window.userActivityTimer);
+          }
+        };
+      }
+    }
+  }, [user]);
   
   // Auth state listener
   useEffect(() => {
