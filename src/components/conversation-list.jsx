@@ -366,7 +366,7 @@ export function ConversationList({ onSelectChat }) {
                   </div>
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
-                    {chat.isOnline ? (
+                    {chat.isOnline && chat.uid !== currentUser?.uid ? (
                       <div className="flex items-center text-green-500 text-responsive-xs">
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
                         <span>Online</span>
