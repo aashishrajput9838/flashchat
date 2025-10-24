@@ -169,6 +169,28 @@ export function RightSidebar({ onUserClick }) {
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
+  // Format notification timestamp
+  const formatNotificationTime = (timestamp) => {
+    if (!timestamp) return 'Invalid Date';
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      const now = new Date();
+      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'Just now';
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+      if (diffInMinutes < 43200) return `${Math.floor(diffInMinutes / 1440)}d ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting notification time:', error);
+      return 'Invalid Date';
+    }
+  };
+
   return (
     <div className="flex h-[70vh] min-h-[640px] flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm lg:h-[calc(100dvh-48px)]">
       {/* User Profile */}
@@ -245,7 +267,7 @@ export function RightSidebar({ onUserClick }) {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm">{notification.message}</p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(notification.timestamp).toLocaleString()}
+                            {formatNotificationTime(notification.timestamp)}
                           </p>
                         </div>
                         {!notification.read && (
