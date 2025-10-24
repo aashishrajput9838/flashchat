@@ -26,6 +26,16 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
   // Check if user has chosen to appear offline
   const appearOffline = user?.appearOffline || false;
 
+  console.log('OnlineStatus component debug:', { 
+    userUid: user?.uid, 
+    isCurrentUser, 
+    isOnline, 
+    canSeeStatus, 
+    appearOffline, 
+    lastSeen: lastSeen?.toDate ? lastSeen.toDate() : lastSeen,
+    currentUserUid: currentUser?.uid
+  });
+
   // For current user, show online status based on their appearOffline setting
   if (isCurrentUser) {
     if (appearOffline) {

@@ -31,6 +31,7 @@ export function ConversationList({ onSelectChat }) {
 
     // Subscribe to friends only from Firestore to create chat list
     friendsSubscriptionRef.current = subscribeToFriends((friends) => {
+      console.log('Friends updated:', friends); // Debug log
       // Transform friends data to match the expected format
       const chatList = (Array.isArray(friends) ? friends : [])
         .map(friend => ({
@@ -42,8 +43,12 @@ export function ConversationList({ onSelectChat }) {
           uid: friend.uid,
           photoURL: friend.photoURL || "/diverse-avatars.png", // Add fallback
           lastSeen: friend.lastSeen || null,
-          isOnline: friend.isOnline || false
+          isOnline: friend.isOnline || false,
+          // Pass the entire friend object so OnlineStatus can access all properties
+          ...friend
         }));
+      
+      console.log('Chat list:', chatList); // Debug log
       
       // Add current user to the list
       if (currentUser) {
@@ -60,7 +65,9 @@ export function ConversationList({ onSelectChat }) {
             uid: currentUser.uid,
             photoURL: currentUser.photoURL || "/diverse-avatars.png", // Add fallback
             lastSeen: new Date(),
-            isOnline: true
+            isOnline: true,
+            // Pass the entire currentUser object so OnlineStatus can access all properties
+            ...currentUser
           });
         }
       }
@@ -364,7 +371,7 @@ export function ConversationList({ onSelectChat }) {
                   </div>
                   <div className="flex items-center gap-1">
                     <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
-                    <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat.uid === currentUser?.uid ? currentUser : chat} />
+                    <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat} />
                   </div>
                 </div>
               </div>

@@ -35,6 +35,7 @@ export function RightSidebar({ onUserClick }) {
 
     // Subscribe to all users from Firestore
     usersSubscriptionRef.current = subscribeToUsers((users) => {
+      console.log('Users updated:', users); // Debug log
       // Transform users data to match the expected format
       const memberList = (Array.isArray(users) ? users : []).map(user => ({
         name: user.name || user.displayName || user.email || `User${user.uid.substring(0, 5)}`,
@@ -43,8 +44,12 @@ export function RightSidebar({ onUserClick }) {
         photoURL: user.photoURL,
         uid: user.uid,
         isOnline: user.isOnline || false,
-        lastSeen: user.lastSeen || null
+        lastSeen: user.lastSeen || null,
+        // Pass the entire user object so OnlineStatus can access all properties
+        ...user
       }));
+      
+      console.log('Member list:', memberList); // Debug log
       
       // Sort to put current user at the top
       memberList.sort((a, b) => {

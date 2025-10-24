@@ -1118,7 +1118,8 @@ export const subscribeToFriends = (callback) => {
     // Get the current user's document to get their friends list
     const userDocRef = doc(db, 'users', currentUser.uid);
     
-    return onSnapshot(userDocRef, (docSnapshot) => {
+    // Subscribe to the current user's document to get updated friends list
+    const unsubscribeUserDoc = onSnapshot(userDocRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const userData = docSnapshot.data();
         const friendIds = Array.isArray(userData.friends) ? userData.friends : [];
@@ -1129,27 +1130,56 @@ export const subscribeToFriends = (callback) => {
           return;
         }
         
-        // Subscribe to friends' data
-        const friendsRef = collection(db, 'users');
-        const q = query(friendsRef, where('uid', 'in', friendIds));
+        // Handle Firestore 'in' query limit of 10 items
+        const chunks = [];
+        for (let i = 0; i < friendIds.length; i += 10) {
+          chunks.push(friendIds.slice(i, i + 10));
+        }
         
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const friends = [];
-          querySnapshot.forEach((doc) => {
-            const friendData = doc.data();
-            // Ensure we're using high quality images
-            if (friendData.photoURL) {
-              friendData.photoURL = getHighQualityPhotoURL(friendData.photoURL);
+        // Create an array to hold all unsubscribe functions
+        const unsubscribeFunctions = [];
+        // Create a map to store friends data from all chunks
+        let allFriends = [];
+        let completedChunks = 0;
+        
+        // Subscribe to friends' data with individual listeners for real-time updates
+        const friendsRef = collection(db, 'users');
+        
+        // Process each chunk
+        chunks.forEach(chunk => {
+          const q = query(friendsRef, where('uid', 'in', chunk));
+          
+          const unsubscribeFriends = onSnapshot(q, (querySnapshot) => {
+            const friends = [];
+            querySnapshot.forEach((doc) => {
+              const friendData = doc.data();
+              // Ensure we're using high quality images
+              if (friendData.photoURL) {
+                friendData.photoURL = getHighQualityPhotoURL(friendData.photoURL);
+              }
+              friends.push({ id: doc.id, ...friendData });
+            });
+            
+            // Merge friends from this chunk with existing friends
+            allFriends = [...allFriends.filter(f => !friends.some(newF => newF.uid === f.uid)), ...friends];
+            completedChunks++;
+            
+            // Only call callback when all chunks have been processed
+            if (completedChunks === chunks.length) {
+              callback(allFriends);
             }
-            friends.push({ id: doc.id, ...friendData });
+          }, (error) => {
+            console.error('Friends subscription error:', error);
+            callback([]);
           });
-          callback(friends);
-        }, (error) => {
-          console.error('Friends subscription error:', error);
-          callback([]);
+          
+          unsubscribeFunctions.push(unsubscribeFriends);
         });
         
-        return unsubscribe;
+        // Return a function that unsubscribes from all listeners
+        return () => {
+          unsubscribeFunctions.forEach(unsub => unsub());
+        };
       } else {
         callback([]);
         return () => {};
@@ -1159,6 +1189,8 @@ export const subscribeToFriends = (callback) => {
       callback([]);
       return () => {};
     });
+    
+    return unsubscribeUserDoc;
   } catch (error) {
     console.error('Friends subscription setup error:', error);
     callback([]);
