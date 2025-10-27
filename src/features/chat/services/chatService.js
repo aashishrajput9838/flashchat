@@ -57,69 +57,124 @@ export const subscribeToMessages = (selectedUserId, callback) => {
         return () => {};
       }
       
-      // Create a more efficient query that filters on the server side
-      // Query messages between current user and selected user
+      // Create a single efficient query that gets messages between both users
       const messagesRef = collection(db, 'messages');
-      const q1 = query(
-        messagesRef, 
-        where('userId', '==', currentUser.uid),
-        where('recipientId', '==', selectedUserId),
-        orderBy('timestamp')
+      const q = query(
+        messagesRef,
+        where('userId', 'in', [currentUser.uid, selectedUserId]),
+        where('recipientId', 'in', [currentUser.uid, selectedUserId]),
+        orderBy('timestamp', 'asc')
       );
       
-      const q2 = query(
-        messagesRef, 
-        where('userId', '==', selectedUserId),
-        where('recipientId', '==', currentUser.uid),
-        orderBy('timestamp')
-      );
-      
-      // Combine both queries
-      const unsubscribe1 = onSnapshot(q1, (snapshot) => {
+      // Subscribe to the query
+      const unsubscribe = onSnapshot(q, (snapshot) => {
         const messages = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
           messages.push({
             id: doc.id,
             ...data,
-            you: true,
+            you: data.userId === currentUser.uid,
             time: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
           });
         });
         
-        // Get messages from the other user
-        const unsubscribe2 = onSnapshot(q2, (snapshot2) => {
-          snapshot2.forEach((doc) => {
-            const data = doc.data();
-            messages.push({
-              id: doc.id,
-              ...data,
-              you: false,
-              time: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
-            });
-          });
-          
-          // Sort all messages by timestamp
-          messages.sort((a, b) => {
-            const timeA = a.timestamp ? new Date(a.timestamp.toDate()).getTime() : 0;
-            const timeB = b.timestamp ? new Date(b.timestamp.toDate()).getTime() : 0;
-            return timeA - timeB;
-          });
-          
-          callback(messages);
-        }, (error) => {
-          handleFirestoreError(error);
-          callback(messages); // Return what we have so far
-        });
+        callback(messages);
       }, (error) => {
         handleFirestoreError(error);
         callback([]);
       });
       
-      // Return a function that unsubscribes from both queries
-      return () => {
-        unsubscribe1();
-      };
+      // Return the unsubscribe function
+      return unsubscribe;
+    } catch (error) {
+      handleFirestoreError(error);
+      callback([]);
+      return () => {};
+    }
+  } else {
+    console.warn('Firestore not available, returning empty message list');
+    callback([]);
+    return () => {};
+  }
+};
+
+// Function to subscribe to latest messages for conversation list
+export const subscribeToLatestMessages = (callback) => {
+  if (db) {
+    try {
+      const currentUser = getCurrentUser();
+      
+      if (!currentUser) {
+        callback([]);
+        return () => {};
+      }
+      
+      // Get all messages where current user is either sender or recipient
+      const messagesRef = collection(db, 'messages');
+      const q = query(
+        messagesRef,
+        where('userId', '==', currentUser.uid),
+        orderBy('timestamp', 'desc')
+      );
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const latestMessages = {};
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const otherUserId = data.recipientId;
+          
+          // Only keep the most recent message for each conversation
+          if (!latestMessages[otherUserId] || 
+              data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate()) {
+            latestMessages[otherUserId] = {
+              id: doc.id,
+              ...data,
+              otherUserId: otherUserId
+            };
+          }
+        });
+        
+        // Also get messages where current user is recipient
+        const q2 = query(
+          messagesRef,
+          where('recipientId', '==', currentUser.uid),
+          orderBy('timestamp', 'desc')
+        );
+        
+        const unsubscribe2 = onSnapshot(q2, (snapshot2) => {
+          snapshot2.forEach((doc) => {
+            const data = doc.data();
+            const otherUserId = data.userId;
+            
+            // Only keep the most recent message for each conversation
+            if (!latestMessages[otherUserId] || 
+                data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate()) {
+              latestMessages[otherUserId] = {
+                id: doc.id,
+                ...data,
+                otherUserId: otherUserId
+              };
+            }
+          });
+          
+          callback(Object.values(latestMessages));
+        }, (error) => {
+          handleFirestoreError(error);
+          callback(Object.values(latestMessages));
+        });
+        
+        // Return unsubscribe function for both queries
+        return () => {
+          unsubscribe();
+          unsubscribe2();
+        };
+      }, (error) => {
+        handleFirestoreError(error);
+        callback([]);
+      });
+      
+      return unsubscribe;
     } catch (error) {
       handleFirestoreError(error);
       callback([]);

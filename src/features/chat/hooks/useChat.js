@@ -10,6 +10,7 @@ export const useChat = (selectedChat) => {
   const messagesEndRef = useRef(null);
   const messageSubscriptionRef = useRef(null);
   const user = getCurrentUser();
+  const prevMessagesRef = useRef([]);
 
   // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
@@ -25,8 +26,13 @@ export const useChat = (selectedChat) => {
       }
       
       // Subscribe to new messages
-      messageSubscriptionRef.current = subscribeToMessages(selectedChat.uid, (messages) => {
-        setMessages(messages);
+      messageSubscriptionRef.current = subscribeToMessages(selectedChat.uid, (newMessages) => {
+        // Only update state if messages have actually changed
+        const prevMessages = prevMessagesRef.current;
+        if (JSON.stringify(prevMessages) !== JSON.stringify(newMessages)) {
+          setMessages(newMessages);
+          prevMessagesRef.current = newMessages;
+        }
       });
     }
     
@@ -36,6 +42,7 @@ export const useChat = (selectedChat) => {
         messageSubscriptionRef.current();
         messageSubscriptionRef.current = null;
       }
+      prevMessagesRef.current = [];
     };
   }, [selectedChat]);
 

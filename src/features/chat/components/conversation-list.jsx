@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { useState, useEffect, useRef } from "react"
 import { subscribeToFriends, getCurrentUser, sendFriendRequest } from "@/features/user/services/userService"
+import { subscribeToLatestMessages } from "@/features/chat/services/chatService"
 
 export function ConversationList({ onSelectChat }) {
   const [chats, setChats] = useState([])
@@ -11,9 +12,11 @@ export function ConversationList({ onSelectChat }) {
   const [searchQuery, setSearchQuery] = useState('') // Add search state
   const [userSearchQuery, setUserSearchQuery] = useState('') // Search for users in add friend section
   const [filteredUsers, setFilteredUsers] = useState([]) // Filtered users for add friend section
+  const [latestMessages, setLatestMessages] = useState({}) // Latest messages for each conversation
   const currentUser = getCurrentUser()
   const currentUserId = currentUser?.uid // Extract the UID for dependency array
   const friendsSubscriptionRef = useRef(null)
+  const messagesSubscriptionRef = useRef(null)
 
   useEffect(() => {
     // Clean up previous subscriptions
@@ -76,6 +79,27 @@ export function ConversationList({ onSelectChat }) {
       }
     };
   }, [currentUserId]); // Use currentUserId instead of currentUser object
+
+  // Subscribe to latest messages to update conversation previews
+  useEffect(() => {
+    if (messagesSubscriptionRef.current) {
+      messagesSubscriptionRef.current();
+    }
+
+    messagesSubscriptionRef.current = subscribeToLatestMessages((messages) => {
+      const latest = {};
+      messages.forEach(msg => {
+        latest[msg.otherUserId] = msg;
+      });
+      setLatestMessages(latest);
+    });
+
+    return () => {
+      if (messagesSubscriptionRef.current) {
+        messagesSubscriptionRef.current();
+      }
+    };
+  }, []);
 
   // Function to handle chat selection
   const handleSelectChat = (chat) => {
@@ -251,36 +275,44 @@ export function ConversationList({ onSelectChat }) {
           </div>
         ) : (
           <div className="divide-y">
-            {filteredChats.map((chat) => (
-              <div
-                key={chat.uid}
-                onClick={() => handleSelectChat(chat)}
-                className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
-              >
-                <div className="relative">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={chat.photoURL} alt={chat.name} />
-                    <AvatarFallback className="bg-secondary">
-                      {chat.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium truncate text-responsive-sm">{chat.uid === currentUser?.uid ? 'Me' : chat.name}</div>
-                    {chat.lastSeen && (
-                      <div className="text-muted-foreground text-responsive-xs">
-                        {formatLastSeen(chat.lastSeen)}
-                      </div>
-                    )}
+            {filteredChats.map((chat) => {
+              // Get latest message for this chat
+              const latestMessage = latestMessages[chat.uid];
+              const previewText = latestMessage 
+                ? latestMessage.text 
+                : "Send a message...";
+              
+              return (
+                <div
+                  key={chat.uid}
+                  onClick={() => handleSelectChat(chat)}
+                  className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <div className="relative">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={chat.photoURL} alt={chat.name} />
+                      <AvatarFallback className="bg-secondary">
+                        {chat.initials}
+                      </AvatarFallback>
+                    </Avatar>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <p className="text-muted-foreground truncate text-responsive-xs">{chat.preview}</p>
-                    <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium truncate text-responsive-sm">{chat.uid === currentUser?.uid ? 'Me' : chat.name}</div>
+                      {chat.lastSeen && (
+                        <div className="text-muted-foreground text-responsive-xs">
+                          {formatLastSeen(chat.lastSeen)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-muted-foreground truncate text-responsive-xs">{previewText}</p>
+                      <OnlineStatus isOnline={chat.isOnline} lastSeen={chat.lastSeen} showText={true} size="sm" user={chat} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
