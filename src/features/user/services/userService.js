@@ -1258,7 +1258,11 @@ export const searchFriends = async (searchQuery) => {
   }
 }
 
-// Function to search all users by name or email (not just friends)
+/**
+ * Function to search all users by name or email (not just friends)
+ * @param {string} searchQuery - The search term to match against user names or emails
+ * @returns {Promise<Array>} - Array of user objects matching the search query
+ */
 export const searchAllUsers = async (searchQuery) => {
   if (!currentUser || !db || !searchQuery.trim()) {
     return []

@@ -3,7 +3,12 @@ import { collection, doc, setDoc, query, orderBy, where, onSnapshot, serverTimes
 import { getCurrentUser } from '@/features/user/services/userService';
 import { handleFirestoreError } from '@/config/firebase';
 
-// Function to send a message to Firestore
+/**
+ * Function to send a message to Firestore
+ * @param {Object} messageData - The message data to send
+ * @param {string} recipientUserId - The Firebase UID of the message recipient
+ * @returns {Promise<string|null>} - The document ID of the sent message, or null if failed
+ */
 export const sendMessage = async (messageData, recipientUserId) => {
   // Only interact with Firestore if it's available
   if (db) {
@@ -44,7 +49,12 @@ export const sendMessage = async (messageData, recipientUserId) => {
   }
 };
 
-// Function to subscribe to messages from Firestore for a specific conversation
+/**
+ * Function to subscribe to messages from Firestore for a specific conversation
+ * @param {string} selectedUserId - The Firebase UID of the conversation partner
+ * @param {Function} callback - Called with an array of messages when updates occur
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export const subscribeToMessages = (selectedUserId, callback) => {
   // Only subscribe to Firestore if it's available
   if (db) {
@@ -99,7 +109,11 @@ export const subscribeToMessages = (selectedUserId, callback) => {
   }
 };
 
-// Function to subscribe to latest messages for conversation list
+/**
+ * Function to subscribe to latest messages for conversation list
+ * @param {Function} callback - Called with an array of latest messages when updates occur
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export const subscribeToLatestMessages = (callback) => {
   if (db) {
     try {

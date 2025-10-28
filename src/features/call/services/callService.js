@@ -16,7 +16,9 @@ import {
   limit
 } from 'firebase/firestore';
 
-// Enhanced STUN/TURN servers for WebRTC with better compatibility
+/**
+ * Enhanced STUN/TURN servers for WebRTC with better compatibility
+ */
 export const rtcConfiguration = {
   iceServers: [
     // Google STUN servers
@@ -41,7 +43,11 @@ export const rtcConfiguration = {
 const RATE_LIMIT_WINDOW = 10000; // 10 seconds
 const MAX_CALLS_PER_WINDOW = 3; // Allow 3 calls per window
 
-// Check rate limit based on recent call attempts (simplified to avoid index requirement)
+/**
+ * Check rate limit based on recent call attempts (simplified to avoid index requirement)
+ * @param {string} userId - The Firebase UID of the user
+ * @returns {Promise<Object>} - Object with allowed flag and timeLeft if limited
+ */
 export const checkRateLimit = async (userId) => {
   try {
     const callsRef = collection(db, 'calls');
@@ -85,7 +91,12 @@ export const checkRateLimit = async (userId) => {
   }
 };
 
-// Create a call document with proper lifecycle state tracking
+/**
+ * Create a call document with proper lifecycle state tracking
+ * @param {string} callerUid - The Firebase UID of the caller
+ * @param {string} calleeUid - The Firebase UID of the callee
+ * @returns {Promise<string>} - The ID of the created call document
+ */
 export async function createCallDocument(callerUid, calleeUid) {
   const rateCheck = await checkRateLimit(callerUid);
   if (!rateCheck.allowed) {
@@ -103,6 +114,12 @@ export async function createCallDocument(callerUid, calleeUid) {
   return callDocRef.id;
 }
 
+/**
+ * Set the WebRTC offer in Firestore
+ * @param {string} callId - The ID of the call document
+ * @param {Object} offer - The WebRTC offer SDP
+ * @returns {Promise<void>}
+ */
 export async function setOffer(callId, offer) {
   try {
     console.log('Setting offer in Firestore:', offer);
@@ -119,6 +136,12 @@ export async function setOffer(callId, offer) {
   }
 }
 
+/**
+ * Set the WebRTC answer in Firestore
+ * @param {string} callId - The ID of the call document
+ * @param {Object} answer - The WebRTC answer SDP
+ * @returns {Promise<void>}
+ */
 export async function setAnswer(callId, answer) {
   try {
     console.log('Setting answer in Firestore:', answer);
@@ -135,6 +158,12 @@ export async function setAnswer(callId, answer) {
   }
 }
 
+/**
+ * Listen for WebRTC answers from the callee
+ * @param {string} callId - The ID of the call document
+ * @param {Function} callback - Called when an answer is received
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export function listenForAnswer(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   // Track the last answer we've seen to prevent duplicate callbacks
@@ -161,6 +190,12 @@ export function listenForAnswer(callId, callback) {
   return unsubscribe;
 }
 
+/**
+ * Listen for WebRTC offers from the caller
+ * @param {string} callId - The ID of the call document
+ * @param {Function} callback - Called when an offer is received
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export function listenForOffer(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   // Track the last offer we've seen to prevent duplicate callbacks
@@ -187,7 +222,12 @@ export function listenForOffer(callId, callback) {
   return unsubscribe;
 }
 
-// Listen for call status changes with improved error handling and status detection
+/**
+ * Listen for call status changes with improved error handling and status detection
+ * @param {string} callId - The ID of the call document
+ * @param {Function} callback - Called when the call status changes
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export function listenForCallStatus(callId, callback) {
   const callRef = doc(db, 'calls', callId);
   const unsubscribe = onSnapshot(callRef, (snapshot) => {
@@ -212,6 +252,13 @@ export function listenForCallStatus(callId, callback) {
 // Function to update call status with retry logic and duplicate prevention
 const callStatusCache = new Map();
 
+/**
+ * Update the status of a call in Firestore
+ * @param {string} callId - The ID of the call document
+ * @param {string} status - The new call status
+ * @param {Object} additionalData - Optional additional data to store with the status update
+ * @returns {Promise<boolean>} - True if successful
+ */
 export async function updateCallStatus(callId, status, additionalData = {}) {
   // Create a cache key for this specific call and status
   const cacheKey = `${callId}-${status}`;
@@ -275,7 +322,11 @@ export async function updateCallStatus(callId, status, additionalData = {}) {
   }
 }
 
-// Function to end a call and update status
+/**
+ * End a call and update status
+ * @param {string} callId - The ID of the call document
+ * @returns {Promise<boolean>} - True if successful
+ */
 export async function endCall(callId) {
   try {
     console.log('Ending call with ID:', callId); // Debug log
@@ -288,7 +339,11 @@ export async function endCall(callId) {
   }
 }
 
-// Function to decline a call
+/**
+ * Decline a call
+ * @param {string} callId - The ID of the call document
+ * @returns {Promise<boolean>} - True if successful
+ */
 export async function declineCall(callId) {
   try {
     return await updateCallStatus(callId, 'declined');
@@ -298,7 +353,11 @@ export async function declineCall(callId) {
   }
 }
 
-// Function to clean up call signaling data
+/**
+ * Clean up call signaling data
+ * @param {string} callId - The ID of the call document
+ * @returns {Promise<void>}
+ */
 export async function cleanupCallData(callId) {
   try {
     // Delete ICE candidate subcollections
@@ -323,14 +382,30 @@ export async function cleanupCallData(callId) {
   }
 }
 
+/**
+ * Get reference to offer candidates collection
+ * @param {string} callId - The ID of the call document
+ * @returns {Object} - Firestore collection reference
+ */
 export function offerCandidatesCollection(callId) {
   return collection(doc(db, 'calls', callId), 'offerCandidates');
 }
 
+/**
+ * Get reference to answer candidates collection
+ * @param {string} callId - The ID of the call document
+ * @returns {Object} - Firestore collection reference
+ */
 export function answerCandidatesCollection(callId) {
   return collection(doc(db, 'calls', callId), 'answerCandidates');
 }
 
+/**
+ * Listen for ICE candidates from the remote peer
+ * @param {Object} candidatesRef - Firestore collection reference for ICE candidates
+ * @param {Function} onCandidate - Called when an ICE candidate is received
+ * @returns {Function} - Unsubscribe function to clean up the listener
+ */
 export function listenForIceCandidates(candidatesRef, onCandidate) {
   const unsubscribe = onSnapshot(candidatesRef, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
@@ -353,7 +428,12 @@ export function listenForIceCandidates(candidatesRef, onCandidate) {
   return unsubscribe;
 }
 
-// Enhanced ICE candidate validation and addition
+/**
+ * Add an ICE candidate to Firestore for the remote peer to retrieve
+ * @param {Object} candidatesRef - Firestore collection reference for ICE candidates
+ * @param {RTCIceCandidate} candidate - The ICE candidate to add
+ * @returns {Promise<void>}
+ */
 export async function addIceCandidate(candidatesRef, candidate) {
   try {
     console.log('Adding ICE candidate to Firestore:', candidate);

@@ -17,6 +17,12 @@ import {
 } from '@/features/call/services/callService';
 import { getCurrentUser } from '@/features/user/services/userService';
 
+/**
+ * Custom hook for managing WebRTC-based audio and video calls
+ * @param {Object} selectedChat - The selected chat user object
+ * @param {string} role - The role of the current user in the call ('caller' or 'callee')
+ * @returns {Object} - Call state and functions
+ */
 export const useCall = (selectedChat, role = 'caller') => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isRemoteVideoConnected, setIsRemoteVideoConnected] = useState(false);
@@ -67,7 +73,11 @@ export const useCall = (selectedChat, role = 'caller') => {
     };
   }, [callStatus]);
 
-  // Format call duration
+  /**
+   * Format call duration in MM:SS or HH:MM:SS format
+   * @param {number} seconds - Duration in seconds
+   * @returns {string} - Formatted time string
+   */
   const formatCallDuration = useCallback((seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -79,7 +89,9 @@ export const useCall = (selectedChat, role = 'caller') => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
-  // Toggle mute
+  /**
+   * Toggle mute state of local audio track
+   */
   const toggleMute = useCallback(() => {
     setIsMuted(prev => !prev);
     
@@ -90,7 +102,9 @@ export const useCall = (selectedChat, role = 'caller') => {
     }
   }, [isMuted]);
 
-  // Toggle video
+  /**
+   * Toggle enabled state of local video track
+   */
   const toggleVideo = useCallback(() => {
     setIsVideoOff(prev => !prev);
     
@@ -101,7 +115,10 @@ export const useCall = (selectedChat, role = 'caller') => {
     }
   }, [isVideoOff]);
 
-  // Start call
+  /**
+   * Start a call to the selected chat user
+   * @returns {Promise<void>}
+   */
   const startCall = useCallback(async () => {
     if (!selectedChat) {
       setError('No chat selected');
@@ -126,7 +143,11 @@ export const useCall = (selectedChat, role = 'caller') => {
     }
   }, [selectedChat, user?.uid]);
 
-  // End call
+  /**
+   * End the current call
+   * @param {boolean} remoteEnded - Whether the call was ended by the remote party
+   * @returns {Promise<void>}
+   */
   const endCall = useCallback(async (remoteEnded = false) => {
     if (hasEndedRef.current) return;
     
@@ -163,7 +184,10 @@ export const useCall = (selectedChat, role = 'caller') => {
     }
   }, []);
 
-  // Accept call
+  /**
+   * Accept an incoming call
+   * @returns {Promise<void>}
+   */
   const acceptCall = useCallback(async () => {
     if (!selectedChat) {
       setError('No chat selected');
@@ -181,7 +205,10 @@ export const useCall = (selectedChat, role = 'caller') => {
     }
   }, [selectedChat]);
 
-  // Decline call
+  /**
+   * Decline an incoming call
+   * @returns {Promise<void>}
+   */
   const declineCall = useCallback(async () => {
     try {
       setCallStatus('Declining call...');
