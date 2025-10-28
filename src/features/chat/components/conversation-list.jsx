@@ -2,7 +2,7 @@ import { Search, UserPlus, X, Clock } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { useState, useEffect, useRef } from "react"
-import { subscribeToFriends, getCurrentUser, sendFriendRequest } from "@/features/user/services/userService"
+import { subscribeToFriends, getCurrentUser, sendFriendRequest, searchAllUsers } from "@/features/user/services/userService"
 import { subscribeToLatestMessages } from "@/features/chat/services/chatService"
 
 export function ConversationList({ onSelectChat }) {
@@ -17,6 +17,7 @@ export function ConversationList({ onSelectChat }) {
   const currentUserId = currentUser?.uid // Extract the UID for dependency array
   const friendsSubscriptionRef = useRef(null)
   const messagesSubscriptionRef = useRef(null)
+  const searchTimeoutRef = useRef(null)
 
   useEffect(() => {
     // Clean up previous subscriptions
@@ -100,6 +101,36 @@ export function ConversationList({ onSelectChat }) {
       }
     };
   }, []);
+
+  // Effect to handle user search in add friend modal
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setFilteredUsers([])
+      return
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    // Set new timeout to debounce search
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAllUsers(userSearchQuery)
+        setFilteredUsers(results)
+      } catch (error) {
+        console.error('Error searching users:', error)
+        setFilteredUsers([])
+      }
+    }, 300) // 300ms debounce
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [userSearchQuery])
 
   // Function to handle chat selection
   const handleSelectChat = (chat) => {
@@ -242,6 +273,38 @@ export function ConversationList({ onSelectChat }) {
                   className="w-full pl-10 pr-4 py-2 rounded-lg bg-muted border focus:outline-none focus:ring-2 focus:ring-primary text-responsive-sm"
                 />
               </div>
+              
+              {/* Display search results */}
+              {userSearchQuery && (
+                <div className="mb-3 sm:mb-4 max-h-40 overflow-y-auto">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <div
+                        key={user.uid}
+                        onClick={() => handleSelectUser(user)}
+                        className="flex items-center gap-3 p-2 hover:bg-muted cursor-pointer rounded-lg"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.photoURL} alt={user.name} />
+                          <AvatarFallback className="bg-secondary text-xs">
+                            {user.name?.split(" ").map(n => n[0]).join("").slice(0, 2) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate text-responsive-sm">{user.name || user.email}</div>
+                          {user.email && user.name && (
+                            <div className="text-muted-foreground text-responsive-xs truncate">{user.email}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-2 text-center text-muted-foreground text-responsive-sm">
+                      No users found
+                    </div>
+                  )}
+                </div>
+              )}
               
               {friendRequestStatus && (
                 <div className="mb-3 sm:mb-4 p-3 rounded-lg bg-secondary text-center text-responsive-sm">

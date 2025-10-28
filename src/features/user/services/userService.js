@@ -1258,6 +1258,47 @@ export const searchFriends = async (searchQuery) => {
   }
 }
 
+// Function to search all users by name or email (not just friends)
+export const searchAllUsers = async (searchQuery) => {
+  if (!currentUser || !db || !searchQuery.trim()) {
+    return []
+  }
+
+  try {
+    const usersRef = collection(db, 'users')
+    const querySnapshot = await getDocs(usersRef)
+    
+    const searchResults = []
+    const searchTerm = searchQuery.toLowerCase().trim()
+    
+    querySnapshot.forEach((doc) => {
+      // Skip the current user
+      if (doc.id === currentUser.uid) {
+        return
+      }
+      
+      const userData = doc.data()
+      
+      // Check if user matches search query
+      const name = userData.name || userData.displayName || ''
+      const email = userData.email || ''
+      
+      if (name.toLowerCase().includes(searchTerm) || email.toLowerCase().includes(searchTerm)) {
+        // Ensure we're using high quality images
+        if (userData.photoURL) {
+          userData.photoURL = getHighQualityPhotoURL(userData.photoURL)
+        }
+        searchResults.push({ id: doc.id, ...userData })
+      }
+    })
+    
+    return searchResults
+  } catch (error) {
+    console.error('Error searching all users:', error)
+    return []
+  }
+}
+
 // Function to subscribe to users list (all users for demo purposes)
 export const subscribeToUsers = (callback) => {
   // Only subscribe to Firestore if it's available
