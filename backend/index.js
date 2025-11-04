@@ -16,9 +16,16 @@ app.use(express.json());
 // In a real application, you would use a service account key file
 // For now, we'll use the default credentials (works in Firebase Functions)
 try {
-  admin.initializeApp({
-    // credential: admin.credential.cert(serviceAccount)
-  });
+  // Check if we're running in a Railway environment
+  if (process.env.RAILWAY_PROJECT_ID) {
+    // Use default credentials in Railway environment
+    admin.initializeApp();
+  } else {
+    // For local development, you might need to provide credentials
+    admin.initializeApp({
+      // credential: admin.credential.cert(serviceAccount)
+    });
+  }
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
   console.error('Firebase Admin initialization error:', error);
