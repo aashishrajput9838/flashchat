@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Phone, Mic, MicOff, X } from 'lucide-react';
-import { getCurrentUser, sendAudioCallNotification } from '@/features/user/services/userService';
+import { getCurrentUser, sendVideoCallNotification } from '@/features/user/services/userService';
 
 export function AudioCall({ selectedChat, onClose, onCallEnd, callId }) {
   const [isCallActive, setIsCallActive] = useState(false);
@@ -24,11 +24,11 @@ export function AudioCall({ selectedChat, onClose, onCallEnd, callId }) {
     try {
       // Send call notification to the recipient
       if (selectedChat && selectedChat.uid) {
-        const callNotification = await sendAudioCallNotification(selectedChat.uid, {
+        const callNotification = await sendVideoCallNotification(selectedChat.uid, {
           callerUid: user.uid,
           callerName: user.displayName || user.email,
           callerPhotoURL: user.photoURL
-        }, callId); // Pass callId if available
+        }, callId, 'audio_call'); // Pass callId and call type
         console.log('Audio call notification sent:', callNotification);
       }
       
@@ -48,7 +48,7 @@ export function AudioCall({ selectedChat, onClose, onCallEnd, callId }) {
     setIsMuted(!isMuted);
   };
 
-  const endCall = () => {
+  const endCall = async () => {
     setIsCallActive(false);
     
     // Update call status to missed if call was not connected
@@ -56,6 +56,17 @@ export function AudioCall({ selectedChat, onClose, onCallEnd, callId }) {
       setCallStatus('Call missed');
     } else {
       setCallStatus('Call ended');
+      
+      // Update call status in Firestore if callId is available
+      if (callId) {
+        try {
+          // Import the updateCallStatus function
+          const { updateCallStatus } = await import('@/features/call/services/callService');
+          await updateCallStatus(callId, 'ended');
+        } catch (error) {
+          console.error('Error updating call status:', error);
+        }
+      }
     }
     
     if (onCallEnd) {

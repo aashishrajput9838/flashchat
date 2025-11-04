@@ -473,15 +473,19 @@ export function VideoCall({ selectedChat, onClose, onCallEnd, role = 'caller', c
     cleanupMedia();
     cleanupListeners();
     
-    // Only update Firestore if we're the one ending the call
-    if (!endedByRemote && callId) {
-      console.log('Notifying other party that call has ended');
+    // Always update Firestore when ending the call, but notify remote party only if we're initiating the end
+    if (callId) {
+      console.log('Updating call status to ended in Firestore');
       try {
         // Update call status to ended
         await updateCallStatus(callId, 'ended');
         
-        // Clean up call data
-        await cleanupCallData(callId);
+        // Only clean up call data if we're the one ending the call
+        if (!endedByRemote) {
+          console.log('Cleaning up call data');
+          // Clean up call data
+          await cleanupCallData(callId);
+        }
       } catch (error) {
         console.error('Error updating call status:', error);
       }

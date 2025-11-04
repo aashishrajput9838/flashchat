@@ -171,7 +171,7 @@ export function CallNotification({ onAccept, onDecline }) {
         }
         
         // If the call is no longer ringing or has ended, dismiss the popup
-        if (data.status !== 'ringing' || data.status === 'ended' || data.status === 'declined') {
+        if (data.status !== 'ringing' || data.status === 'ended' || data.status === 'declined' || (data.endedAt && data.endedAt !== null)) {
           isDismissed = true;
           setIncomingCall(null);
           // Clean up the listener

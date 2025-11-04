@@ -975,7 +975,7 @@ export const clearAllNotifications = async () => {
 };
 
 // Function to send a video call notification to a user with improved structure
-export const sendVideoCallNotification = async (recipientUid, callerData, callId) => {
+export const sendVideoCallNotification = async (recipientUid, callerData, callId, callType = 'video_call') => {
   if (!currentUser || !db) {
     throw new Error('User not authenticated or database not available');
   }
@@ -983,7 +983,7 @@ export const sendVideoCallNotification = async (recipientUid, callerData, callId
   try {
     // Create call notification
     const callNotification = {
-      type: 'video_call',
+      type: callType,
       callerUid: currentUser.uid,
       callerName: currentUser.displayName || currentUser.email,
       callerPhotoURL: currentUser.photoURL,
@@ -1023,49 +1023,10 @@ export const sendVideoCallNotification = async (recipientUid, callerData, callId
 };
 
 // Function to send an audio call notification to a user
+// Deprecated - use sendVideoCallNotification with 'audio_call' type instead
 export const sendAudioCallNotification = async (recipientUid, callerData, callId) => {
-  if (!currentUser || !db) {
-    throw new Error('User not authenticated or database not available');
-  }
-
-  try {
-    // Create call notification
-    const callNotification = {
-      type: 'audio_call',
-      callerUid: currentUser.uid,
-      callerName: currentUser.displayName || currentUser.email,
-      callerPhotoURL: currentUser.photoURL,
-      callId: callId || null,
-      timestamp: new Date().toISOString(),
-      status: 'ringing', // ringing, accepted, declined, missed
-      read: false
-    };
-
-    // Get the recipient's document
-    const recipientDocRef = doc(db, 'users', recipientUid);
-    const recipientDoc = await getDoc(recipientDocRef);
-
-    if (recipientDoc.exists()) {
-      const userData = recipientDoc.data();
-      const notifications = userData.notifications || [];
-
-      // Add the new call notification to the array
-      notifications.push(callNotification);
-
-      // Update the document with the new notifications array
-      await updateDoc(recipientDocRef, {
-        notifications: notifications
-      });
-
-      return callNotification;
-    } else {
-      throw new Error('Recipient user not found');
-    }
-  } catch (error) {
-    console.error('Error sending audio call notification:', error);
-    throw error;
-  }
-};
+  return await sendVideoCallNotification(recipientUid, callerData, callId, 'audio_call');
+}
 
 // Function to update call notification status
 export const updateCallNotificationStatus = async (notificationId, status) => {

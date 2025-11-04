@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { getUserNotificationSettings, updateUserNotificationSettings } from '../services/notificationService';
 import { getCurrentUser } from '@/features/user/services/userService';
 

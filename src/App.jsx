@@ -11,6 +11,7 @@ import { auth } from '@/config/firebase';
 import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity, updateUserOnlineStatus } from '@/features/user/services/userService';
 import { OnlineStatusProvider } from '@/features/user/contexts/OnlineStatusContext';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
+import { initSocket } from '@/shared/services/socketService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -117,6 +118,9 @@ function App() {
       if (user) {
         // Initialize user in userService
         await initAuth();
+        
+        // Initialize socket connection
+        initSocket(user.uid);
       }
       setUser(user);
       setLoading(false);

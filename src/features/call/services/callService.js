@@ -1,4 +1,5 @@
 import { db } from '@/config/firebase';
+import { getCurrentUser } from '@/features/user/services/userService';
 import {
   doc,
   setDoc,
@@ -237,7 +238,7 @@ export function listenForCallStatus(callId, callback) {
       callback(data);
     } else {
       // Document was deleted, treat as ended call
-      callback({ status: 'ended' });
+      callback({ status: 'ended', endedAt: serverTimestamp() });
     }
   }, (error) => {
     console.error('Error listening for call status:', error);
@@ -260,6 +261,12 @@ const callStatusCache = new Map();
  * @returns {Promise<boolean>} - True if successful
  */
 export async function updateCallStatus(callId, status, additionalData = {}) {
+  // Skip if Firestore is not available
+  if (!db) {
+    console.warn('Firestore not available, skipping call status update');
+    return false;
+  }
+  
   // Create a cache key for this specific call and status
   const cacheKey = `${callId}-${status}`;
   const now = Date.now();
@@ -332,6 +339,12 @@ export async function endCall(callId) {
     console.log('Ending call with ID:', callId); // Debug log
     const result = await updateCallStatus(callId, 'ended');
     console.log('Call end result:', result); // Debug log
+    
+    // Also notify the backend server about the call end via socket if available
+    if (window.socket && callId) {
+      window.socket.emit('end_call', { callId, userId: getCurrentUser()?.uid });
+    }
+    
     return result;
   } catch (error) {
     console.error('Error ending call:', error);

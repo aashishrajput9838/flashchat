@@ -119,7 +119,7 @@ In a real application, this file would be uploaded and sent as a message.`);
       setActiveCallId(callId); // Store the call ID
       
       // Send audio call notification
-      await sendVideoCallNotification(selectedChat.uid, user, callId);
+      await sendVideoCallNotification(selectedChat.uid, user, callId, 'audio_call');
       
       // Show audio call interface
       setShowAudioCall(true);

@@ -6,15 +6,15 @@ import { getAnalytics } from "firebase/analytics";
 import { getMessaging } from "firebase/messaging";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration (from environment variables)
 const firebaseConfig = {
-  apiKey: "AIzaSyB_3xErgKerW8IsWLQzu6IsMyiXNOPSxEo",
-  authDomain: "web-socket-2e05f.firebaseapp.com",
-  projectId: "web-socket-2e05f",
-  storageBucket: "web-socket-2e05f.firebasestorage.app",
-  messagingSenderId: "213332457740",
-  appId: "1:213332457740:web:dbfe9e380e1629d0427129",
-  measurementId: "G-RYFQE7TFGN"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB_3xErgKerW8IsWLQzu6IsMyiXNOPSxEo",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "web-socket-2e05f.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "web-socket-2e05f",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "web-socket-2e05f.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "213332457740",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:213332457740:web:dbfe9e380e1629d0427129",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-RYFQE7TFGN"
 };
 
 // Initialize Firebase
