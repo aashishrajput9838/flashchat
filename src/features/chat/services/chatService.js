@@ -2,6 +2,7 @@ import { db } from '@/config/firebase';
 import { collection, doc, setDoc, query, orderBy, where, onSnapshot, serverTimestamp, addDoc } from 'firebase/firestore';
 import { getCurrentUser } from '@/features/user/services/userService';
 import { handleFirestoreError } from '@/config/firebase';
+import { sendMessageNotification } from '@/features/notifications/services/notificationService';
 
 /**
  * Function to send a message to Firestore
@@ -36,6 +37,10 @@ export const sendMessage = async (messageData, recipientUserId) => {
       
       // Use addDoc to let Firestore generate the ID
       const docRef = await addDoc(messagesRef, message);
+      
+      // Send notification to recipient
+      await sendMessageNotification(recipientUserId, message.name, message.text);
+      
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error);

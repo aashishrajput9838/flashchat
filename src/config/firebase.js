@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
+import { getMessaging } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -38,11 +39,20 @@ try {
   analytics = null;
 }
 
+// Conditionally initialize Firebase Messaging
+let messaging;
+try {
+  messaging = getMessaging(app);
+} catch (error) {
+  console.warn("Messaging initialization error:", error);
+  messaging = null;
+}
+
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
-// Export Firestore instance
-export { db };
+// Export Firestore instance and Messaging
+export { db, messaging };
 
 // Add a function to handle Firestore errors and implement backoff logic
 export const handleFirestoreError = (error) => {

@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { initializeApp } = require('firebase/app');
+const admin = require('firebase-admin');
 const { getFirestore, doc, updateDoc, serverTimestamp } = require('firebase/firestore');
 
 const app = express();
@@ -11,6 +11,20 @@ const server = http.createServer(app);
 // Enable CORS
 app.use(cors());
 app.use(express.json());
+
+// Firebase Admin SDK initialization
+// In a real application, you would use a service account key file
+// For now, we'll use the default credentials (works in Firebase Functions)
+try {
+  admin.initializeApp({
+    // credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('Firebase Admin initialized successfully');
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+}
+
+const messaging = admin.messaging();
 
 // Firebase configuration (matching your frontend config)
 const firebaseConfig = {
@@ -23,7 +37,8 @@ const firebaseConfig = {
   measurementId: "G-RYFQE7TFGN"
 };
 
-// Initialize Firebase
+// Initialize Firebase Client SDK for Firestore access
+const { initializeApp } = require('firebase/app');
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
@@ -48,6 +63,29 @@ const io = new Server(server, {
 
 // Store active calls and their participants
 const activeCalls = new Map();
+
+// Endpoint to send FCM notifications
+app.post('/api/send-notification', async (req, res) => {
+  try {
+    const { token, title, body, icon } = req.body;
+    
+    // Send notification
+    const response = await messaging.send({
+      token: token,
+      notification: {
+        title: title,
+        body: body,
+        icon: icon || '/icon-192x192.png'
+      }
+    });
+    
+    console.log('Successfully sent message:', response);
+    res.status(200).json({ success: true, messageId: response });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
