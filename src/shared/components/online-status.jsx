@@ -26,16 +26,6 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
   // Check if user has chosen to appear offline
   const appearOffline = user?.appearOffline || false;
 
-  console.log('OnlineStatus component debug:', { 
-    userUid: user?.uid, 
-    isCurrentUser, 
-    isOnline, 
-    canSeeStatus, 
-    appearOffline, 
-    lastSeen: lastSeen?.toDate ? lastSeen.toDate() : lastSeen,
-    currentUserUid: currentUser?.uid
-  });
-
   // For current user, show online status based on their appearOffline setting
   if (isCurrentUser) {
     if (appearOffline) {
@@ -55,7 +45,30 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
     }
   }
 
-  if (isOnline && canSeeStatus && !appearOffline) {
+  // Check if the user is actually online (within a reasonable time window)
+  const isActuallyOnline = () => {
+    // If user is explicitly marked as offline or has chosen to appear offline, they're not online
+    if (!isOnline || appearOffline) return false;
+    
+    // If we don't have last seen data, we can't determine if they're really online
+    if (!lastSeen) return false;
+    
+    // Check if last seen is recent (within 5 minutes)
+    try {
+      const now = new Date();
+      const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+      const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+      
+      // Consider user online only if they were seen within the last 5 minutes
+      return diffInMinutes < 5;
+    } catch (e) {
+      console.error('Error calculating time difference:', e);
+      return false;
+    }
+  };
+
+  // If user is actually online and we can see their status
+  if (isActuallyOnline() && canSeeStatus) {
     return (
       <div className="flex items-center">
         <div className={`${sizeClasses[size]} bg-green-500 rounded-full border border-card`}></div>
@@ -64,10 +77,25 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
     );
   }
 
+  // If we have last seen data and can see their status, and they're not appearing offline
   if (lastSeen && canSeeStatus && !appearOffline) {
     // Format last seen time
     const now = new Date();
-    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    let lastSeenDate;
+    
+    try {
+      lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    } catch (e) {
+      console.error('Error parsing lastSeen date:', e);
+      // If we can't parse the date, fall back to showing as offline
+      return (
+        <div className="flex items-center">
+          <div className={`${sizeClasses[size]} bg-gray-400 rounded-full border border-card`}></div>
+          {showText && <span className={`ml-1 ${textSizeClasses[size]} text-muted-foreground`}>Offline</span>}
+        </div>
+      );
+    }
+    
     const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
     
     let lastSeenText = '';
