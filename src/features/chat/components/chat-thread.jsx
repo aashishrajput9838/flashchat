@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react"
 import { useChat } from "@/features/chat/hooks/useChat"
 import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline } from "@/features/user/services/userService"
 import { createCallDocument } from "@/features/call/services/callService"
+import { EmojiPicker } from "@/features/chat/components/emoji-picker"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const { 
@@ -25,6 +26,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [isCalling, setIsCalling] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [activeCallId, setActiveCallId] = useState(null) // Store the active call ID
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const user = getCurrentUser()
@@ -57,14 +59,9 @@ In a real application, this file would be uploaded and sent as a message.`);
     setMessage(prevMessage => prevMessage + emoji);
   };
 
-  // Function to show emoji picker
-  const showEmojiPicker = () => {
-    const emojis = ['😀', '😂', '😍', '😎', '👍', '👏', '❤️', '🔥', '🎉', '✨'];
-    const selectedEmoji = prompt(`Select an emoji:
-${emojis.join(' ')}`);
-    if (selectedEmoji && emojis.includes(selectedEmoji)) {
-      handleEmojiSelect(selectedEmoji);
-    }
+  // Function to toggle emoji picker
+  const toggleEmojiPicker = () => {
+    setShowEmojiPicker(prev => !prev);
   };
 
   // Function to handle attach file
@@ -399,7 +396,7 @@ ${emojis.join(' ')}`);
       )}
       
       {/* Input area */}
-      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t flex-shrink-0">
+      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t flex-shrink-0 relative">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -411,8 +408,8 @@ ${emojis.join(' ')}`);
           </button>
           <button
             type="button"
-            onClick={showEmojiPicker}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            onClick={toggleEmojiPicker}
+            className="p-2 rounded-lg hover:bg-muted transition-colors relative"
             aria-label="Add emoji"
           >
             <Smile className="h-5 w-5" />
@@ -435,6 +432,13 @@ ${emojis.join(' ')}`);
             <Send className="h-5 w-5" />
           </button>
         </div>
+        
+        {/* Emoji Picker */}
+        <EmojiPicker 
+          onEmojiSelect={handleEmojiSelect}
+          isVisible={showEmojiPicker}
+          onClose={() => setShowEmojiPicker(false)}
+        />
       </form>
       
       {/* Video Call Modal */}
