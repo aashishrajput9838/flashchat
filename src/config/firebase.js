@@ -4,6 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging } from "firebase/messaging";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -48,11 +49,22 @@ try {
   messaging = null;
 }
 
+// Initialize Firebase Functions
+let functions;
+try {
+  functions = getFunctions(app, 'us-central1');
+  // Uncomment the following line to use the local emulator during development
+  // connectFunctionsEmulator(functions, "localhost", 5001);
+} catch (error) {
+  console.warn("Functions initialization error:", error);
+  functions = null;
+}
+
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
-// Export Firestore instance and Messaging
-export { db, messaging };
+// Export Firestore instance, Messaging, and Functions
+export { db, messaging, functions };
 
 // Add a function to handle Firestore errors and implement backoff logic
 export const handleFirestoreError = (error) => {

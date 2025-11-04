@@ -1,3 +1,4 @@
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -54,12 +55,30 @@ const io = new Server(server, {
       "http://localhost:5178", 
       "http://localhost:5179", 
       "http://localhost:5180",
-      "https://flashchat-coral.vercel.app"
+      "https://flashchat-coral.vercel.app",
+      "https://flashchat-git-main-yourusername.vercel.app" // Add your actual Vercel preview URLs as needed
     ],
     methods: ["GET", "POST"],
     credentials: true
   }
 });
+
+// Enable CORS for Express
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:5174", 
+    "http://localhost:5175", 
+    "http://localhost:5176", 
+    "http://localhost:5177", 
+    "http://localhost:5178", 
+    "http://localhost:5179", 
+    "http://localhost:5180",
+    "https://flashchat-coral.vercel.app",
+    "https://flashchat-git-main-yourusername.vercel.app" // Add your actual Vercel preview URLs as needed
+  ],
+  credentials: true
+}));
 
 // Store active calls and their participants
 const activeCalls = new Map();
@@ -258,11 +277,10 @@ async function updateCallStatus(callId, status) {
   }
 }
 
-const PORT = 0; // Use 0 to let the system assign an available port
+const PORT = process.env.PORT || 3001; // Use Railway's PORT or default to 3001
 
 server.listen(PORT, () => {
-  const assignedPort = server.address().port;
-  console.log(`Call management server running on port ${assignedPort}`);
+  console.log(`Call management server running on port ${PORT}`);
 });
 
 // Graceful shutdown

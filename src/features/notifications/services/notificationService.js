@@ -110,8 +110,12 @@ export const sendMessageNotification = async (recipientUserId, senderName, messa
         ? messageText.substring(0, 50) + '...' 
         : messageText;
       
+      // Use Railway-deployed backend URL for sending notifications
+      // TODO: Update with your actual Railway URL after deployment
+      const backendUrl = 'https://your-app-name.up.railway.app'; // Update this with your Railway URL
+      
       // Send notification to backend to trigger FCM
-      const response = await fetch('/api/send-notification', {
+      const response = await fetch(`${backendUrl}/api/send-notification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
