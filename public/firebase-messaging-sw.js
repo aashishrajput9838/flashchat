@@ -23,7 +23,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  // Customize notification here
+  // Extract notification data
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
@@ -31,6 +31,27 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon-192x192.png',
     data: payload.data
   };
+  
+  // Set priority and other options based on notification type
+  if (payload.data) {
+    // Set priority
+    if (payload.data.priority === 'high') {
+      notificationOptions.priority = 'high';
+      notificationOptions.vibrate = [200, 100, 200];
+    }
+    
+    // Add tag for grouping notifications
+    if (payload.data.type) {
+      notificationOptions.tag = payload.data.type;
+    }
+    
+    // Set require interaction for important notifications
+    if (payload.data.priority === 'high' || 
+        payload.data.type === 'call' || 
+        payload.data.type === 'direct_message') {
+      notificationOptions.requireInteraction = true;
+    }
+  }
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
@@ -61,5 +82,52 @@ self.addEventListener('notificationclick', (event) => {
         return clients.openWindow(urlToOpen);
       }
     })
+  );
+});
+
+// Handle push event for additional customization
+self.addEventListener('push', function(event) {
+  console.log('[Service Worker] Push Received.');
+  
+  let notificationData = {};
+  
+  if (event.data) {
+    try {
+      notificationData = event.data.json();
+    } catch (e) {
+      console.error('Error parsing push data:', e);
+      notificationData = {
+        title: 'New Notification',
+        body: event.data.text()
+      };
+    }
+  }
+  
+  const title = notificationData.title || 'New Notification';
+  const options = {
+    body: notificationData.body || '',
+    icon: notificationData.icon || '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    data: notificationData.data || {}
+  };
+  
+  // Apply additional options based on notification data
+  if (notificationData.data) {
+    if (notificationData.data.priority === 'high') {
+      options.priority = 'high';
+      options.vibrate = [200, 100, 200];
+    }
+    
+    if (notificationData.data.tag) {
+      options.tag = notificationData.data.tag;
+    }
+    
+    if (notificationData.data.requireInteraction) {
+      options.requireInteraction = true;
+    }
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(title, options)
   );
 });

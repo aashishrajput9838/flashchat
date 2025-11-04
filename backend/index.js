@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -86,17 +85,62 @@ const activeCalls = new Map();
 // Endpoint to send FCM notifications
 app.post('/api/send-notification', async (req, res) => {
   try {
-    const { token, title, body, icon } = req.body;
+    const { token, title, body, icon, data } = req.body;
     
-    // Send notification
-    const response = await messaging.send({
+    // Prepare FCM message payload
+    const message = {
       token: token,
       notification: {
         title: title,
         body: body,
         icon: icon || '/icon-192x192.png'
       }
-    });
+    };
+    
+    // Add data payload if provided
+    if (data) {
+      message.data = {};
+      // Convert all data values to strings as required by FCM
+      for (const key in data) {
+        message.data[key] = String(data[key]);
+      }
+    }
+    
+    // Set Android-specific options
+    message.android = {
+      priority: data?.priority === 'high' ? 'high' : 'normal',
+      notification: {
+        icon: icon || '/icon-192x192.png',
+        color: '#2563eb', // Blue color
+        sound: 'default'
+      }
+    };
+    
+    // Set iOS-specific options
+    message.apns = {
+      payload: {
+        aps: {
+          alert: {
+            title: title,
+            body: body
+          },
+          sound: 'default'
+        }
+      }
+    };
+    
+    // Set web-specific options
+    message.webpush = {
+      headers: {
+        Urgency: data?.priority === 'high' ? 'high' : 'normal'
+      },
+      fcmOptions: {
+        link: data?.url || 'https://flashchat-coral.vercel.app'
+      }
+    };
+    
+    // Send notification
+    const response = await messaging.send(message);
     
     console.log('Successfully sent message:', response);
     res.status(200).json({ success: true, messageId: response });
