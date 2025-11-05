@@ -48,6 +48,26 @@ try {
 
 const messaging = admin.messaging();
 
+// Helper function to update user FCM token
+async function updateUserFcmToken(userId, fcmToken) {
+  // Skip if Firestore is not available
+  if (!db) {
+    console.warn('Firestore not available, skipping FCM token update');
+    return;
+  }
+  
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { 
+      fcmToken: fcmToken,
+      lastTokenUpdate: serverTimestamp()
+    });
+    console.log(`FCM token updated for user ${userId}`);
+  } catch (error) {
+    console.error(`Error updating FCM token for user ${userId}:`, error);
+  }
+}
+
 // Firebase configuration (from environment variables)
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY || "AIzaSyB_3xErgKerW8IsWLQzu6IsMyiXNOPSxEo",
@@ -115,6 +135,37 @@ app.use(cors({
 
 // Store active calls and their participants
 const activeCalls = new Map();
+
+// Endpoint to update user FCM token
+app.post('/api/update-fcm-token', async (req, res) => {
+  try {
+    const { userId, fcmToken } = req.body;
+    
+    // Validate required fields
+    if (!userId || !fcmToken) {
+      return res.status(400).json({ success: false, error: 'Missing userId or fcmToken' });
+    }
+    
+    // Skip if Firestore is not available
+    if (!db) {
+      console.warn('Firestore not available, skipping FCM token update');
+      return res.status(200).json({ success: true });
+    }
+    
+    // Update user document with FCM token
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { 
+      fcmToken: fcmToken,
+      lastTokenUpdate: serverTimestamp()
+    });
+    
+    console.log(`FCM token updated for user ${userId}`);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error updating FCM token:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Endpoint to send FCM notifications
 app.post('/api/send-notification', async (req, res) => {
@@ -216,6 +267,24 @@ io.on('connection', (socket) => {
       }
     } catch (error) {
       console.error('Error registering user:', error);
+    }
+  });
+  
+  // Update user FCM token
+  socket.on('update_fcm_token', async (data) => {
+    try {
+      const { userId, fcmToken } = data;
+      
+      // Validate required fields
+      if (!userId || !fcmToken) {
+        console.error('Missing userId or fcmToken for token update');
+        return;
+      }
+      
+      // Update user FCM token
+      await updateUserFcmToken(userId, fcmToken);
+    } catch (error) {
+      console.error('Error updating FCM token:', error);
     }
   });
 
@@ -490,4 +559,73 @@ process.on('SIGINT', () => {
   server.close(() => {
     console.log('Process terminated');
   });
+});
+
+// Test notification endpoint
+app.post('/api/test-notification', async (req, res) => {
+  try {
+    const { token, title, body } = req.body;
+    
+    // Skip if messaging is not available
+    if (!messaging) {
+      console.warn('Firebase Messaging not available, skipping notification');
+      return res.status(200).json({ success: true, messageId: null });
+    }
+    
+    // Prepare FCM message payload
+    const message = {
+      token: token,
+      notification: {
+        title: title || 'Test Notification',
+        body: body || 'This is a test notification',
+        icon: '/icon-192x192.png'
+      },
+      data: {
+        type: 'test',
+        priority: 'high'
+      }
+    };
+    
+    // Set Android-specific options
+    message.android = {
+      priority: 'high',
+      notification: {
+        icon: '/icon-192x192.png',
+        color: '#2563eb',
+        sound: 'default'
+      }
+    };
+    
+    // Set iOS-specific options
+    message.apns = {
+      payload: {
+        aps: {
+          alert: {
+            title: title || 'Test Notification',
+            body: body || 'This is a test notification'
+          },
+          sound: 'default'
+        }
+      }
+    };
+    
+    // Set web-specific options
+    message.webpush = {
+      headers: {
+        Urgency: 'high'
+      },
+      fcmOptions: {
+        link: 'https://flashchat-coral.vercel.app'
+      }
+    };
+    
+    // Send notification
+    const response = await messaging.send(message);
+    
+    console.log('Successfully sent test message:', response);
+    res.status(200).json({ success: true, messageId: response });
+  } catch (error) {
+    console.error('Error sending test message:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });

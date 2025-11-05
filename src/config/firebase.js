@@ -3,7 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getMessaging } from "firebase/messaging";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 // Your web app's Firebase configuration (from environment variables)

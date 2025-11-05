@@ -5,7 +5,7 @@ import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { getCurrentUser } from '@/features/user/services/userService';
 
 // VAPID key for Firebase Cloud Messaging
-const VAPID_KEY = 'ILEGD9BbwyPfiarYMDq9-OsJVZdu1l08AE8I13pp15c';
+const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || 'ILEGD9BbwyPfiarYMDq9-OsJVZdu1l08AE8I13pp15c';
 
 // Notification types and priorities
 export const NOTIFICATION_TYPES = {
@@ -103,11 +103,38 @@ export const requestNotificationPermission = async () => {
     // Save token to user's document in Firestore
     const user = getCurrentUser();
     if (user && token) {
-      const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, { 
-        fcmToken: token,
-        notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
-      }, { merge: true });
+      // Update token via backend API
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      try {
+        await fetch(`${backendUrl}/api/update-fcm-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            fcmToken: token
+          })
+        });
+        console.log('FCM token sent to backend');
+      } catch (backendError) {
+        console.error('Error sending FCM token to backend:', backendError);
+        // Fallback to direct Firestore update
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, { 
+          fcmToken: token,
+          notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
+        }, { merge: true });
+      }
+      
+      // Also send token via socket connection if available
+      if (window.socket) {
+        window.socket.emit('update_fcm_token', {
+          userId: user.uid,
+          fcmToken: token
+        });
+      }
+      
       console.log('FCM token saved to user document');
     }
 
@@ -121,7 +148,7 @@ export const requestNotificationPermission = async () => {
 /**
  * Initialize foreground message handling
  */
-export const initializeForegroundNotifications = () => {
+export const initializeForegroundNotifications = async () => {
   // Check if messaging is initialized
   if (!messaging) {
     console.warn('Firebase Messaging not initialized');
@@ -129,11 +156,25 @@ export const initializeForegroundNotifications = () => {
   }
 
   // Handle foreground messages
-  onMessage(messaging, (payload) => {
+  onMessage(messaging, async (payload) => {
     console.log('Message received in foreground:', payload);
     
-    // Show in-app notification using Web Notifications API
-    showInAppNotification(payload);
+    // Get current user to check notification settings
+    const user = getCurrentUser();
+    if (user) {
+      // Get user notification settings
+      const settings = await getUserNotificationSettings(user.uid);
+      
+      // Check if notification should be shown based on type
+      const notificationType = payload.data?.type || 'direct_message';
+      if (shouldSendNotification(settings, notificationType)) {
+        // Show in-app notification using Web Notifications API
+        showInAppNotification(payload);
+      }
+    } else {
+      // If no user, show notification by default
+      showInAppNotification(payload);
+    }
   });
 };
 
@@ -148,12 +189,31 @@ const showInAppNotification = (payload) => {
     const body = payload.notification?.body || '';
     const icon = payload.notification?.icon || '/icon-192x192.png';
     
-    // Create notification
-    new Notification(title, {
+    // Create notification with additional options
+    const notificationOptions = {
       body: body,
       icon: icon,
-      badge: '/icon-192x192.png'
-    });
+      badge: '/icon-192x192.png',
+      data: payload.data || {}
+    };
+    
+    // Add additional options based on data
+    if (payload.data) {
+      if (payload.data.priority === 'high') {
+        notificationOptions.vibrate = [200, 100, 200];
+      }
+      
+      if (payload.data.tag) {
+        notificationOptions.tag = payload.data.tag;
+      }
+      
+      if (payload.data.requireInteraction) {
+        notificationOptions.requireInteraction = true;
+      }
+    }
+    
+    // Create notification
+    new Notification(title, notificationOptions);
   } catch (error) {
     console.error('Error showing in-app notification:', error);
   }
@@ -189,7 +249,7 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     // Only send notification if recipient has a token
     if (recipientFcmToken) {
       // Use Railway-deployed backend URL for sending notifications
-      const backendUrl = 'https://flashchat-production.up.railway.app'; // Updated with your Railway URL
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
       
       // Send notification to backend to trigger FCM
       const response = await fetch(`${backendUrl}/api/send-notification`, {
@@ -362,7 +422,7 @@ export const initNotificationService = async () => {
     }
     
     // Initialize foreground message handling
-    initializeForegroundNotifications();
+    await initializeForegroundNotifications();
   } catch (error) {
     console.error('Error initializing notification service:', error);
   }

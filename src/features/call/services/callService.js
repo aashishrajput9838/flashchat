@@ -1,5 +1,6 @@
 import { db } from '@/config/firebase';
 import { getCurrentUser } from '@/features/user/services/userService';
+import { sendCallNotification } from '@/features/notifications/services/notificationService';
 import {
   doc,
   setDoc,
@@ -112,6 +113,19 @@ export async function createCallDocument(callerUid, calleeUid) {
     status: 'initiated',
     endedAt: null
   });
+  
+  // Send call notification to callee
+  try {
+    const caller = await getDoc(doc(db, 'users', callerUid));
+    if (caller.exists()) {
+      const callerData = caller.data();
+      const callerName = callerData.displayName || callerData.name || callerData.email || 'Unknown User';
+      await sendCallNotification(calleeUid, callerName, 'video');
+    }
+  } catch (error) {
+    console.error('Error sending call notification:', error);
+  }
+  
   return callDocRef.id;
 }
 

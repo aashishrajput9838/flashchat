@@ -14,6 +14,7 @@ FlashChat is a modern real-time communication platform built with React, Firebas
 - 🌙 **Dark/Light Theme**: Toggle between dark and light modes
 - 📱 **Responsive Design**: Works on mobile, tablet, and desktop
 - 🔍 **User Search**: Find and connect with other users
+- 🔔 **Push Notifications**: Receive browser notifications for messages and calls even when the app is closed
 
 ## Tech Stack
 
@@ -22,6 +23,7 @@ FlashChat is a modern real-time communication platform built with React, Firebas
 - **Real-time Communication**: WebRTC
 - **UI Components**: Radix UI, Lucide React
 - **State Management**: React Hooks, Context API
+- **Push Notifications**: Firebase Cloud Messaging (FCM)
 - **Testing**: Jest, React Testing Library
 - **Deployment**: Firebase Hosting
 
@@ -52,6 +54,8 @@ FlashChat is a modern real-time communication platform built with React, Firebas
    - Create a Firebase project at https://console.firebase.google.com/
    - Register your app and get the configuration
    - Update `src/config/firebase.js` with your Firebase config
+   - Enable Firebase Cloud Messaging in the Firebase Console
+   - Generate a Web Push Certificate in Firebase Cloud Messaging settings
 
 4. Start the development server:
    ```bash
@@ -116,6 +120,17 @@ npm test -- --coverage
 # Run specific test file
 npm test src/features/chat/hooks/__tests__/useChat.test.js
 ```
+
+### Testing Notifications
+
+To test the notification system:
+
+1. Ensure you have granted notification permissions in the browser
+2. Run the test notification script:
+   ```bash
+   node test-notification.js
+   ```
+3. Check that you receive a notification in your browser
 
 ## Deployment
 
