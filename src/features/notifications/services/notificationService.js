@@ -78,6 +78,8 @@ export const updateUserNotificationSettings = async (userId, settings) => {
  */
 export const requestNotificationPermission = async () => {
   try {
+    console.log('Requesting notification permission...');
+    
     // Check if browser supports notifications
     if (!('Notification' in window)) {
       console.log('This browser does not support desktop notification');
@@ -92,21 +94,37 @@ export const requestNotificationPermission = async () => {
 
     // Request permission
     const permission = await Notification.requestPermission();
+    console.log('Notification permission result:', permission);
+    
     if (permission !== 'granted') {
       console.log('Notification permission denied');
       return null;
     }
 
     // Get FCM token
+    console.log('Getting FCM token with VAPID key:', VAPID_KEY);
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    console.log('FCM token obtained:', token);
+    
+    // Validate token format
+    if (!token || typeof token !== 'string' || token.length < 100) {
+      console.error('Invalid FCM token format:', token);
+      return null;
+    }
+    
+    // Save the token globally so it can be accessed for testing
+    window.fcmToken = token;
+    console.log('FCM token saved to window.fcmToken for easy access');
     
     // Save token to user's document in Firestore
     const user = getCurrentUser();
     if (user && token) {
+      console.log('Saving FCM token for user:', user.uid);
+      
       // Update token via backend API
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
       try {
-        await fetch(`${backendUrl}/api/update-fcm-token`, {
+        const response = await fetch(`${backendUrl}/api/update-fcm-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -116,7 +134,12 @@ export const requestNotificationPermission = async () => {
             fcmToken: token
           })
         });
-        console.log('FCM token sent to backend');
+        
+        if (response.ok) {
+          console.log('FCM token sent to backend successfully');
+        } else {
+          console.error('Failed to send FCM token to backend:', response.status);
+        }
       } catch (backendError) {
         console.error('Error sending FCM token to backend:', backendError);
         // Fallback to direct Firestore update
@@ -133,6 +156,7 @@ export const requestNotificationPermission = async () => {
           userId: user.uid,
           fcmToken: token
         });
+        console.log('FCM token sent via socket');
       }
       
       console.log('FCM token saved to user document');
@@ -142,6 +166,61 @@ export const requestNotificationPermission = async () => {
   } catch (error) {
     console.error('Error requesting notification permission:', error);
     return null;
+  }
+};
+
+/**
+ * Show in-app notification using Web Notifications API
+ * @param {Object} payload - FCM message payload
+ */
+const showInAppNotification = (payload) => {
+  try {
+    console.log('Showing in-app notification:', payload);
+    
+    // Extract notification data
+    const title = payload.notification?.title || 'New Message';
+    const body = payload.notification?.body || '';
+    const icon = payload.notification?.icon || '/icon-192x192.png';
+    
+    // Create notification with additional options
+    const notificationOptions = {
+      body: body,
+      icon: icon,
+      badge: '/icon-192x192.png',
+      data: payload.data || {}
+    };
+    
+    // Add additional options based on data
+    if (payload.data) {
+      if (payload.data.priority === 'high') {
+        notificationOptions.vibrate = [200, 100, 200];
+      }
+      
+      if (payload.data.tag) {
+        notificationOptions.tag = payload.data.tag;
+      }
+      
+      if (payload.data.requireInteraction) {
+        notificationOptions.requireInteraction = true;
+      }
+    }
+    
+    // Create notification
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(title, notificationOptions);
+      console.log('In-app notification created:', notification);
+      
+      // Handle notification click
+      notification.onclick = function(event) {
+        event.preventDefault();
+        window.focus();
+        notification.close();
+      };
+    } else {
+      console.warn('Notification permission not granted for in-app notification');
+    }
+  } catch (error) {
+    console.error('Error showing in-app notification:', error);
   }
 };
 
@@ -176,47 +255,6 @@ export const initializeForegroundNotifications = async () => {
       showInAppNotification(payload);
     }
   });
-};
-
-/**
- * Show in-app notification using Web Notifications API
- * @param {Object} payload - FCM message payload
- */
-const showInAppNotification = (payload) => {
-  try {
-    // Extract notification data
-    const title = payload.notification?.title || 'New Message';
-    const body = payload.notification?.body || '';
-    const icon = payload.notification?.icon || '/icon-192x192.png';
-    
-    // Create notification with additional options
-    const notificationOptions = {
-      body: body,
-      icon: icon,
-      badge: '/icon-192x192.png',
-      data: payload.data || {}
-    };
-    
-    // Add additional options based on data
-    if (payload.data) {
-      if (payload.data.priority === 'high') {
-        notificationOptions.vibrate = [200, 100, 200];
-      }
-      
-      if (payload.data.tag) {
-        notificationOptions.tag = payload.data.tag;
-      }
-      
-      if (payload.data.requireInteraction) {
-        notificationOptions.requireInteraction = true;
-      }
-    }
-    
-    // Create notification
-    new Notification(title, notificationOptions);
-  } catch (error) {
-    console.error('Error showing in-app notification:', error);
-  }
 };
 
 /**
@@ -423,6 +461,21 @@ export const initNotificationService = async () => {
     
     // Initialize foreground message handling
     await initializeForegroundNotifications();
+    
+    // Add a helper function to the window object for easy testing
+    window.getFcmToken = async () => {
+      console.log('Getting FCM token...');
+      const newToken = await requestNotificationPermission();
+      if (newToken) {
+        window.fcmToken = newToken;
+        console.log('New FCM token:', newToken);
+        console.log('You can now test notifications with this token!');
+        return newToken;
+      }
+      return null;
+    };
+    
+    console.log('Notification service initialized. Use window.getFcmToken() to get a new token or window.fcmToken to access the current token.');
   } catch (error) {
     console.error('Error initializing notification service:', error);
   }

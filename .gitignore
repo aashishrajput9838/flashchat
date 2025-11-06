@@ -30,3 +30,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Ignore Firebase and service account keys
+*.json
+!package.json
+!tsconfig.json
+

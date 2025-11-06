@@ -29,14 +29,13 @@ messaging.onBackgroundMessage((payload) => {
     body: payload.notification.body,
     icon: payload.notification.icon || '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    data: payload.data
+    data: payload.data || {}
   };
   
-  // Set priority and other options based on notification type
+  // Set additional options based on notification type
   if (payload.data) {
     // Set priority
     if (payload.data.priority === 'high') {
-      notificationOptions.priority = 'high';
       notificationOptions.vibrate = [200, 100, 200];
     }
     
@@ -94,6 +93,7 @@ self.addEventListener('push', function(event) {
   if (event.data) {
     try {
       notificationData = event.data.json();
+      console.log('Push data:', notificationData);
     } catch (e) {
       console.error('Error parsing push data:', e);
       notificationData = {
@@ -103,10 +103,10 @@ self.addEventListener('push', function(event) {
     }
   }
   
-  const title = notificationData.title || 'New Notification';
+  const title = notificationData.notification?.title || notificationData.title || 'New Notification';
   const options = {
-    body: notificationData.body || '',
-    icon: notificationData.icon || '/icon-192x192.png',
+    body: notificationData.notification?.body || notificationData.body || '',
+    icon: notificationData.notification?.icon || notificationData.icon || '/icon-192x192.png',
     badge: '/icon-192x192.png',
     data: notificationData.data || {}
   };
@@ -114,7 +114,6 @@ self.addEventListener('push', function(event) {
   // Apply additional options based on notification data
   if (notificationData.data) {
     if (notificationData.data.priority === 'high') {
-      options.priority = 'high';
       options.vibrate = [200, 100, 200];
     }
     

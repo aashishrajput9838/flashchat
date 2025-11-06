@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCM Token Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .token-display {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FCM Token Tester</h1>
+        
+        <div id="status" class="token-display">
+            Please open the browser console (F12) to see detailed logs
+        </div>
+        
+        <button id="getTokenBtn">Get FCM Token</button>
+        
+        <div id="tokenContainer" class="token-display hidden">
+            <h3>Your FCM Token:</h3>
+            <p id="tokenValue"></p>
+            <button id="copyTokenBtn">Copy Token</button>
+        </div>
+        
+        <div id="testNotificationContainer" class="hidden">
+            <h3>Test Notification</h3>
+            <button id="testNotificationBtn">Send Test Notification</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const getTokenBtn = document.getElementById('getTokenBtn');
+        const tokenContainer = document.getElementById('tokenContainer');
+        const tokenValue = document.getElementById('tokenValue');
+        const copyTokenBtn = document.getElementById('copyTokenBtn');
+        const testNotificationContainer = document.getElementById('testNotificationContainer');
+        const testNotificationBtn = document.getElementById('testNotificationBtn');
+        
+        let currentToken = null;
+        
+        // Update status message
+        function updateStatus(message, isError = false) {
+            statusEl.textContent = message;
+            statusEl.className = 'token-display' + (isError ? ' error' : '');
+        }
+        
+        // Get FCM token
+        async function getFcmToken() {
+            try {
+                updateStatus('Requesting notification permission...');
+                getTokenBtn.disabled = true;
+                
+                // Request notification permission
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission:', permission);
+                
+                if (permission !== 'granted') {
+                    updateStatus('Notification permission denied', true);
+                    getTokenBtn.disabled = false;
+                    return;
+                }
+                
+                updateStatus('Getting FCM token...');
+                
+                // Try to get FCM token from your app
+                // This would normally be done through your app's notification service
+                console.log('Please check your browser console for the FCM token');
+                updateStatus('Check the browser console for the FCM token. Look for a message like "FCM token obtained: ..."');
+                
+            } catch (error) {
+                console.error('Error getting FCM token:', error);
+                updateStatus('Error getting FCM token: ' + error.message, true);
+                getTokenBtn.disabled = false;
+            }
+        }
+        
+        // Copy token to clipboard
+        function copyToken() {
+            if (currentToken) {
+                navigator.clipboard.writeText(currentToken).then(() => {
+                    const originalText = copyTokenBtn.textContent;
+                    copyTokenBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyTokenBtn.textContent = originalText;
+                    }, 2000);
+                });
+            }
+        }
+        
+        // Test notification
+        async function testNotification() {
+            if (!currentToken) {
+                updateStatus('No token available', true);
+                return;
+            }
+            
+            try {
+                updateStatus('Sending test notification...');
+                testNotificationBtn.disabled = true;
+                
+                const response = await fetch('http://localhost:3001/api/test-notification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        token: currentToken,
+                        title: 'Test Notification',
+                        body: 'This is a test notification from FlashChat'
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Test notification result:', result);
+                
+                if (result.success) {
+                    updateStatus('✅ Test notification sent successfully! Check for a notification in your browser.', false);
+                    testNotificationContainer.classList.add('hidden');
+                } else {
+                    updateStatus('❌ Failed to send notification: ' + result.error, true);
+                }
+            } catch (error) {
+                console.error('Error sending test notification:', error);
+                updateStatus('❌ Error sending test notification: ' + error.message, true);
+            } finally {
+                testNotificationBtn.disabled = false;
+            }
+        }
+        
+        // Event listeners
+        getTokenBtn.addEventListener('click', getFcmToken);
+        copyTokenBtn.addEventListener('click', copyToken);
+        testNotificationBtn.addEventListener('click', testNotification);
+        
+        // Instructions
+        console.log('=== FCM Token Tester Instructions ===');
+        console.log('1. Open your FlashChat app at http://localhost:5173');
+        console.log('2. Log in and make sure you see "FCM token obtained: ..." in the console');
+        console.log('3. Copy that token and use it in the test below:');
+        console.log('');
+        console.log('// Test notification with your actual token');
+        console.log('const fcmToken = "YOUR_ACTUAL_FCM_TOKEN_HERE";');
+        console.log('');
+        console.log('fetch("http://localhost:3001/api/test-notification", {');
+        console.log('  method: "POST",');
+        console.log('  headers: { "Content-Type": "application/json" },');
+        console.log('  body: JSON.stringify({');
+        console.log('    token: fcmToken,');
+        console.log('    title: "Test Notification",');
+        console.log('    body: "This is a test notification from FlashChat"');
+        console.log('  })');
+        console.log('}).then(response => response.json())');
+        console.log('  .then(result => console.log("Result:", result));');
+        console.log('');
+        console.log('========================');
+    </script>
+</body>
+</html>

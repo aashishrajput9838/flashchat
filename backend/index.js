@@ -21,23 +21,11 @@ try {
     // Use default credentials in Railway environment
     admin.initializeApp();
   } else {
-    // For local development, you might need to provide credentials
-    // Check if service account key is available as environment variable
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      } catch (parseError) {
-        console.error('Error parsing Firebase service account key:', parseError);
-        // Fallback to default credentials
-        admin.initializeApp();
-      }
-    } else {
-      // Fallback to default credentials
-      admin.initializeApp();
-    }
+    // For local development, use the service account key file
+    const serviceAccount = require('./service-account-key.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
   }
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
@@ -178,13 +166,12 @@ app.post('/api/send-notification', async (req, res) => {
       return res.status(200).json({ success: true, messageId: null });
     }
     
-    // Prepare FCM message payload
+    // Prepare FCM message payload - corrected format
     const message = {
       token: token,
       notification: {
         title: title,
-        body: body,
-        icon: icon || '/icon-192x192.png'
+        body: body
       }
     };
     
@@ -201,7 +188,7 @@ app.post('/api/send-notification', async (req, res) => {
     message.android = {
       priority: data?.priority === 'high' ? 'high' : 'normal',
       notification: {
-        icon: icon || '/icon-192x192.png',
+        // Remove icon from here as it's not a valid field
         color: '#2563eb', // Blue color
         sound: 'default'
       }
@@ -227,6 +214,11 @@ app.post('/api/send-notification', async (req, res) => {
       },
       fcmOptions: {
         link: data?.url || 'https://flashchat-coral.vercel.app'
+      },
+      notification: {
+        // For web push, icon is set here
+        icon: icon || '/icon-192x192.png',
+        badge: '/icon-192x192.png'
       }
     };
     
@@ -564,7 +556,26 @@ process.on('SIGINT', () => {
 // Test notification endpoint
 app.post('/api/test-notification', async (req, res) => {
   try {
+    console.log('Test notification request received:', req.body);
     const { token, title, body } = req.body;
+    
+    // Validate required fields
+    if (!token) {
+      console.error('Missing token in test notification request');
+      return res.status(400).json({ success: false, error: 'Missing token' });
+    }
+    
+    // Validate token format more thoroughly
+    if (typeof token !== 'string' || token.length < 100 || token.length > 1000) {
+      console.error('Invalid token format - length check failed:', token.length);
+      return res.status(400).json({ success: false, error: 'Invalid token format' });
+    }
+    
+    // Check for common invalid token patterns
+    if (token.includes(' ') || token.includes('\n') || token.includes('\r')) {
+      console.error('Invalid token format - contains whitespace');
+      return res.status(400).json({ success: false, error: 'Invalid token format' });
+    }
     
     // Skip if messaging is not available
     if (!messaging) {
@@ -572,13 +583,12 @@ app.post('/api/test-notification', async (req, res) => {
       return res.status(200).json({ success: true, messageId: null });
     }
     
-    // Prepare FCM message payload
+    // Prepare FCM message payload - corrected format
     const message = {
       token: token,
       notification: {
         title: title || 'Test Notification',
-        body: body || 'This is a test notification',
-        icon: '/icon-192x192.png'
+        body: body || 'This is a test notification'
       },
       data: {
         type: 'test',
@@ -586,11 +596,12 @@ app.post('/api/test-notification', async (req, res) => {
       }
     };
     
+    console.log('Sending test notification with message:', JSON.stringify(message, null, 2));
+    
     // Set Android-specific options
     message.android = {
       priority: 'high',
       notification: {
-        icon: '/icon-192x192.png',
         color: '#2563eb',
         sound: 'default'
       }
@@ -616,6 +627,10 @@ app.post('/api/test-notification', async (req, res) => {
       },
       fcmOptions: {
         link: 'https://flashchat-coral.vercel.app'
+      },
+      notification: {
+        icon: '/icon-192x192.png',
+        badge: '/icon-192x192.png'
       }
     };
     
@@ -626,6 +641,13 @@ app.post('/api/test-notification', async (req, res) => {
     res.status(200).json({ success: true, messageId: response });
   } catch (error) {
     console.error('Error sending test message:', error);
+    // Provide more specific error messages
+    if (error.code === 'messaging/invalid-argument') {
+      return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
+    }
+    if (error.code === 'messaging/invalid-registration-token') {
+      return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });
