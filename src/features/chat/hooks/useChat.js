@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { sendMessage, subscribeToMessages } from '@/features/chat/services/chatService';
+import { sendMessage, sendFileMessage, subscribeToMessages } from '@/features/chat/services/chatService';
 import { getCurrentUser } from '@/features/user/services/userService';
+import { uploadFile, createFileMessage } from '@/features/chat/services/fileService';
 
 export const useChat = (selectedChat) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const messageSubscriptionRef = useRef(null);
@@ -51,7 +53,7 @@ export const useChat = (selectedChat) => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Handle sending a message
+  // Handle sending a text message
   const handleSendMessage = useCallback(async (e) => {
     e?.preventDefault();
     if (!message.trim() || !selectedChat || isSending) return;
@@ -79,6 +81,41 @@ export const useChat = (selectedChat) => {
     }
   }, [message, selectedChat, isSending, user]);
 
+  // Handle sending a file message
+  const handleSendFileMessage = useCallback(async (file) => {
+    if (!file || !selectedChat || isUploading) return;
+    
+    setIsUploading(true);
+    setError(null);
+    
+    try {
+      // Upload file to Firebase Storage
+      const fileData = await uploadFile(file, user?.uid);
+      
+      // Create file message
+      const fileMessage = createFileMessage(fileData);
+      
+      // Create message data object for file
+      const messageData = {
+        text: fileMessage.text,
+        name: user?.displayName || 'Anonymous',
+        photoURL: user?.photoURL || null,
+        you: true,
+        fileType: 'file',
+        fileUrl: fileData.url,
+        fileName: fileData.name
+      };
+      
+      // Send file message
+      await sendFileMessage(messageData, selectedChat.uid);
+    } catch (err) {
+      console.error("Error sending file message:", err);
+      setError(err.message || "Failed to send file");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [selectedChat, isUploading, user]);
+
   // Format message time
   const formatMessageTime = useCallback((timestamp) => {
     if (!timestamp) return '';
@@ -97,9 +134,11 @@ export const useChat = (selectedChat) => {
     message,
     setMessage,
     isSending,
+    isUploading,
     error,
     messagesEndRef,
     handleSendMessage,
+    handleSendFileMessage,
     formatMessageTime,
     scrollToBottom
   };

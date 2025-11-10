@@ -5,6 +5,7 @@ import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration (from environment variables)
 const firebaseConfig = {
@@ -49,6 +50,9 @@ try {
   messaging = null;
 }
 
+// Initialize Firebase Storage
+const storage = getStorage(app);
+
 // Initialize Firebase Functions
 let functions;
 try {
@@ -63,8 +67,8 @@ try {
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
-// Export Firestore instance, Messaging, and Functions
-export { db, messaging, functions };
+// Export Firestore instance, Messaging, Storage, and Functions
+export { db, messaging, functions, storage };
 
 // Add a function to handle Firestore errors and implement backoff logic
 export const handleFirestoreError = (error) => {

@@ -55,6 +55,59 @@ export const sendMessage = async (messageData, recipientUserId) => {
 };
 
 /**
+ * Function to send a file message to Firestore
+ * @param {Object} fileMessageData - The file message data to send
+ * @param {string} recipientUserId - The Firebase UID of the message recipient
+ * @returns {Promise<string|null>} - The document ID of the sent message, or null if failed
+ */
+export const sendFileMessage = async (fileMessageData, recipientUserId) => {
+  // Only interact with Firestore if it's available
+  if (db) {
+    try {
+      const user = getCurrentUser();
+      
+      // Validate required data
+      if (!user || !recipientUserId) {
+        console.error('Missing user or recipient data');
+        return null;
+      }
+      
+      const messagesRef = collection(db, 'messages');
+      
+      // Create message object for file
+      const message = {
+        text: fileMessageData.text,
+        name: fileMessageData.name || (user.displayName) || 'Anonymous',
+        userId: user.uid,
+        recipientId: recipientUserId,
+        timestamp: serverTimestamp(), // Use server timestamp for better consistency
+        you: fileMessageData.you || false,
+        photoURL: fileMessageData.photoURL || (user.photoURL) || null,
+        fileType: fileMessageData.fileType || 'file',
+        fileUrl: fileMessageData.fileUrl,
+        fileName: fileMessageData.fileName
+      };
+      
+      // Use addDoc to let Firestore generate the ID
+      const docRef = await addDoc(messagesRef, message);
+      
+      // Send notification to recipient
+      await sendMessageNotification(recipientUserId, message.name, message.text);
+      
+      return docRef.id;
+    } catch (error) {
+      handleFirestoreError(error);
+      console.error('Error sending file message:', error);
+      // Don't throw error, just return null to indicate failure
+      return null;
+    }
+  } else {
+    console.warn('Firestore not available, file message not sent');
+    return null;
+  }
+};
+
+/**
  * Function to subscribe to messages from Firestore for a specific conversation
  * @param {string} selectedUserId - The Firebase UID of the conversation partner
  * @param {Function} callback - Called with an array of messages when updates occur

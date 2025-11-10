@@ -1,4 +1,4 @@
-import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle } from "lucide-react"
+import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
@@ -15,8 +15,10 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     message, 
     setMessage, 
     handleSendMessage, 
+    handleSendFileMessage,
     formatMessageTime, 
-    messagesEndRef 
+    messagesEndRef,
+    isUploading
   } = useChat(selectedChat);
   
   const [userName, setUserName] = useState("")
@@ -44,11 +46,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      alert(`File selected: ${file.name}
-File type: ${file.type}
-File size: ${file.size} bytes
-
-In a real application, this file would be uploaded and sent as a message.`);
+      handleSendFileMessage(file);
       // Reset the file input
       e.target.value = '';
     }
@@ -131,7 +129,18 @@ In a real application, this file would be uploaded and sent as a message.`);
     }
   };
 
-
+  // Get appropriate icon for file type
+  const getFileIcon = (fileType) => {
+    if (fileType.startsWith('image/')) {
+      return <Image className="h-4 w-4" />;
+    } else if (fileType.startsWith('video/')) {
+      return <Film className="h-4 w-4" />;
+    } else if (fileType.startsWith('audio/')) {
+      return <Music className="h-4 w-4" />;
+    } else {
+      return <FileText className="h-4 w-4" />;
+    }
+  };
 
   // Get message status icon
   const getMessageStatusIcon = (status) => {
@@ -364,7 +373,26 @@ In a real application, this file would be uploaded and sent as a message.`);
                     : 'bg-muted rounded-bl-none'
                 }`}
               >
-                <p className="text-responsive-sm">{msg.text}</p>
+                {/* Check if this is a file message */}
+                {msg.fileUrl ? (
+                  <div className="flex items-center gap-2">
+                    {getFileIcon(msg.fileType || msg.file?.type)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-responsive-sm truncate">{msg.fileName || msg.file?.name}</p>
+                      <a 
+                        href={msg.fileUrl || msg.file?.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-responsive-sm">{msg.text}</p>
+                )}
                 <div className={`flex items-center justify-end gap-1 mt-1 ${
                   msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                 }`}>
@@ -401,10 +429,15 @@ In a real application, this file would be uploaded and sent as a message.`);
           <button
             type="button"
             onClick={handleAttachFile}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            disabled={isUploading}
+            className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             aria-label="Attach file"
           >
-            <Paperclip className="h-5 w-5" />
+            {isUploading ? (
+              <div className="h-5 w-5 border-2 border-t-transparent border-current rounded-full animate-spin"></div>
+            ) : (
+              <Paperclip className="h-5 w-5" />
+            )}
           </button>
           <button
             type="button"
@@ -432,6 +465,15 @@ In a real application, this file would be uploaded and sent as a message.`);
             <Send className="h-5 w-5" />
           </button>
         </div>
+        
+        {/* Hidden file input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+        />
         
         {/* Emoji Picker */}
         <EmojiPicker 
