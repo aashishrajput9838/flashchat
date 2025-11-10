@@ -1,51 +1,36 @@
-import { storage } from '@/config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
 /**
- * Uploads a file to Firebase Storage
+ * Uploads a file to local storage
  * @param {File} file - The file to upload
- * @param {string} userId - The ID of the user uploading the file
- * @returns {Promise<Object>} - Object containing file metadata and download URL
+ * @returns {Promise<Object>} - Object containing file metadata and URL
  */
-export const uploadFile = async (file, userId) => {
+export const uploadFile = async (file) => {
   try {
     // Validate file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       throw new Error('File size exceeds 10MB limit');
     }
 
-    // Validate file type (basic validation)
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif',
-      'application/pdf',
-      'text/plain',
-      'video/mp4', 'video/quicktime',
-      'audio/mpeg', 'audio/wav'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('File type not allowed');
+    // Create FormData object
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Upload file to local server (using the correct backend URL)
+    const response = await fetch('http://localhost:3001/api/upload-file', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('File upload failed');
     }
 
-    // Create a storage reference with a unique path
-    const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${timestamp}_${userId}.${fileExtension}`;
-    const storageRef = ref(storage, `chat-files/${userId}/${fileName}`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'File upload failed');
+    }
 
-    // Upload file
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    return {
-      url: downloadURL,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      path: snapshot.ref.fullPath
-    };
+    return result.file;
   } catch (error) {
     console.error('Error uploading file:', error);
     throw error;

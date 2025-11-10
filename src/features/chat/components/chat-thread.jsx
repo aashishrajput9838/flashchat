@@ -131,11 +131,11 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   // Get appropriate icon for file type
   const getFileIcon = (fileType) => {
-    if (fileType.startsWith('image/')) {
+    if (fileType && fileType.startsWith('image/')) {
       return <Image className="h-4 w-4" />;
-    } else if (fileType.startsWith('video/')) {
+    } else if (fileType && fileType.startsWith('video/')) {
       return <Film className="h-4 w-4" />;
-    } else if (fileType.startsWith('audio/')) {
+    } else if (fileType && fileType.startsWith('audio/')) {
       return <Music className="h-4 w-4" />;
     } else {
       return <FileText className="h-4 w-4" />;
@@ -376,11 +376,11 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                 {/* Check if this is a file message */}
                 {msg.fileUrl ? (
                   <div className="flex items-center gap-2">
-                    {getFileIcon(msg.fileType || msg.file?.type)}
+                    {getFileIcon(msg.fileType)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-responsive-sm truncate">{msg.fileName || msg.file?.name}</p>
+                      <p className="text-responsive-sm truncate">{msg.fileName}</p>
                       <a 
-                        href={msg.fileUrl || msg.file?.url} 
+                        href={`http://localhost:3001${msg.fileUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"

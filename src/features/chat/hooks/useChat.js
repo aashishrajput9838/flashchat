@@ -89,8 +89,8 @@ export const useChat = (selectedChat) => {
     setError(null);
     
     try {
-      // Upload file to Firebase Storage
-      const fileData = await uploadFile(file, user?.uid);
+      // Upload file to local server
+      const fileData = await uploadFile(file);
       
       // Create file message
       const fileMessage = createFileMessage(fileData);
@@ -101,7 +101,7 @@ export const useChat = (selectedChat) => {
         name: user?.displayName || 'Anonymous',
         photoURL: user?.photoURL || null,
         you: true,
-        fileType: 'file',
+        fileType: fileData.type,
         fileUrl: fileData.url,
         fileName: fileData.name
       };

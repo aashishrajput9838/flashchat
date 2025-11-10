@@ -13,6 +13,40 @@ const server = http.createServer(app);
 // Enable CORS
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public')); // Serve static files
+
+// Add middleware to handle file uploads
+app.use('/uploads', express.static('uploads')); // Serve uploaded files
+
+// Create uploads directory if it doesn't exist
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+// Create uploads directory
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir)
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 // Firebase Admin SDK initialization
 try {
@@ -648,6 +682,32 @@ app.post('/api/test-notification', async (req, res) => {
     if (error.code === 'messaging/invalid-registration-token') {
       return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
     }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add file upload endpoint
+app.post('/api/upload-file', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    // Generate file URL
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    // Return file information
+    res.status(200).json({
+      success: true,
+      file: {
+        url: fileUrl,
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading file:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
