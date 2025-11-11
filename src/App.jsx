@@ -12,7 +12,7 @@ import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity, update
 import { OnlineStatusProvider } from '@/features/user/contexts/OnlineStatusContext';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { initSocket } from '@/shared/services/socketService';
-import { initNotificationService } from '@/shared/services/notificationService';
+import { initNotificationService } from '@/features/notifications/services/notificationService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
