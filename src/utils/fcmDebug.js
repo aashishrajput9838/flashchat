@@ -28,9 +28,10 @@ export const validateVapidKey = (vapidKey) => {
     };
   }
   
-  // Check if it looks like a base64 string
+  // Check if it looks like a base64 string (including URL-safe base64)
   const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-  if (!base64Regex.test(vapidKey)) {
+  const urlSafeBase64Regex = /^[A-Za-z0-9_-]*={0,2}$/;
+  if (!base64Regex.test(vapidKey) && !urlSafeBase64Regex.test(vapidKey)) {
     return {
       isValid: false,
       message: 'VAPID key does not appear to be a valid base64 string'
