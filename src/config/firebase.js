@@ -18,6 +18,10 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-RYFQE7TFGN"
 };
 
+// Debug logging to see which configuration is being used
+console.log('Firebase Config:', firebaseConfig);
+console.log('Firebase Project ID from env:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -45,6 +49,9 @@ try {
 let messaging;
 try {
   messaging = getMessaging(app);
+  
+  // Additional debug logging for messaging
+  console.log('Firebase Messaging initialized with project:', firebaseConfig.projectId);
 } catch (error) {
   console.warn("Messaging initialization error:", error);
   messaging = null;

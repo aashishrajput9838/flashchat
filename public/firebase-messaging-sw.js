@@ -13,6 +13,10 @@ const firebaseConfig = {
   measurementId: "G-RYFQE7TFGN"
 };
 
+// Debug logging
+console.log('[Service Worker] Firebase Config:', firebaseConfig);
+console.log('[Service Worker] Firebase Project ID:', firebaseConfig.projectId);
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
