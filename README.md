@@ -16,16 +16,103 @@ FlashChat is a modern real-time communication platform built with React, Firebas
 - 🔍 **User Search**: Find and connect with other users
 - 🔔 **Push Notifications**: Receive browser notifications for messages and calls even when the app is closed
 
-## Tech Stack
+## FlashChat Codebase Overview
 
-- **Frontend**: React 19, Vite 7, Tailwind CSS
-- **Backend**: Firebase (Authentication, Firestore, Hosting)
-- **Real-time Communication**: WebRTC
-- **UI Components**: Radix UI, Lucide React
-- **State Management**: React Hooks, Context API
+### Architecture
+FlashChat is a full-stack real-time chat and video calling application built with:
+- **Frontend**: React 18+, Vite, Tailwind CSS, Socket.IO Client
+- **Backend**: Node.js, Express, Socket.IO Server
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Authentication (Google Sign-in)
+- **Real-time Communication**: WebRTC for video calls, Socket.IO for signaling
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
-- **Testing**: Jest, React Testing Library
-- **Deployment**: Firebase Hosting
+
+### Key Features
+
+#### 1. User Management
+- Google authentication with userService.js
+- Friend management (add, accept, decline, unfriend)
+- Online status tracking with privacy controls
+- User profiles with high-quality avatars
+
+#### 2. Chat System
+- Real-time messaging with Firestore
+- File sharing capabilities
+- Conversation history
+- Message notifications
+
+#### 3. Video Calling
+- WebRTC-based video calls with STUN/TURN servers
+- Call signaling through Firestore and Socket.IO
+- Screen sharing functionality
+- Call notifications via FCM
+
+#### 4. Notifications
+- Push notifications using Firebase Cloud Messaging
+- In-app notifications with Web Notifications API
+- Notification preferences management
+- Service worker for background message handling
+
+### Project Structure
+```
+.
+├── src/                    # Frontend source code
+│   ├── features/          # Feature modules
+│   │   ├── auth/          # Authentication components
+│   │   ├── call/          # Video call components and services
+│   │   ├── chat/          # Chat components and services
+│   │   ├── notifications/ # Notification components and services
+│   │   └── user/          # User components and services
+│   ├── shared/            # Shared components and utilities
+│   ├── config/            # Firebase configuration
+│   └── App.jsx            # Main application component
+├── backend/               # Backend server
+│   ├── index.js           # Express server with Socket.IO
+│   └── uploads/           # File upload storage
+├── public/                # Static assets
+└── functions/             # Firebase functions (not actively used)
+```
+
+### Technical Highlights
+
+#### Real-time Communication
+- **WebRTC Video Calls**: Uses Firebase for signaling and Socket.IO for real-time events
+- **Socket.IO**: Handles user presence, call initiation, and call status updates
+- **Firestore**: Stores chat messages, user data, and call metadata
+
+#### Security & Privacy
+- **Rate Limiting**: Implemented in both frontend and backend
+- **Online Status Privacy**: Users can control who sees their online status
+- **Secure File Uploads**: Multer middleware with file size limits
+
+#### Responsive Design
+- **Mobile-First**: Optimized for mobile, tablet, and desktop
+- **Safe Area Insets**: Support for notched devices
+- **Flexible Layouts**: Adapts to different screen sizes and orientations
+
+#### Performance Optimizations
+- **Lazy Loading**: Components loaded on demand
+- **Efficient Queries**: Firestore queries optimized with proper indexing
+- **Caching**: Service workers for offline support and faster loading
+
+### Key Components
+
+#### Frontend
+- **App.jsx**: Main application with responsive layout
+- **VideoCall Component**: WebRTC video calling interface
+- **Chat Components**: Conversation list and chat thread
+- **Notification System**: Push and in-app notifications
+
+#### Backend
+- **Express Server**: API endpoints and static file serving
+- **Socket.IO Server**: Real-time communication for calls
+- **Firebase Integration**: Firestore and FCM handling
+
+#### Services
+- **Call Service**: WebRTC signaling through Firestore
+- **Chat Service**: Message handling with Firestore
+- **User Service**: Authentication and user management
+- **Notification Service**: Push notifications via FCM
 
 ## Getting Started
 
@@ -65,21 +152,6 @@ FlashChat is a modern real-time communication platform built with React, Firebas
    ```
 
 5. Open your browser to http://localhost:5173
-
-## Project Structure
-
-```
-src/
-├── app/                    # App-level configuration and layout
-├── features/               # Feature-based modules
-│   ├── auth/              # Authentication functionality
-│   ├── chat/              # Chat functionality
-│   ├── call/              # Call functionality
-│   └── user/              # User management
-├── shared/                # Shared utilities and components
-├── config/                # Configuration files
-└── assets/                # Static assets
-```
 
 ## Available Scripts
 
