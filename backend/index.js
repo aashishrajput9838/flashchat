@@ -194,6 +194,11 @@ app.post('/api/send-notification', async (req, res) => {
   try {
     const { token, title, body, icon, data } = req.body;
     
+    // Validate required fields
+    if (!token || !title) {
+      return res.status(400).json({ success: false, error: 'Missing token or title' });
+    }
+    
     // Skip if messaging is not available
     if (!messaging) {
       console.warn('Firebase Messaging not available, skipping notification');
@@ -205,7 +210,7 @@ app.post('/api/send-notification', async (req, res) => {
       token: token,
       notification: {
         title: title,
-        body: body
+        body: body || ''
       }
     };
     
@@ -234,7 +239,7 @@ app.post('/api/send-notification', async (req, res) => {
         aps: {
           alert: {
             title: title,
-            body: body
+            body: body || ''
           },
           sound: 'default'
         }
@@ -263,6 +268,16 @@ app.post('/api/send-notification', async (req, res) => {
     res.status(200).json({ success: true, messageId: response });
   } catch (error) {
     console.error('Error sending message:', error);
+    // Provide more specific error messages
+    if (error.code === 'messaging/invalid-argument') {
+      return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
+    }
+    if (error.code === 'messaging/invalid-registration-token') {
+      return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
+    }
+    if (error.code === 'messaging/registration-token-not-registered') {
+      return res.status(400).json({ success: false, error: 'The registration token is not registered' });
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });

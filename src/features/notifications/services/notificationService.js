@@ -3,9 +3,15 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { db } from '@/config/firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { getCurrentUser } from '@/features/user/services/userService';
+import { validateVapidKey } from '@/utils/fcmDebug';
 
-// VAPID key for Firebase Cloud Messaging
-const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || 'ILEGD9BbwyPfiarYMDq9-OsJVZdu1l08AE8I13pp15c';
+// VAPID key for Firebase Cloud Messaging - use the correct environment variable
+const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || import.meta.env.VITE_FIREBASE_VAPID_KEY;
+
+// Add validation for VAPID key
+if (!VAPID_KEY) {
+  console.warn('FCM VAPID key not found in environment variables. Push notifications may not work.');
+}
 
 // Notification types and priorities
 export const NOTIFICATION_TYPES = {
@@ -73,6 +79,21 @@ export const updateUserNotificationSettings = async (userId, settings) => {
 };
 
 /**
+ * Validate VAPID key format
+ * @param {string} vapidKey - VAPID key to validate
+ * @returns {boolean} Whether the key is valid
+ */
+const isValidVapidKey = (vapidKey) => {
+  if (!vapidKey || typeof vapidKey !== 'string') {
+    return false;
+  }
+  
+  // Use our utility function for validation
+  const validation = validateVapidKey(vapidKey);
+  return validation.isValid;
+};
+
+/**
  * Request notification permission and get FCM token
  * @returns {Promise<string|null>} FCM token or null if permission denied
  */
@@ -101,14 +122,35 @@ export const requestNotificationPermission = async () => {
       return null;
     }
 
+    // Validate VAPID key before attempting to get token
+    if (!VAPID_KEY) {
+      console.error('VAPID key is missing. Cannot get FCM token.');
+      console.error('Please set VITE_FCM_VAPID_KEY in your .env file');
+      return null;
+    }
+
+    // Validate VAPID key format
+    const vapidValidation = validateVapidKey(VAPID_KEY);
+    if (!vapidValidation.isValid) {
+      console.error('VAPID key validation failed:', vapidValidation.message);
+      return null;
+    }
+
     // Get FCM token
-    console.log('Getting FCM token with VAPID key:', VAPID_KEY);
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-    console.log('FCM token obtained:', token);
+    console.log('Getting FCM token with VAPID key:', VAPID_KEY ? VAPID_KEY.substring(0, 10) + '...' : 'undefined');
+    
+    // Add timeout to prevent hanging
+    const tokenPromise = getToken(messaging, { vapidKey: VAPID_KEY });
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('FCM token request timeout')), 10000)
+    );
+    
+    const token = await Promise.race([tokenPromise, timeoutPromise]);
+    console.log('FCM token obtained:', token ? token.substring(0, 20) + '...' : 'null');
     
     // Validate token format
     if (!token || typeof token !== 'string' || token.length < 100) {
-      console.error('Invalid FCM token format:', token);
+      console.error('Invalid FCM token format:', token ? `Token length: ${token.length}` : 'null token');
       return null;
     }
     
@@ -165,6 +207,22 @@ export const requestNotificationPermission = async () => {
     return token;
   } catch (error) {
     console.error('Error requesting notification permission:', error);
+    // Provide more specific error messages
+    if (error.code === 'messaging/invalid-app') {
+      console.error('Firebase app is not properly initialized for messaging');
+    } else if (error.code === 'messaging/failed-service-worker-registration') {
+      console.error('Service worker registration failed. Check your firebase-messaging-sw.js file.');
+    } else if (error.message.includes('applicationServerKey')) {
+      console.error('VAPID key is invalid. Please check your Firebase project settings and ensure the key is correctly formatted.');
+      console.error('Current VAPID key length:', VAPID_KEY ? VAPID_KEY.length : 0);
+      // Validate the key again for more details
+      if (VAPID_KEY) {
+        const validation = validateVapidKey(VAPID_KEY);
+        console.error('VAPID key validation details:', validation.message);
+      }
+    } else if (error.message.includes('timeout')) {
+      console.error('FCM token request timed out. This may be due to network issues or Firebase service problems.');
+    }
     return null;
   }
 };
@@ -294,6 +352,7 @@ export const sendNotification = async (recipientUserId, notificationData) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
+          // Add authentication header if needed
         },
         body: JSON.stringify({
           token: recipientFcmToken,
@@ -457,6 +516,8 @@ export const initNotificationService = async () => {
     const token = await requestNotificationPermission();
     if (token) {
       console.log('Notification permission granted and token obtained');
+    } else {
+      console.log('Notification permission not granted or token could not be obtained');
     }
     
     // Initialize foreground message handling
@@ -468,7 +529,7 @@ export const initNotificationService = async () => {
       const newToken = await requestNotificationPermission();
       if (newToken) {
         window.fcmToken = newToken;
-        console.log('New FCM token:', newToken);
+        console.log('New FCM token:', newToken ? newToken.substring(0, 20) + '...' : 'null');
         console.log('You can now test notifications with this token!');
         return newToken;
       }

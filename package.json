@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fcm:debug": "node scripts/generate-vapid-key.js",
+    "fcm:generate": "node scripts/generate-vapid-key.js --generate",
+    "setup:env": "node scripts/setup-env.js",
+    "setup:env:create": "node scripts/setup-env.js --create",
+    "setup:env:help": "node scripts/setup-env.js --help"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

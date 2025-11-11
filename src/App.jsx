@@ -12,6 +12,7 @@ import { getCurrentUser, subscribeToFriends, initAuth, trackUserActivity, update
 import { OnlineStatusProvider } from '@/features/user/contexts/OnlineStatusContext';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { initSocket } from '@/shared/services/socketService';
+import { initNotificationService } from '@/shared/services/notificationService';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -19,6 +20,9 @@ export const ThemeContext = React.createContext();
 function App() {
   // Theme state
   const [theme, setTheme] = useState('dark');
+  
+  // Add FCM debug state
+  const [fcmDebugInfo, setFcmDebugInfo] = useState(null);
   
   // User state
   const [user, setUser] = useState(null);
@@ -121,6 +125,9 @@ function App() {
         
         // Initialize socket connection
         initSocket(user.uid);
+        
+        // Initialize notification service
+        initNotificationService();
       }
       setUser(user);
       setLoading(false);

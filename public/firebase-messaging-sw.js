@@ -2,7 +2,7 @@
 importScripts('https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging-compat.js');
 
-// Firebase configuration
+// Firebase configuration - make sure this matches your Firebase project settings
 const firebaseConfig = {
   apiKey: "AIzaSyB_3xErgKerW8IsWLQzu6IsMyiXNOPSxEo",
   authDomain: "web-socket-2e05f.firebaseapp.com",

@@ -144,14 +144,18 @@ FlashChat is a full-stack real-time chat and video calling application built wit
    - Enable Firebase Cloud Messaging in the Firebase Console
    - Generate a Web Push Certificate in Firebase Cloud Messaging settings
 
-4. Start the development server:
+4. Configure FCM (Firebase Cloud Messaging):
+   - Get your VAPID key from Firebase Console > Project Settings > Cloud Messaging
+   - Add it to your `.env` file as `VITE_FCM_VAPID_KEY=your_vapid_key_here`
+
+5. Start the development server:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-5. Open your browser to http://localhost:5173
+6. Open your browser to http://localhost:5173
 
 ## Available Scripts
 
@@ -160,6 +164,11 @@ FlashChat is a full-stack real-time chat and video calling application built wit
 - `npm run preview` - Preview production build
 - `npm run test` - Run tests
 - `npm run lint` - Run ESLint
+- `npm run fcm:debug` - Run FCM debug utility
+- `npm run fcm:generate` - Generate test VAPID key pair
+- `npm run setup:env` - Interactive environment setup
+- `npm run setup:env:create` - Create .env file template
+- `npm run setup:env:help` - Show environment setup help
 
 ## Documentation
 
@@ -177,6 +186,8 @@ For detailed documentation, please see:
   - [useCall Hook](docs/use-call-hook.md)
   - [useChat Hook](docs/use-chat-hook.md)
   - [ConversationList Component](docs/conversation-list-component.md)
+- [FCM Fixes Documentation](docs/fcm-fixes.md)
+- [FCM Setup Guide](FCM_SETUP.md)
 
 ## Testing
 
@@ -203,6 +214,42 @@ To test the notification system:
    node test-notification.js
    ```
 3. Check that you receive a notification in your browser
+
+### Testing FCM
+
+To test Firebase Cloud Messaging:
+
+1. Use the FCM test page: Open `fcm-test.html` in your browser
+2. Run the debug script: `npm run fcm:debug`
+3. Check the browser console for FCM-related messages
+4. Verify that `window.fcmToken` is populated
+
+## Firebase Cloud Messaging (FCM) Setup
+
+For push notifications to work properly, you need to configure FCM:
+
+1. Get your VAPID key from Firebase Console:
+   - Go to Project Settings > Cloud Messaging
+   - Copy the Web Push certificate key pair
+
+2. Add it to your `.env` file:
+   ```bash
+   VITE_FCM_VAPID_KEY=your_vapid_key_here
+   ```
+
+3. Verify the setup by running the FCM test script:
+   ```bash
+   npm run fcm:debug
+   ```
+
+### FCM Debugging
+
+If you encounter issues with FCM:
+
+1. Check the browser console for specific error messages
+2. Run the interactive setup: `npm run setup:env`
+3. Use the FCM test page: Open `public/fcm-test.html` in your browser
+4. Verify your VAPID key in the Firebase Console
 
 ## Deployment
 
