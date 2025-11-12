@@ -136,8 +136,7 @@ function App() {
     return () => unsubscribe();
   }, []);
   
-  // Initialize notifications
-  useNotifications();
+  // Initialize notifications - handled by useNotifications hook in components that need it
   
   // Handle closing chat on mobile
   const handleCloseChat = () => {
