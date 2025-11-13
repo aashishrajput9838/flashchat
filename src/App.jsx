@@ -248,9 +248,6 @@ function App() {
                   aria-label="Toggle theme">
                   {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
                 </button>
-                <div className="text-sm text-muted-foreground hidden sm:block">
-                  Welcome, {user.displayName || user.email}
-                </div>
               </div>
             </div>
           </header>
