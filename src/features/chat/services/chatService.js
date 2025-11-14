@@ -143,7 +143,9 @@ export const subscribeToMessages = (selectedUserId, callback) => {
             id: doc.id,
             ...data,
             you: data.userId === currentUser.uid,
-            time: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+            time: data.timestamp && data.timestamp.toDate && typeof data.timestamp.toDate === 'function' 
+              ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+              : 'Just now'
           });
         });
         
@@ -198,7 +200,9 @@ export const subscribeToLatestMessages = (callback) => {
           
           // Only keep the most recent message for each conversation
           if (!latestMessages[otherUserId] || 
-              data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate()) {
+              (data.timestamp && data.timestamp.toDate && 
+               latestMessages[otherUserId].timestamp && latestMessages[otherUserId].timestamp.toDate &&
+               data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate())) {
             latestMessages[otherUserId] = {
               id: doc.id,
               ...data,
@@ -221,7 +225,9 @@ export const subscribeToLatestMessages = (callback) => {
             
             // Only keep the most recent message for each conversation
             if (!latestMessages[otherUserId] || 
-                data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate()) {
+                (data.timestamp && data.timestamp.toDate && 
+                 latestMessages[otherUserId].timestamp && latestMessages[otherUserId].timestamp.toDate &&
+                 data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate())) {
               latestMessages[otherUserId] = {
                 id: doc.id,
                 ...data,

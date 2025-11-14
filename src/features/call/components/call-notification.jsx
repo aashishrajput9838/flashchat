@@ -74,7 +74,7 @@ export function CallNotification({ onAccept, onDecline }) {
     let timestampMs;
     
     try {
-      if (call.timestamp?.toDate) {
+      if (call.timestamp && call.timestamp.toDate && typeof call.timestamp.toDate === 'function') {
         timestampMs = call.timestamp.toDate().getTime();
       } else if (typeof call.timestamp === 'string') {
         timestampMs = new Date(call.timestamp).getTime();

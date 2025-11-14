@@ -20,7 +20,9 @@ export const OnlineStatusProvider = ({ children }) => {
           const newMap = new Map(prev);
           newMap.set(user.uid, {
             isOnline: userData.isOnline,
-            lastSeen: userData.lastSeen?.toDate()
+            lastSeen: userData.lastSeen && userData.lastSeen.toDate && typeof userData.lastSeen.toDate === 'function' 
+              ? userData.lastSeen.toDate() 
+              : userData.lastSeen
           });
           return newMap;
         });

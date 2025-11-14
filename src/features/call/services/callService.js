@@ -71,7 +71,7 @@ export const checkRateLimit = async (userId) => {
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      if (data.createdAt && data.createdAt.toDate) {
+      if (data.createdAt && data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
         const callTime = data.createdAt.toDate().getTime();
         if (now - callTime < RATE_LIMIT_WINDOW) {
           recentCallCount++;

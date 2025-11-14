@@ -56,7 +56,9 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
     // Check if last seen is recent (within 5 minutes)
     try {
       const now = new Date();
-      const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+      const lastSeenDate = lastSeen && lastSeen.toDate && typeof lastSeen.toDate === 'function' 
+        ? lastSeen.toDate() 
+        : new Date(lastSeen);
       const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
       
       // Consider user online only if they were seen within the last 5 minutes

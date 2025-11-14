@@ -240,7 +240,9 @@ export function RightSidebar({ onUserClick }) {
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return '';
     const now = new Date();
-    const lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+    const lastSeenDate = lastSeen && lastSeen.toDate && typeof lastSeen.toDate === 'function' 
+      ? lastSeen.toDate() 
+      : new Date(lastSeen);
     const diffInMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
     
     if (diffInMinutes < 1) return 'Just now';
@@ -253,7 +255,9 @@ export function RightSidebar({ onUserClick }) {
   const formatNotificationTime = (timestamp) => {
     if (!timestamp) return 'Invalid Date';
     try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const date = timestamp && timestamp.toDate && typeof timestamp.toDate === 'function' 
+        ? timestamp.toDate() 
+        : new Date(timestamp);
       // Check if the date is valid
       if (isNaN(date.getTime())) return 'Invalid Date';
       

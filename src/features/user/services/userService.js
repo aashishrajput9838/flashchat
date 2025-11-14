@@ -807,7 +807,7 @@ export const subscribeToNotifications = (callback) => {
             // Check timestamp validity
             let timestampMs;
             try {
-              if (notif.timestamp?.toDate) {
+              if (notif.timestamp && notif.timestamp.toDate && typeof notif.timestamp.toDate === 'function') {
                 timestampMs = notif.timestamp.toDate().getTime();
               } else if (typeof notif.timestamp === 'string') {
                 timestampMs = new Date(notif.timestamp).getTime();
@@ -836,7 +836,7 @@ export const subscribeToNotifications = (callback) => {
             // Only filter out notifications that are too old or invalid
             try {
               let timestampMs;
-              if (notif.timestamp?.toDate) {
+              if (notif.timestamp && notif.timestamp.toDate && typeof notif.timestamp.toDate === 'function') {
                 timestampMs = notif.timestamp.toDate().getTime();
               } else if (typeof notif.timestamp === 'string') {
                 timestampMs = new Date(notif.timestamp).getTime();
@@ -861,14 +861,22 @@ export const subscribeToNotifications = (callback) => {
         const sortedNotifications = validNotifications.sort((a, b) => {
           // Handle cases where timestamp might be a string or Date object
           try {
-            const aTime = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
-                         typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() :
-                         a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
-                         
-            const bTime = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
-                         typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() :
-                         b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
-                         
+            const aTime = a.timestamp && a.timestamp.toDate && typeof a.timestamp.toDate === 'function' 
+              ? a.timestamp.toDate().getTime() 
+              : typeof a.timestamp === 'string' 
+                ? new Date(a.timestamp).getTime() 
+                : a.timestamp instanceof Date 
+                  ? a.timestamp.getTime() 
+                  : 0;
+                          
+            const bTime = b.timestamp && b.timestamp.toDate && typeof b.timestamp.toDate === 'function' 
+              ? b.timestamp.toDate().getTime() 
+              : typeof b.timestamp === 'string' 
+                ? new Date(b.timestamp).getTime() 
+                : b.timestamp instanceof Date 
+                  ? b.timestamp.getTime() 
+                  : 0;
+                          
             return bTime - aTime;
           } catch (e) {
             // If there's an error sorting, maintain original order
@@ -912,7 +920,7 @@ export const markNotificationAsRead = async (notification) => {
         let notifTimestampMs, targetTimestampMs;
         
         // Handle notification timestamp
-        if (notif.timestamp?.toDate) {
+        if (notif.timestamp && notif.timestamp.toDate && typeof notif.timestamp.toDate === 'function') {
           notifTimestampMs = notif.timestamp.toDate().getTime();
         } else if (typeof notif.timestamp === 'string') {
           notifTimestampMs = new Date(notif.timestamp).getTime();
@@ -923,7 +931,7 @@ export const markNotificationAsRead = async (notification) => {
         }
         
         // Handle target notification timestamp
-        if (notification.timestamp?.toDate) {
+        if (notification.timestamp && notification.timestamp.toDate && typeof notification.timestamp.toDate === 'function') {
           targetTimestampMs = notification.timestamp.toDate().getTime();
         } else if (typeof notification.timestamp === 'string') {
           targetTimestampMs = new Date(notification.timestamp).getTime();
