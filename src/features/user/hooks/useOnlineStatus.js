@@ -93,7 +93,7 @@ export const useOnlineStatus = () => {
     let lastSeenDate;
     
     try {
-      if (lastSeen.toDate) {
+      if (lastSeen && lastSeen.toDate && typeof lastSeen.toDate === 'function') {
         lastSeenDate = lastSeen.toDate();
       } else if (typeof lastSeen === 'string') {
         lastSeenDate = new Date(lastSeen);

@@ -84,7 +84,9 @@ export const OnlineStatus = ({ isOnline, lastSeen, showText = false, size = 'sm'
     let lastSeenDate;
     
     try {
-      lastSeenDate = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen);
+      lastSeenDate = lastSeen && lastSeen.toDate && typeof lastSeen.toDate === 'function' 
+        ? lastSeen.toDate() 
+        : new Date(lastSeen);
     } catch (e) {
       console.error('Error parsing lastSeen date:', e);
       // If we can't parse the date, fall back to showing as offline
