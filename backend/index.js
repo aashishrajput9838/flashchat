@@ -131,7 +131,9 @@ const io = new Server(server, {
       // Add Railway deployment URL
       process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
       // Add production Railway URL pattern
-      "https://*.railway.app"
+      "https://*.railway.app",
+      // Add specific Railway domain for flashchat
+      "https://flashchat-production-ea1a.up.railway.app"
     ].filter(Boolean), // Remove undefined values
     methods: ["GET", "POST"],
     credentials: true
@@ -154,7 +156,9 @@ app.use(cors({
     // Add Railway deployment URL
     process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
     // Add production Railway URL pattern
-    "https://*.railway.app"
+    "https://*.railway.app",
+    // Add specific Railway domain for flashchat
+    "https://flashchat-production-ea1a.up.railway.app"
   ].filter(Boolean), // Remove undefined values
   credentials: true,
   optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
