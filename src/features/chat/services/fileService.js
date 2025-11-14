@@ -14,8 +14,11 @@ export const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Upload file to local server (using the correct backend URL)
-    const response = await fetch('http://localhost:3001/api/upload-file', {
+    // Determine backend URL (Railway in production, localhost in dev)
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
+    // Upload file to backend server
+    const response = await fetch(`${backendUrl}/api/upload-file`, {
       method: 'POST',
       body: formData
     });

@@ -380,7 +380,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-responsive-sm truncate">{msg.fileName}</p>
                       <a 
-                        href={`http://localhost:3001${msg.fileUrl}`} 
+                        href={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}${msg.fileUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
