@@ -12,9 +12,11 @@
     "fcm:generate": "node scripts/generate-vapid-key.js --generate",
     "setup:env": "node scripts/setup-env.js",
     "setup:env:create": "node scripts/setup-env.js --create",
-    "setup:env:help": "node scripts/setup-env.js --help"
+    "setup:env:help": "node scripts/setup-env.js --help",
+    "setup:firebase:cors": "node scripts/setup-firebase-cors.js"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.17.3",
     "@radix-ui/react-avatar": "^1.1.10",
     "dotenv": "^17.2.3",
     "firebase": "^12.4.0",

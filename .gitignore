@@ -36,3 +36,4 @@ dist-ssr
 !package.json
 !tsconfig.json
 
+.env*.local
