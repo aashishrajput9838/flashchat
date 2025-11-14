@@ -166,7 +166,7 @@ function App() {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b">
-          <div className="container relative flex items-center h-16 px-4">
+          <div className="w-full relative flex items-center justify-between h-16 px-4">
             <div className="flex items-center gap-2">
               <div className="bg-primary rounded-full w-8 h-8 flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-lg">FC</span>
@@ -175,7 +175,7 @@ function App() {
             </div>
             <button
               onClick={toggleTheme}
-              className="absolute top-2 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
               aria-label="Toggle theme">
               {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
             </button>
@@ -234,7 +234,7 @@ function App() {
         <div className="min-h-screen bg-background">
           {/* Header */}
           <header className="border-b">
-            <div className="container relative flex items-center h-16 px-4">
+            <div className="w-full relative flex items-center justify-between h-16 px-4">
               <div className="flex items-center gap-2">
                 <div className="bg-primary rounded-full w-8 h-8 flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-lg">FC</span>
@@ -243,7 +243,7 @@ function App() {
               </div>
               <button
                 onClick={toggleTheme}
-                className="absolute top-2 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
                 aria-label="Toggle theme">
                 {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
               </button>
