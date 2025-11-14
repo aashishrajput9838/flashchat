@@ -10,8 +10,30 @@ const { getFirestore, doc, updateDoc, serverTimestamp } = require('firebase/fire
 const app = express();
 const server = http.createServer(app);
 
-// Enable CORS
-app.use(cors());
+// Enable CORS BEFORE any other middleware
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:5174", 
+    "http://localhost:5175", 
+    "http://localhost:5176", 
+    "http://localhost:5177", 
+    "http://localhost:5178", 
+    "http://localhost:5179", 
+    "http://localhost:5180",
+    "https://flashchat-coral.vercel.app",
+    "https://flashchat-git-main-yourusername.vercel.app",
+    // Add Railway deployment URL
+    process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
+    // Add production Railway URL pattern
+    "https://*.railway.app",
+    // Add specific Railway domain for flashchat
+    "https://flashchat-production-ea1a.up.railway.app"
+  ].filter(Boolean), // Remove undefined values
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+}));
+
 app.use(express.json());
 app.use(express.static('public')); // Serve static files
 
@@ -114,7 +136,7 @@ try {
   db = null;
 }
 
-// Initialize Socket.IO
+// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
     origin: [
@@ -127,7 +149,7 @@ const io = new Server(server, {
       "http://localhost:5179", 
       "http://localhost:5180",
       "https://flashchat-coral.vercel.app",
-      "https://flashchat-git-main-yourusername.vercel.app", // Add your actual Vercel preview URLs as needed
+      "https://flashchat-git-main-yourusername.vercel.app",
       // Add Railway deployment URL
       process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
       // Add production Railway URL pattern
@@ -140,40 +162,21 @@ const io = new Server(server, {
   }
 });
 
-// Enable CORS for Express
-app.use(cors({
-  origin: [
-    "http://localhost:5173", 
-    "http://localhost:5174", 
-    "http://localhost:5175", 
-    "http://localhost:5176", 
-    "http://localhost:5177", 
-    "http://localhost:5178", 
-    "http://localhost:5179", 
-    "http://localhost:5180",
-    "https://flashchat-coral.vercel.app",
-    "https://flashchat-git-main-yourusername.vercel.app", // Add your actual Vercel preview URLs as needed
-    // Add Railway deployment URL
-    process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
-    // Add production Railway URL pattern
-    "https://*.railway.app",
-    // Add specific Railway domain for flashchat
-    "https://flashchat-production-ea1a.up.railway.app"
-  ].filter(Boolean), // Remove undefined values
-  credentials: true,
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
-}));
-
 // Store active calls and their participants
 const activeCalls = new Map();
 
 // Endpoint to update user FCM token
 app.post('/api/update-fcm-token', async (req, res) => {
+  console.log('Received FCM token update request from:', req.get('Origin'));
+  console.log('Request headers:', req.headers);
+  console.log('Request body:', req.body);
+  
   try {
     const { userId, fcmToken } = req.body;
     
     // Validate required fields
     if (!userId || !fcmToken) {
+      console.log('Missing userId or fcmToken in request');
       return res.status(400).json({ success: false, error: 'Missing userId or fcmToken' });
     }
     
@@ -557,7 +560,13 @@ console.log('About to start server on port:', process.env.PORT || 8080);
 
 const PORT = process.env.PORT || 8080; // Use Railway's PORT or default to 8080
 
-server.listen(PORT, () => {
+// Add this before starting the server to debug CORS issues
+app.use((req, res, next) => {
+  console.log(`Request: ${req.method} ${req.path} from ${req.get('Origin')}`);
+  next();
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Call management server running on port ${PORT}`);
   console.log(`Server listening on port ${PORT}`);
   // Log that the server is listening

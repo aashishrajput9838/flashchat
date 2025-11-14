@@ -10,8 +10,17 @@ let socket = null;
  */
 export const initSocket = (userId) => {
   if (!socket) {
-    // Connect to the backend server
-    socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+    // Connect to the backend server with proper configuration
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+    socket = io(backendUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      timeout: 10000, // 10 second timeout
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
+    });
     
     // Register user with their UID when connected
     socket.on('connect', () => {

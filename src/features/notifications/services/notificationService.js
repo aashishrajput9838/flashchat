@@ -164,7 +164,9 @@ export const requestNotificationPermission = async () => {
       console.log('Saving FCM token for user:', user.uid);
       
       // Update token via backend API
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+      console.log('Sending FCM token to backend at:', backendUrl);
+      
       try {
         const response = await fetch(`${backendUrl}/api/update-fcm-token`, {
           method: 'POST',
@@ -177,10 +179,15 @@ export const requestNotificationPermission = async () => {
           })
         });
         
+        console.log('Backend response status:', response.status);
+        console.log('Backend response headers:', [...response.headers.entries()]);
+        
         if (response.ok) {
-          console.log('FCM token sent to backend successfully');
+          const responseData = await response.json();
+          console.log('FCM token sent to backend successfully:', responseData);
         } else {
-          console.error('Failed to send FCM token to backend:', response.status);
+          const errorText = await response.text();
+          console.error('Failed to send FCM token to backend:', response.status, errorText);
         }
       } catch (backendError) {
         console.error('Error sending FCM token to backend:', backendError);
@@ -345,7 +352,8 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     // Only send notification if recipient has a token
     if (recipientFcmToken) {
       // Use Railway-deployed backend URL for sending notifications
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+      console.log('Sending notification to backend at:', backendUrl);
       
       // Send notification to backend to trigger FCM
       const response = await fetch(`${backendUrl}/api/send-notification`, {
@@ -367,7 +375,11 @@ export const sendNotification = async (recipientUserId, notificationData) => {
         })
       });
       
+      console.log('Notification response status:', response.status);
+      
       const result = await response.json();
+      console.log('Notification response data:', result);
+      
       if (result.success) {
         console.log('Notification sent successfully');
         return true;
