@@ -175,7 +175,7 @@ function App() {
             </div>
             <button
               onClick={toggleTheme}
-              className="absolute top-2 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+              className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
               aria-label="Toggle theme">
               {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
             </button>
@@ -243,7 +243,7 @@ function App() {
               </div>
               <button
                 onClick={toggleTheme}
-                className="absolute top-2 right-4 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
+                className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted transition-colors text-sm"
                 aria-label="Toggle theme">
                 {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
               </button>
