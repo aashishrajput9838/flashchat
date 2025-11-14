@@ -552,10 +552,21 @@ async function updateCallStatus(callId, status) {
   }
 }
 
-const PORT = process.env.PORT || 3001; // Use Railway's PORT or default to 3001
+// Log when the server is about to start
+console.log('About to start server on port:', process.env.PORT || 8080);
+
+const PORT = process.env.PORT || 8080; // Use Railway's PORT or default to 8080
 
 server.listen(PORT, () => {
   console.log(`Call management server running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
+  // Log that the server is listening
+  console.log(`Server is now listening for requests on port ${PORT}`);
+});
+
+// Add a simple test endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', port: PORT, timestamp: new Date().toISOString() });
 });
 
 // Graceful shutdown
@@ -708,6 +719,11 @@ app.post('/api/test-notification', async (req, res) => {
     }
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// Add a simple test endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Server is running' });
 });
 
 // Add file upload endpoint

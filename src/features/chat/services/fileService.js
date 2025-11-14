@@ -16,12 +16,20 @@ export const uploadFile = async (file) => {
 
     // Determine backend URL (Railway in production, localhost in dev)
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    
+    // Debug logging
+    console.log('Backend URL from env:', import.meta.env.VITE_BACKEND_URL);
+    console.log('Using backend URL:', backendUrl);
 
     // Upload file to backend server
     const response = await fetch(`${backendUrl}/api/upload-file`, {
       method: 'POST',
       body: formData
     });
+    
+    // Debug logging
+    console.log('File upload response status:', response.status);
+    console.log('File upload response URL:', response.url);
 
     if (!response.ok) {
       throw new Error('File upload failed');

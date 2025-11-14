@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Variable Test</title>
+</head>
+<body>
+    <h1>Environment Variable Test</h1>
+    <p>VITE_BACKEND_URL: <span id="backend-url"></span></p>
+    <script>
+        document.getElementById('backend-url').textContent = import.meta.env.VITE_BACKEND_URL || 'Not set';
+    </script>
+</body>
+</html>

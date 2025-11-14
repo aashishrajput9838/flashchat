@@ -379,6 +379,9 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     {getFileIcon(msg.fileType)}
                     <div className="flex-1 min-w-0">
                       <p className="text-responsive-sm truncate">{msg.fileName}</p>
+                      {/* Debug logging */}
+                      {console.log('File URL:', msg.fileUrl)}
+                      {console.log('VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL)}
                       <a 
                         href={msg.fileUrl.startsWith('http') ? msg.fileUrl : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}${msg.fileUrl}`} 
                         target="_blank" 

@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "cd backend && node simple-server.js",
     "fcm:debug": "node scripts/generate-vapid-key.js",
     "fcm:generate": "node scripts/generate-vapid-key.js --generate",
     "setup:env": "node scripts/setup-env.js",
@@ -18,12 +19,16 @@
   "dependencies": {
     "@google-cloud/storage": "^7.17.3",
     "@radix-ui/react-avatar": "^1.1.10",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.6.0",
     "lucide-react": "^0.545.0",
+    "multer": "^2.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
