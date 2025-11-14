@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "cd backend && node simple-server.js",
+    "start": "cd backend && node index.js",
     "fcm:debug": "node scripts/generate-vapid-key.js",
     "fcm:generate": "node scripts/generate-vapid-key.js --generate",
     "setup:env": "node scripts/setup-env.js",

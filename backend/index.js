@@ -34,6 +34,12 @@ app.use(cors({
   optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
+// Add this before any other middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`Request: ${req.method} ${req.path} from ${req.get('Origin') || 'unknown origin'}`);
+  next();
+});
+
 app.use(express.json());
 app.use(express.static('public')); // Serve static files
 
@@ -157,7 +163,8 @@ const io = new Server(server, {
       // Add specific Railway domain for flashchat
       "https://flashchat-production-ea1a.up.railway.app"
     ].filter(Boolean), // Remove undefined values
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
     credentials: true
   }
 });
@@ -170,6 +177,11 @@ app.post('/api/update-fcm-token', async (req, res) => {
   console.log('Received FCM token update request from:', req.get('Origin'));
   console.log('Request headers:', req.headers);
   console.log('Request body:', req.body);
+  
+  // Set CORS headers explicitly for this endpoint
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   try {
     const { userId, fcmToken } = req.body;
@@ -203,6 +215,15 @@ app.post('/api/update-fcm-token', async (req, res) => {
 
 // Endpoint to send FCM notifications
 app.post('/api/send-notification', async (req, res) => {
+  console.log('Received notification request from:', req.get('Origin'));
+  console.log('Request headers:', req.headers);
+  console.log('Request body:', req.body);
+  
+  // Set CORS headers explicitly for this endpoint
+  res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
   try {
     const { token, title, body, icon, data } = req.body;
     
