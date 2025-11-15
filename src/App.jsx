@@ -13,8 +13,8 @@ import { OnlineStatusProvider } from '@/features/user/contexts/OnlineStatusConte
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { initSocket } from '@/shared/services/socketService';
 import { initNotificationService } from '@/features/notifications/services/notificationService';
-import logoFlashchat from '../fevicon.png';
-import fullnameLogoFlashchat from '../fevicon.png';
+import logoFlashchat from '../logo-flashchat.png';
+import fullnameLogoFlashchat from '../fullname-flashchat.png';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
