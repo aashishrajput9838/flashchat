@@ -169,7 +169,7 @@ function App() {
       <div className="min-h-screen bg-background">
         <header className="border-b">
             <div className="w-full relative flex items-center justify-between h-16 px-4">
-              <div className="flex items-center gap-4 min-w-[220px]">
+              <div className="flex items-center gap-x-0 min-w-[220px]">
               <img
                 src={logoFlashchat}
                 alt="FlashChat logo"
@@ -243,7 +243,7 @@ function App() {
           {/* Header */}
           <header className="border-b">
             <div className="w-full relative flex items-center justify-between h-16 px-4">
-              <div className="flex items-center gap-4 min-w-[220px]">
+              <div className="flex items-center gap-x-0 min-w-[220px]">
                 <img
                   src={logoFlashchat}
                   alt="FlashChat logo"
