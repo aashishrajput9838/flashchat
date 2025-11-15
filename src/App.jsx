@@ -14,6 +14,7 @@ import { useNotifications } from '@/features/notifications/hooks/useNotification
 import { initSocket } from '@/shared/services/socketService';
 import { initNotificationService } from '@/features/notifications/services/notificationService';
 import logoFlashchat from '../logo-flashchat.png';
+import fullnameLogoFlashchat from '../fullname-flashchat.png';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -168,13 +169,17 @@ function App() {
       <div className="min-h-screen bg-background">
         <header className="border-b">
             <div className="w-full relative flex items-center justify-between h-16 px-4">
-          <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
               <img
                 src={logoFlashchat}
                 alt="FlashChat logo"
                 className="w-8 h-8 rounded-full object-cover"
               />
-              <h1 className="text-xl font-bold">FlashChat</h1>
+              <img
+                src={fullnameLogoFlashchat}
+                alt="FlashChat"
+                className="h-6 object-contain"
+              />
             </div>
             <button
               onClick={toggleTheme}
@@ -244,7 +249,11 @@ function App() {
                   alt="FlashChat logo"
                   className="w-8 h-8 rounded-full object-cover"
                 />
-                <h1 className="text-xl font-bold">FlashChat</h1>
+                <img
+                  src={fullnameLogoFlashchat}
+                  alt="FlashChat"
+                  className="h-6 object-contain"
+                />
               </div>
               <button
                 onClick={toggleTheme}
