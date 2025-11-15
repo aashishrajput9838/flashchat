@@ -175,11 +175,13 @@ function App() {
                 alt="FlashChat logo"
                 className="w-10 h-10 rounded-full object-cover dark:invert"
               />
-              <img
-                src={fullnameLogoFlashchat}
-                alt="FlashChat"
-                className="h-16 object-contain"
-              />
+              <div className="h-16 overflow-hidden">
+                <img
+                  src={fullnameLogoFlashchat}
+                  alt="FlashChat"
+                  className="h-16 object-contain -translate-x-2"
+                />
+              </div>
             </div>
             <button
               onClick={toggleTheme}
@@ -249,11 +251,13 @@ function App() {
                   alt="FlashChat logo"
                   className="w-10 h-10 rounded-full object-cover dark:invert"
                 />
-                <img
-                  src={fullnameLogoFlashchat}
-                  alt="FlashChat"
-                  className="h-16 object-contain"
-                />
+                <div className="h-16 overflow-hidden">
+                  <img
+                    src={fullnameLogoFlashchat}
+                    alt="FlashChat"
+                    className="h-16 object-contain -translate-x-2"
+                  />
+                </div>
               </div>
               <button
                 onClick={toggleTheme}
