@@ -173,7 +173,7 @@ function App() {
               <img
                 src={logoFlashchat}
                 alt="FlashChat logo"
-                className="w-10 h-10 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover dark:invert"
               />
               <img
                 src={fullnameLogoFlashchat}
@@ -247,7 +247,7 @@ function App() {
                 <img
                   src={logoFlashchat}
                   alt="FlashChat logo"
-                  className="w-10 h-10 rounded-full object-cover"
+                  className="w-10 h-10 rounded-full object-cover dark:invert"
                 />
                 <img
                   src={fullnameLogoFlashchat}
