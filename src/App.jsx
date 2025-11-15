@@ -179,7 +179,7 @@ function App() {
                 <img
                   src={fullnameLogoFlashchat}
                   alt="FlashChat"
-                  className="h-16 object-contain -translate-x-2"
+                  className="h-16 object-contain"
                 />
               </div>
             </div>
@@ -255,7 +255,7 @@ function App() {
                   <img
                     src={fullnameLogoFlashchat}
                     alt="FlashChat"
-                    className="h-16 object-contain -translate-x-2"
+                    className="h-16 object-contain"
                   />
                 </div>
               </div>
