@@ -1,5 +1,5 @@
 import { db } from '@/config/firebase';
-import { collection, doc, setDoc, query, orderBy, where, onSnapshot, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, where, onSnapshot, serverTimestamp, addDoc, updateDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { getCurrentUser } from '@/features/user/services/userService';
 import { handleFirestoreError } from '@/config/firebase';
 import { sendMessageNotification } from '@/features/notifications/services/notificationService';
@@ -32,7 +32,8 @@ export const sendMessage = async (messageData, recipientUserId) => {
         recipientId: recipientUserId,
         timestamp: serverTimestamp(), // Use server timestamp for better consistency
         you: messageData.you || false,
-        photoURL: messageData.photoURL || (user.photoURL) || null
+        photoURL: messageData.photoURL || (user.photoURL) || null,
+        status: 'sent' // initial status for message ticks
       };
       
       // Use addDoc to let Firestore generate the ID
@@ -85,7 +86,8 @@ export const sendFileMessage = async (fileMessageData, recipientUserId) => {
         photoURL: fileMessageData.photoURL || (user.photoURL) || null,
         fileType: fileMessageData.fileType || 'file',
         fileUrl: fileMessageData.fileUrl,
-        fileName: fileMessageData.fileName
+        fileName: fileMessageData.fileName,
+        status: 'sent' // initial status for file message ticks
       };
       
       // Use addDoc to let Firestore generate the ID
@@ -135,20 +137,45 @@ export const subscribeToMessages = (selectedUserId, callback) => {
       );
       
       // Subscribe to the query
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
         const messages = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
+        const deliveryUpdates = [];
+
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+
+          // Queue delivery status update for messages that reached this client as recipient
+          if (
+            data.recipientId === currentUser.uid &&
+            (!data.status || data.status === 'sent')
+          ) {
+            deliveryUpdates.push({ id: docSnap.id });
+          }
+
           messages.push({
-            id: doc.id,
+            id: docSnap.id,
             ...data,
             you: data.userId === currentUser.uid,
-            time: data.timestamp && data.timestamp.toDate && typeof data.timestamp.toDate === 'function' 
-              ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            time: data.timestamp && data.timestamp.toDate && typeof data.timestamp.toDate === 'function'
+              ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : 'Just now'
           });
         });
-        
+
+        // Mark messages as delivered in Firestore (single tick -> double tick)
+        if (deliveryUpdates.length > 0 && db) {
+          try {
+            const batch = writeBatch(db);
+            deliveryUpdates.forEach((msg) => {
+              const msgRef = doc(db, 'messages', msg.id);
+              batch.update(msgRef, { status: 'delivered' });
+            });
+            await batch.commit();
+          } catch (error) {
+            handleFirestoreError(error);
+          }
+        }
+
         callback(messages);
       }, (error) => {
         handleFirestoreError(error);
@@ -166,6 +193,47 @@ export const subscribeToMessages = (selectedUserId, callback) => {
     console.warn('Firestore not available, returning empty message list');
     callback([]);
     return () => {};
+  }
+};
+
+/**
+ * Mark all messages from a specific user to the current user as read.
+ * This is called when the current user opens a chat thread so the sender
+ * can see blue double ticks.
+ * @param {string} selectedUserId - The UID of the conversation partner
+ */
+export const markMessagesAsRead = async (selectedUserId) => {
+  if (!db) {
+    console.warn('Firestore not available, skipping markMessagesAsRead');
+    return;
+  }
+
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !selectedUserId) {
+      return;
+    }
+
+    const messagesRef = collection(db, 'messages');
+    // All messages where selected user sent to current user and are not yet marked read
+    const q = query(
+      messagesRef,
+      where('userId', '==', selectedUserId),
+      where('recipientId', '==', currentUser.uid),
+      where('status', 'in', ['sent', 'delivered'])
+    );
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.forEach((docSnap) => {
+      batch.update(docSnap.ref, { status: 'read' });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error);
   }
 };
 

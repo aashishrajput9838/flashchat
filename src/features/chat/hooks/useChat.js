@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { sendMessage, sendFileMessage, subscribeToMessages } from '@/features/chat/services/chatService';
+import { sendMessage, sendFileMessage, subscribeToMessages, markMessagesAsRead } from '@/features/chat/services/chatService';
 import { getCurrentUser } from '@/features/user/services/userService';
 import { uploadFile, createFileMessage } from '@/features/chat/services/fileService';
 
@@ -35,6 +35,12 @@ export const useChat = (selectedChat) => {
           setMessages(newMessages);
           prevMessagesRef.current = newMessages;
         }
+      });
+
+      // Mark all messages from this user as read when opening the chat
+      // so the sender sees blue double ticks.
+      markMessagesAsRead(selectedChat.uid).catch((err) => {
+        console.error('Error marking messages as read:', err);
       });
     }
     

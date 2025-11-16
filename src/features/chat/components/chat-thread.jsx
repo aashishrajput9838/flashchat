@@ -400,7 +400,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                 }`}>
                   <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
-                  {msg.userId === currentUserId && getMessageStatusIcon('sent')}
+                  {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
                 </div>
               </div>
             </div>
