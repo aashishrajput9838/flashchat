@@ -56,35 +56,46 @@ export const useChat = (selectedChat) => {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
+    const id = requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+    return () => cancelAnimationFrame(id);
   }, [messages, scrollToBottom]);
 
   // Handle sending a text message
-  const handleSendMessage = useCallback(async (e) => {
+  const handleSendMessage = useCallback((e) => {
     e?.preventDefault();
     if (!message.trim() || !selectedChat || isSending) return;
-    
+
+    const text = message.trim();
+
+    // Optimistic UI: clear input immediately so Enter feels instant
+    setMessage("");
     setIsSending(true);
     setError(null);
-    
-    try {
-      // Create message data object
-      const messageData = {
-        text: message.trim(),
-        name: user?.displayName || 'Anonymous',
-        photoURL: user?.photoURL || null,
-        you: true
-      };
-      
-      // Send message with correct parameters
-      await sendMessage(messageData, selectedChat.uid);
-      setMessage("");
-    } catch (err) {
-      console.error("Error sending message:", err);
-      setError(err.message || "Failed to send message");
-    } finally {
-      setIsSending(false);
-    }
+
+    // Run the heavy work in a separate task
+    (async () => {
+      try {
+        // Create message data object
+        const messageData = {
+          text,
+          name: user?.displayName || 'Anonymous',
+          photoURL: user?.photoURL || null,
+          you: true
+        };
+
+        // Send message with correct parameters
+        await sendMessage(messageData, selectedChat.uid);
+      } catch (err) {
+        console.error("Error sending message:", err);
+        setError(err.message || "Failed to send message");
+        // Optionally restore text on failure:
+        // setMessage(text);
+      } finally {
+        setIsSending(false);
+      }
+    })();
   }, [message, selectedChat, isSending, user]);
 
   // Handle sending a file message
