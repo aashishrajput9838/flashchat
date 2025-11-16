@@ -1229,6 +1229,7 @@ export const searchFriends = async (searchQuery) => {
 
 /**
  * Function to search all users by name or email (not just friends)
+ * NOTE: This now excludes users that are already in the current user's friends list.
  * @param {string} searchQuery - The search term to match against user names or emails
  * @returns {Promise<Array>} - Array of user objects matching the search query
  */
@@ -1238,19 +1239,33 @@ export const searchAllUsers = async (searchQuery) => {
   }
 
   try {
+    // Get the current user's friends list so we can exclude them from search results
+    const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid))
+    let friendIds = []
+
+    if (currentUserDoc.exists()) {
+      const currentUserData = currentUserDoc.data()
+      friendIds = Array.isArray(currentUserData.friends) ? currentUserData.friends : []
+    }
+
     const usersRef = collection(db, 'users')
     const querySnapshot = await getDocs(usersRef)
     
     const searchResults = []
     const searchTerm = searchQuery.toLowerCase().trim()
     
-    querySnapshot.forEach((doc) => {
+    querySnapshot.forEach((docSnapshot) => {
       // Skip the current user
-      if (doc.id === currentUser.uid) {
+      if (docSnapshot.id === currentUser.uid) {
+        return
+      }
+
+      // Skip users who are already in the current user's friends list
+      if (friendIds.includes(docSnapshot.id)) {
         return
       }
       
-      const userData = doc.data()
+      const userData = docSnapshot.data()
       
       // Check if user matches search query
       const name = userData.name || userData.displayName || ''
@@ -1261,7 +1276,7 @@ export const searchAllUsers = async (searchQuery) => {
         if (userData.photoURL) {
           userData.photoURL = getHighQualityPhotoURL(userData.photoURL)
         }
-        searchResults.push({ id: doc.id, ...userData })
+        searchResults.push({ id: docSnapshot.id, ...userData })
       }
     })
     
