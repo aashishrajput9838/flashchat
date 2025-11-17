@@ -1,12 +1,12 @@
-import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward } from "lucide-react"
+import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward, Check as CheckIcon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
 import { AudioCall } from "@/features/call/components/audio-call"
 import { useState, useEffect, useRef } from "react"
 import { useChat } from "@/features/chat/hooks/useChat"
-import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline } from "@/features/user/services/userService"
-import { createCallDocument } from "@/features/call/services/callService"
+import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline, subscribeToFriends } from "@/features/user/services/userService"
+import { sendMessage } from "@/features/chat/services/chatService"
 import { EmojiPicker } from "@/features/chat/components/emoji-picker"
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
@@ -29,6 +29,10 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [isTyping, setIsTyping] = useState(false)
   const [activeCallId, setActiveCallId] = useState(null) // Store the active call ID
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showForwardModal, setShowForwardModal] = useState(false)
+  const [friends, setFriends] = useState([])
+  const [selectedForwardUserIds, setSelectedForwardUserIds] = useState(new Set())
+  const [forwardMessage, setForwardMessage] = useState(null)
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const user = getCurrentUser()
@@ -221,6 +225,62 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     };
   }, [showDropdown]);
 
+  // Subscribe to friends list for forwarding messages
+  useEffect(() => {
+    const unsubscribe = subscribeToFriends((friendsList) => {
+      const list = (Array.isArray(friendsList) ? friendsList : []).map(friend => ({
+        uid: friend.uid,
+        name: friend.name || friend.displayName || friend.email || `User${friend.uid.substring(0, 5)}`,
+        photoURL: friend.photoURL || "/diverse-avatars.png"
+      }))
+      setFriends(list)
+    })
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [])
+
+  const toggleSelectForwardUser = (uid) => {
+    setSelectedForwardUserIds(prev => {
+      const next = new Set(prev)
+      if (next.has(uid)) {
+        next.delete(uid)
+      } else {
+        next.add(uid)
+      }
+      return next
+    })
+  }
+
+  const openForwardModal = (msg) => {
+    setForwardMessage(msg)
+    setShowForwardModal(true)
+    setSelectedForwardUserIds(new Set())
+  }
+
+  const handleForwardToSelected = async () => {
+    if (!forwardMessage || selectedForwardUserIds.size === 0) return
+
+    const messageData = {
+      text: forwardMessage.text || (forwardMessage.fileName ? `${forwardMessage.fileName}` : ''),
+      name: user?.displayName || 'Anonymous',
+      photoURL: user?.photoURL || null,
+      you: true
+    }
+
+    try {
+      await Promise.all(
+        Array.from(selectedForwardUserIds).map(uid => sendMessage(messageData, uid))
+      )
+      setShowForwardModal(false)
+      setForwardMessage(null)
+      setSelectedForwardUserIds(new Set())
+    } catch (error) {
+      console.error('Error forwarding message:', error)
+    }
+  }
+
   // Close chat on mobile
   const handleClose = () => {
     if (onClose) {
@@ -402,6 +462,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   {/* Forward message icon on the left side of the message */}
                   <button
                     type="button"
+                    onClick={() => openForwardModal(msg)}
                     className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                     aria-label="Forward message"
                   >
@@ -528,6 +589,73 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
             setActiveCallId(null);
           }}
         />
+      )}
+
+      {/* Forward Message Modal */}
+      {showForwardModal && (
+        <div className="fixed inset-0 z-[6000] bg-black/50 flex items-center justify-center p-2 sm:p-4">
+          <div className="w-full max-w-md bg-card rounded-2xl border shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+              <h3 className="text-responsive-lg font-semibold">Forward message</h3>
+              <button
+                onClick={() => setShowForwardModal(false)}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
+                aria-label="Close forward modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-3 sm:p-4 flex-1 overflow-y-auto">
+              {friends.length === 0 ? (
+                <div className="text-center text-muted-foreground text-responsive-sm">
+                  You have no friends to forward this message to.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {friends.map(friend => (
+                    <button
+                      key={friend.uid}
+                      type="button"
+                      onClick={() => toggleSelectForwardUser(friend.uid)}
+                      className={`w-full flex items-center justify-between gap-3 p-2 rounded-lg border transition-colors ${
+                        selectedForwardUserIds.has(friend.uid)
+                          ? 'bg-primary/5 border-primary'
+                          : 'bg-card hover:bg-muted border-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={friend.photoURL} alt={friend.name} />
+                          <AvatarFallback className="bg-secondary text-xs">
+                            {friend.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-responsive-sm text-left truncate">{friend.name}</span>
+                      </div>
+                      <div className={`h-6 w-6 rounded-full border flex items-center justify-center ${
+                        selectedForwardUserIds.has(friend.uid)
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'border-muted-foreground text-transparent'
+                      }`}>
+                        <CheckIcon className="h-4 w-4" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-3 sm:p-4 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={handleForwardToSelected}
+                disabled={selectedForwardUserIds.size === 0}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 text-responsive-sm"
+              >
+                Forward
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
