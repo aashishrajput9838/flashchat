@@ -1,4 +1,4 @@
-import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music } from "lucide-react"
+import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
@@ -396,11 +396,21 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                 ) : (
                   <p className="text-responsive-sm">{msg.text}</p>
                 )}
-                <div className={`flex items-center justify-end gap-1 mt-1 ${
+                <div className={`flex items-center justify-between mt-1 ${
                   msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                 }`}>
-                  <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
-                  {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
+                  {/* Forward message icon on the left side of the message */}
+                  <button
+                    type="button"
+                    className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                    aria-label="Forward message"
+                  >
+                    <Forward className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
+                    {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
+                  </div>
                 </div>
               </div>
             </div>
