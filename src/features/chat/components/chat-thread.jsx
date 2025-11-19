@@ -421,61 +421,78 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
             </p>
           </div>
         ) : (
-          chatMessages.map((msg) => (
-            <div 
-              key={msg.id} 
-              className={`flex ${msg.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
-            >
+          chatMessages.map((msg) => {
+            const fileHref = msg.fileUrl
+              ? (msg.fileUrl.startsWith('http')
+                  ? msg.fileUrl
+                  : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}${msg.fileUrl}`)
+              : null;
+
+            const isImage = msg.fileType && msg.fileType.startsWith('image/');
+
+            return (
               <div 
-                className={`max-w-xs sm:max-w-md lg:max-w-lg xl:max-w-xl rounded-2xl px-4 py-2 ${
-                  msg.userId === currentUserId 
-                    ? 'bg-primary text-primary-foreground rounded-br-none' 
-                    : 'bg-muted rounded-bl-none'
-                }`}
+                key={msg.id} 
+                className={`flex ${msg.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Check if this is a file message */}
-                {msg.fileUrl ? (
-                  <div className="flex items-center gap-2">
-                    {getFileIcon(msg.fileType)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-responsive-sm truncate">{msg.fileName}</p>
-                      {/* Debug logging */}
-                      {console.log('File URL:', msg.fileUrl)}
-                      {console.log('VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL)}
-                      <a 
-                        href={msg.fileUrl.startsWith('http') ? msg.fileUrl : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}${msg.fileUrl}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
-                      >
-                        <Download className="h-3 w-3" />
-                        Download
-                      </a>
+                <div 
+                  className={`max-w-xs sm:max-w-md lg:max-w-lg xl:max-w-xl rounded-2xl px-4 py-2 ${
+                    msg.userId === currentUserId 
+                      ? 'bg-primary text-primary-foreground rounded-br-none' 
+                      : 'bg-muted rounded-bl-none'
+                  }`}
+                >
+                  {/* File message (with thumbnail for images) */}
+                  {msg.fileUrl ? (
+                    <div>
+                      {isImage && fileHref && (
+                        <img
+                          src={fileHref}
+                          alt={msg.fileName || 'Image'}
+                          className="mb-2 max-h-64 w-full rounded-lg object-contain bg-black/5"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(msg.fileType)}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-responsive-sm truncate">{msg.fileName}</p>
+                          <a 
+                            href={fileHref} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
+                          >
+                            <Download className="h-3 w-3" />
+                            Download
+                          </a>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-responsive-sm">{msg.text}</p>
-                )}
-                <div className={`flex items-center justify-between mt-1 ${
-                  msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                }`}>
-                  {/* Forward message icon on the left side of the message */}
-                  <button
-                    type="button"
-                    onClick={() => openForwardModal(msg)}
-                    className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                    aria-label="Forward message"
-                  >
-                    <Forward className="h-4 w-4" />
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
-                    {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
+                  ) : (
+                    <p className="text-responsive-sm">{msg.text}</p>
+                  )}
+                  <div className={`flex items-center justify-between mt-1 ${
+                    msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  }`}>
+                    {/* Forward message icon on the left side of the message */}
+                    <button
+                      type="button"
+                      onClick={() => openForwardModal(msg)}
+                      className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      aria-label="Forward message"
+                    >
+                      <Forward className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
+                      {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
