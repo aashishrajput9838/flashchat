@@ -195,15 +195,15 @@ function App() {
         <main className="container max-w-4xl mx-auto p-4">
           <div className="bg-card rounded-xl border shadow-sm p-6 sm:p-8">
             <div className="text-center">
-+              <SplitText
-+                tag="h2"
-+                text="Welcome to FlashChat"
-+                className="text-2xl font-bold mb-2"
-+              />
-+              <p className="text-muted-foreground mb-6">
-+                Sign in to start messaging and making calls with your friends.
-+              </p>
-+              <div className="mt-6">
+              <SplitText
+                tag="h2"
+                text="Welcome to FlashChat"
+                className="text-2xl font-bold mb-2"
+              />
+              <p className="text-muted-foreground mb-6">
+                Sign in to start messaging and making calls with your friends.
+              </p>
+              <div className="mt-6">
                 <button
                   onClick={() => {
                     // Import and use the signInWithGoogle function directly
