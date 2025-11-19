@@ -421,14 +421,14 @@ function App() {
                   <div className="h-[calc(90vh-108px)] flex items-center justify-center p-4">
                     <div className="text-center max-w-md">
                       <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-+                      <SplitText
-+                        tag="h2"
-+                        text="Welcome to FlashChat"
-+                        className="text-2xl font-bold mb-2"
-+                      />
-+                      <p className="text-muted-foreground mb-6">
-+                        Select a conversation or add friends to start chatting.
-+                      </p>
+                      <SplitText
+                        tag="h2"
+                        text="Welcome to FlashChat"
+                        className="text-2xl font-bold mb-2"
+                      />
+                      <p className="text-muted-foreground mb-6">
+                        Select a conversation or add friends to start chatting.
+                      </p>
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
                           onClick={() => setShowMobileConversations(true)}
