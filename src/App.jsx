@@ -15,6 +15,7 @@ import { initSocket } from '@/shared/services/socketService';
 import { initNotificationService } from '@/features/notifications/services/notificationService';
 import logoFlashchat from '../fevicon.png';
 import fullnameLogoFlashchat from '../fullname-flashchat.png';
+import SplitText from './components/SplitText';
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -194,11 +195,15 @@ function App() {
         <main className="container max-w-4xl mx-auto p-4">
           <div className="bg-card rounded-xl border shadow-sm p-6 sm:p-8">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
-              <p className="text-muted-foreground mb-6">
-                Sign in to start messaging and making calls with your friends.
-              </p>
-              <div className="mt-6">
++              <SplitText
++                tag="h2"
++                text="Welcome to FlashChat"
++                className="text-2xl font-bold mb-2"
++              />
++              <p className="text-muted-foreground mb-6">
++                Sign in to start messaging and making calls with your friends.
++              </p>
++              <div className="mt-6">
                 <button
                   onClick={() => {
                     // Import and use the signInWithGoogle function directly
@@ -416,10 +421,14 @@ function App() {
                   <div className="h-[calc(90vh-108px)] flex items-center justify-center p-4">
                     <div className="text-center max-w-md">
                       <MessageCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                      <h2 className="text-2xl font-bold mb-2">Welcome to FlashChat</h2>
-                      <p className="text-muted-foreground mb-6">
-                        Select a conversation or add friends to start chatting.
-                      </p>
++                      <SplitText
++                        tag="h2"
++                        text="Welcome to FlashChat"
++                        className="text-2xl font-bold mb-2"
++                      />
++                      <p className="text-muted-foreground mb-6">
++                        Select a conversation or add friends to start chatting.
++                      </p>
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
                           onClick={() => setShowMobileConversations(true)}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { signInWithGoogle, initAuth } from '@/features/auth/services/authService';
+import SplitText from '@/components/SplitText';
 
 export function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -38,8 +39,12 @@ export function Login({ onLoginSuccess }) {
     <div className="min-h-dvh flex items-center justify-center bg-background">
       <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-xl border">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">Welcome to FlashChat</h2>
-          <p className="mt-2 text-muted-foreground">
++          <SplitText
++            tag="h2"
++            text="Welcome to FlashChat"
++            className="text-2xl font-bold"
++          />
++          <p className="mt-2 text-muted-foreground">
             Sign in with your Google account to start chatting
           </p>
         </div>
