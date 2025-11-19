@@ -23,18 +23,4 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Run backend tests
-        run: cd backend && npm test || echo "No tests specified"
 
-  deploy-production:
-    needs: build-and-test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Deploy to Railway
-        uses: railwayapp/action@v1
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service: ${{ secrets.RAILWAY_SERVICE_ID }}

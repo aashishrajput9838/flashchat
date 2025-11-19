@@ -1,4 +1,4 @@
-<!-- Testing CI/CD Pipeline -->
+<!-- Testing CI/CD Pipeline --> - Test 2
 # FlashChat
 
 ![FlashChat Interface](https://github.com/user-attachments/assets/fd914aa9-c7fd-44ce-a876-d723ab745085)
