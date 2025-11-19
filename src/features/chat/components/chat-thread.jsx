@@ -1,4 +1,4 @@
-import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward, Check as CheckIcon } from "lucide-react"
+import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward, Check as CheckIcon, ImageOff } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
@@ -8,6 +8,38 @@ import { useChat } from "@/features/chat/hooks/useChat"
 import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline, subscribeToFriends } from "@/features/user/services/userService"
 import { sendMessage } from "@/features/chat/services/chatService"
 import { EmojiPicker } from "@/features/chat/components/emoji-picker"
+
+function ImageThumbnail({ src, alt }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [hasError, setHasError] = useState(false)
+
+  if (hasError) {
+    return (
+      <div className="mb-2 flex h-40 w-full items-center justify-center rounded-lg bg-black/5 text-[11px] text-muted-foreground">
+        <ImageOff className="mr-1 h-4 w-4" />
+        Failed to load image
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-2 relative">
+      {!isLoaded && (
+        <div className="absolute inset-0 animate-pulse rounded-lg bg-black/5" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`max-h-64 w-full rounded-lg object-contain bg-black/5 transition-opacity ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        loading="lazy"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
+      />
+    </div>
+  )
+}
 
 export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const { 
@@ -422,11 +454,19 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
           </div>
         ) : (
           chatMessages.map((msg) => {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
             const fileHref = msg.fileUrl
               ? (msg.fileUrl.startsWith('http')
                   ? msg.fileUrl
-                  : `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}${msg.fileUrl}`)
+                  : `${backendUrl}${msg.fileUrl}`)
               : null;
+
+            const thumbnailHref = msg.thumbnailUrl
+              ? (msg.thumbnailUrl.startsWith('http')
+                  ? msg.thumbnailUrl
+                  : `${backendUrl}${msg.thumbnailUrl}`)
+              : fileHref;
 
             const isImage = msg.fileType && msg.fileType.startsWith('image/');
 
@@ -445,12 +485,10 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   {/* File message (with thumbnail for images) */}
                   {msg.fileUrl ? (
                     <div>
-                      {isImage && fileHref && (
-                        <img
-                          src={fileHref}
+                      {isImage && thumbnailHref && (
+                        <ImageThumbnail
+                          src={thumbnailHref}
                           alt={msg.fileName || 'Image'}
-                          className="mb-2 max-h-64 w-full rounded-lg object-contain bg-black/5"
-                          loading="lazy"
                         />
                       )}
                       <div className="flex items-center gap-2">

@@ -120,7 +120,8 @@ export const useChat = (selectedChat) => {
         you: true,
         fileType: fileData.type,
         fileUrl: fileData.url,
-        fileName: fileData.name
+        fileName: fileData.name,
+        thumbnailUrl: fileData.thumbnailUrl || null
       };
       
       // Send file message

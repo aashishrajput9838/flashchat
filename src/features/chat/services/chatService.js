@@ -87,6 +87,7 @@ export const sendFileMessage = async (fileMessageData, recipientUserId) => {
         fileType: fileMessageData.fileType || 'file',
         fileUrl: fileMessageData.fileUrl,
         fileName: fileMessageData.fileName,
+        thumbnailUrl: fileMessageData.thumbnailUrl || null,
         status: 'sent' // initial status for file message ticks
       };
       

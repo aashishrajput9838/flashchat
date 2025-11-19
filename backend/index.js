@@ -50,6 +50,7 @@ app.use('/uploads', express.static('uploads')); // Serve uploaded files
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const sharp = require('sharp');
 
 // Create uploads directory
 const uploadDir = path.join(__dirname, 'uploads');
@@ -763,14 +764,34 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    // Generate file URL
+    // Generate file URL for original upload
     const fileUrl = `/uploads/${req.file.filename}`;
+
+    // Optionally generate a JPEG thumbnail for images to improve chat performance
+    let thumbnailUrl = null;
+    try {
+      if (req.file.mimetype && req.file.mimetype.startsWith('image/')) {
+        const thumbName = `thumb-${req.file.filename}.jpg`;
+        const thumbPath = path.join(uploadDir, thumbName);
+
+        await sharp(req.file.path)
+          .resize(400) // constrain width, preserve aspect ratio
+          .jpeg({ quality: 70 })
+          .toFile(thumbPath);
+
+        thumbnailUrl = `/uploads/${thumbName}`;
+      }
+    } catch (thumbError) {
+      // Thumbnail generation is best-effort; log but don't fail the upload
+      console.error('Error generating thumbnail:', thumbError);
+    }
     
     // Return file information
     res.status(200).json({
       success: true,
       file: {
         url: fileUrl,
+        thumbnailUrl,
         name: req.file.originalname,
         size: req.file.size,
         type: req.file.mimetype

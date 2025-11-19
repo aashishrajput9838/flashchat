@@ -41,6 +41,7 @@ export const uploadFile = async (file) => {
       throw new Error(result.error || 'File upload failed');
     }
 
+    // result.file contains url, optional thumbnailUrl, type, size, etc.
     return result.file;
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -58,6 +59,7 @@ export const createFileMessage = (fileData) => {
     type: 'file',
     file: {
       url: fileData.url,
+      thumbnailUrl: fileData.thumbnailUrl || null,
       name: fileData.name,
       type: fileData.type,
       size: fileData.size
