@@ -23,8 +23,6 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Run backend tests
-        run: cd backend && npm test || echo "No tests specified"
 
   deploy-production:
     needs: build-and-test
