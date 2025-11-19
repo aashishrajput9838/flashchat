@@ -15,5 +15,5 @@ railway up
 echo Deployment complete!
 echo Remember to update the frontend with your new Railway URL:
 echo 1. Get your URL from the Railway dashboard
-echo 2. Update the backendUrl in src/features/notifications/services/notificationService.js
+echo 2. Update VITE_BACKEND_URL in your Vercel environment variables
 echo 3. Redeploy your frontend

@@ -188,6 +188,7 @@ For detailed documentation, please see:
   - [ConversationList Component](docs/conversation-list-component.md)
 - [FCM Fixes Documentation](docs/fcm-fixes.md)
 - [FCM Setup Guide](FCM_SETUP.md)
+- [CI/CD Setup Guide](CI_CD_SETUP.md)
 
 ## Testing
 
@@ -250,6 +251,22 @@ If you encounter issues with FCM:
 2. Run the interactive setup: `npm run setup:env`
 3. Use the FCM test page: Open `public/fcm-test.html` in your browser
 4. Verify your VAPID key in the Firebase Console
+
+## CI/CD Setup
+
+This project includes GitHub Actions workflows for continuous integration and deployment:
+
+### Prerequisites
+1. GitHub repository
+2. Vercel account for frontend deployment
+3. Railway account for backend deployment
+
+### Configuration
+1. Set up GitHub secrets for Vercel and Railway tokens
+2. Configure environment variables in Vercel and Railway dashboards
+3. Push to `main` branch to trigger production deployment
+
+For detailed setup instructions, see [CI/CD Setup Guide](CI_CD_SETUP.md).
 
 ## Deployment
 
