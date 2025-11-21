@@ -55,7 +55,15 @@ app.use('/uploads', express.static('uploads')); // Serve uploaded files
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const sharp = require('sharp');
+
+// sharp is optional in some environments (e.g., where native modules cannot be built)
+// Try to load it, but don't crash the server if it's unavailable.
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (error) {
+  console.error('Optional dependency "sharp" is not available. Image thumbnails will be disabled.', error.message);
+}
 
 // Create uploads directory
 const uploadDir = path.join(__dirname, 'uploads');
@@ -776,7 +784,8 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
     // Optionally generate a JPEG thumbnail for images to improve chat performance
     let thumbnailUrl = null;
     try {
-      if (req.file.mimetype && req.file.mimetype.startsWith('image/')) {
+      // Only attempt thumbnail generation if sharp is available
+      if (sharp && req.file.mimetype && req.file.mimetype.startsWith('image/')) {
         const thumbName = `thumb-${req.file.filename}.jpg`;
         const thumbPath = path.join(uploadDir, thumbName);
 
