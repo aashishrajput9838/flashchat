@@ -4,7 +4,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const admin = require('firebase-admin');
+let admin;
 const { getFirestore, doc, updateDoc, serverTimestamp } = require('firebase/firestore');
 
 const app = express();
@@ -31,8 +31,13 @@ app.use(cors({
     "https://flashchat-production-ea1a.up.railway.app"
   ].filter(Boolean), // Remove undefined values
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
   optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
+
+// Note: Express 5 uses a stricter path matcher; per-route OPTIONS handlers are defined
+// where needed (e.g. /api/upload-file) instead of a global wildcard.
 
 // Add this before any other middleware to log all requests
 app.use((req, res, next) => {
@@ -79,17 +84,22 @@ const upload = multer({
 
 // Firebase Admin SDK initialization
 try {
+  // Lazily require firebase-admin so that a failure does not crash the process
+  const firebaseAdmin = require('firebase-admin');
+
   // Check if we're running in a Railway environment
   if (process.env.RAILWAY_PROJECT_ID) {
     // Use default credentials in Railway environment
-    admin.initializeApp();
+    firebaseAdmin.initializeApp();
   } else {
     // For local development, use the service account key file
     const serviceAccount = require('./service-account-key.json');
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.cert(serviceAccount)
     });
   }
+
+  admin = firebaseAdmin;
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
   console.error('Firebase Admin initialization error:', error);
@@ -97,7 +107,7 @@ try {
   admin = null;
 }
 
-const messaging = admin.messaging();
+const messaging = admin ? admin.messaging() : null;
 
 // Helper function to update user FCM token
 async function updateUserFcmToken(userId, fcmToken) {
@@ -757,8 +767,17 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Server is running' });
 });
 
-// Add file upload endpoint
+// Add file upload endpoint (with explicit CORS handling)
+// Handle preflight for this specific route
+app.options('/api/upload-file', cors());
+
 app.post('/api/upload-file', upload.single('file'), async (req, res) => {
+  // Ensure CORS headers are present on all responses from this endpoint
+  const origin = req.get('Origin') || 'https://flashchat-coral.vercel.app';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
