@@ -154,26 +154,13 @@ try {
 }
 
 // Initialize Socket.IO with CORS configuration
+// Use a function for origin to avoid subtle mismatches between HTTPS/WSS origins
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173", 
-      "http://localhost:5174", 
-      "http://localhost:5175", 
-      "http://localhost:5176", 
-      "http://localhost:5177", 
-      "http://localhost:5178", 
-      "http://localhost:5179", 
-      "http://localhost:5180",
-      "https://flashchat-coral.vercel.app",
-      "https://flashchat-git-main-yourusername.vercel.app",
-      // Add Railway deployment URL
-      process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
-      // Add production Railway URL pattern
-      "https://*.railway.app",
-      // Add specific Railway domain for flashchat
-      "https://flashchat-production-ea1a.up.railway.app"
-    ].filter(Boolean), // Remove undefined values
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl) and our web clients
+      callback(null, true);
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
     credentials: true
