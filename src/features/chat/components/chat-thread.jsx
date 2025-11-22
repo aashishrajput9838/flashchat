@@ -6,7 +6,7 @@ import { AudioCall } from "@/features/call/components/audio-call"
 import { useState, useEffect, useRef } from "react"
 import { useChat } from "@/features/chat/hooks/useChat"
 import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline, subscribeToFriends } from "@/features/user/services/userService"
-import { sendMessage } from "@/features/chat/services/chatService"
+import { sendMessage, sendFileMessage } from "@/features/chat/services/chatService"
 import { EmojiPicker } from "@/features/chat/components/emoji-picker"
 
 function ImageThumbnail({ src, alt }) {
@@ -294,23 +294,55 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const handleForwardToSelected = async () => {
     if (!forwardMessage || selectedForwardUserIds.size === 0) return
 
-    const messageData = {
-      text: forwardMessage.text || (forwardMessage.fileName ? `${forwardMessage.fileName}` : ''),
-      name: user?.displayName || 'Anonymous',
-      photoURL: user?.photoURL || null,
-      you: true
+    // Check if the message is a file message
+    const isFileMessage = forwardMessage.fileUrl && forwardMessage.fileName;
+    
+    let messageData;
+    if (isFileMessage) {
+      // Forward as file message
+      messageData = {
+        text: forwardMessage.text || `📎 File: ${forwardMessage.fileName}`,
+        name: user?.displayName || 'Anonymous',
+        photoURL: user?.photoURL || null,
+        you: true,
+        fileType: forwardMessage.fileType || 'file',
+        fileUrl: forwardMessage.fileUrl,
+        fileName: forwardMessage.fileName,
+        thumbnailUrl: forwardMessage.thumbnailUrl || null
+      };
+      
+      // Use sendFileMessage for file messages
+      try {
+        await Promise.all(
+          Array.from(selectedForwardUserIds).map(uid => sendFileMessage(messageData, uid))
+        )
+      } catch (error) {
+        console.error('Error forwarding file message:', error)
+        throw error;
+      }
+    } else {
+      // Forward as regular text message
+      messageData = {
+        text: forwardMessage.text || (forwardMessage.fileName ? `${forwardMessage.fileName}` : ''),
+        name: user?.displayName || 'Anonymous',
+        photoURL: user?.photoURL || null,
+        you: true
+      };
+      
+      // Use sendMessage for text messages
+      try {
+        await Promise.all(
+          Array.from(selectedForwardUserIds).map(uid => sendMessage(messageData, uid))
+        )
+      } catch (error) {
+        console.error('Error forwarding text message:', error)
+        throw error;
+      }
     }
 
-    try {
-      await Promise.all(
-        Array.from(selectedForwardUserIds).map(uid => sendMessage(messageData, uid))
-      )
-      setShowForwardModal(false)
-      setForwardMessage(null)
-      setSelectedForwardUserIds(new Set())
-    } catch (error) {
-      console.error('Error forwarding message:', error)
-    }
+    setShowForwardModal(false)
+    setForwardMessage(null)
+    setSelectedForwardUserIds(new Set())
   }
 
   // Close chat on mobile
