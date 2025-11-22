@@ -462,6 +462,13 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   : `${backendUrl}${msg.fileUrl}`)
               : null;
 
+            // For download, use the dedicated download endpoint
+            const downloadHref = msg.fileUrl
+              ? (msg.fileUrl.startsWith('http')
+                  ? msg.fileUrl.replace('/uploads/', '/api/download-file/')
+                  : `${backendUrl}/api/download-file/${msg.fileUrl.split('/').pop()}`)
+              : null;
+
             const thumbnailHref = msg.thumbnailUrl
               ? (msg.thumbnailUrl.startsWith('http')
                   ? msg.thumbnailUrl
@@ -496,7 +503,8 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                         <div className="flex-1 min-w-0">
                           <p className="text-responsive-sm truncate">{msg.fileName}</p>
                           <a 
-                            href={fileHref} 
+                            href={downloadHref} 
+                            download={msg.fileName}
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"

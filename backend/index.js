@@ -817,3 +817,34 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Add file download endpoint
+app.get('/api/download-file/:filename', (req, res) => {
+  const filename = req.params.filename;
+  
+  // Validate filename to prevent directory traversal attacks
+  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).json({ success: false, error: 'Invalid filename' });
+  }
+  
+  const filePath = path.join(__dirname, 'uploads', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, error: 'File not found' });
+  }
+  
+  // Set headers to force download
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  
+  // Send file
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error sending file:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'Error downloading file' });
+      }
+    }
+  });
+});
