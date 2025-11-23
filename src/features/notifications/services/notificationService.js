@@ -386,7 +386,7 @@ export const sendNotification = async (recipientUserId, notificationData) => {
       
       // If the backend is not available or returns an error, don't fail the entire operation
       if (!response.ok) {
-        console.warn('Notification service unavailable, continuing without notification');
+        console.log('Notification service unavailable, continuing without notification');
         return false;
       }
       
