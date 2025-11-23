@@ -98,13 +98,25 @@ try {
   // Check if we're running in a Railway environment
   if (process.env.RAILWAY_PROJECT_ID) {
     // Use default credentials in Railway environment
-    firebaseAdmin.initializeApp();
+    // Try to initialize with explicit project ID if available
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+    if (projectId) {
+      firebaseAdmin.initializeApp({
+        projectId: projectId
+      });
+      console.log(`Firebase Admin initialized with project ID: ${projectId}`);
+    } else {
+      // Fallback to default initialization
+      firebaseAdmin.initializeApp();
+      console.log('Firebase Admin initialized with default credentials');
+    }
   } else {
     // For local development, use the service account key file
     const serviceAccount = require('./service-account-key.json');
     firebaseAdmin.initializeApp({
       credential: firebaseAdmin.credential.cert(serviceAccount)
     });
+    console.log('Firebase Admin initialized with service account key');
   }
 
   admin = firebaseAdmin;

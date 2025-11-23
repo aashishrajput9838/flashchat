@@ -336,6 +336,15 @@ export const initializeForegroundNotifications = async () => {
  */
 export const sendNotification = async (recipientUserId, notificationData) => {
   try {
+    // Check if backend URL is configured
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+    
+    // If we're in a production environment without a proper backend URL, skip notifications
+    if (import.meta.env.PROD && (!backendUrl || backendUrl.includes('localhost'))) {
+      console.log('Skipping notification in production without proper backend URL');
+      return false;
+    }
+    
     // Get recipient's notification settings
     const settings = await getUserNotificationSettings(recipientUserId);
     
@@ -351,8 +360,6 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     
     // Only send notification if recipient has a token
     if (recipientFcmToken) {
-      // Use Railway-deployed backend URL for sending notifications
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
       console.log('Sending notification to backend at:', backendUrl);
       
       // Send notification to backend to trigger FCM
@@ -376,6 +383,12 @@ export const sendNotification = async (recipientUserId, notificationData) => {
       });
       
       console.log('Notification response status:', response.status);
+      
+      // If the backend is not available or returns an error, don't fail the entire operation
+      if (!response.ok) {
+        console.warn('Notification service unavailable, continuing without notification');
+        return false;
+      }
       
       const result = await response.json();
       console.log('Notification response data:', result);
