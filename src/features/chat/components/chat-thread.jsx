@@ -1,4 +1,4 @@
-import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward, Check as CheckIcon, ImageOff } from "lucide-react"
+import { Paperclip, Mic, Smile, Send, Phone, Video, Ellipsis, LogOut, X, Check, CheckCheck, Clock, MessageCircle, XCircle, Download, FileText, Image, Film, Music, Forward, Check as CheckIcon, ImageOff, Heart, Reply, Copy, Pin, Star, MousePointer, Trash2, ChevronDown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
@@ -55,6 +55,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   
   const [userName, setUserName] = useState("")
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showMessageDropdown, setShowMessageDropdown] = useState({}) // For individual message dropdowns
   const [showVideoCall, setShowVideoCall] = useState(false)
   const [showAudioCall, setShowAudioCall] = useState(false)
   const [isCalling, setIsCalling] = useState(false)
@@ -67,6 +68,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [forwardMessage, setForwardMessage] = useState(null)
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
+  const messageDropdownRefs = useRef({}) // Refs for message dropdowns
   const user = getCurrentUser()
   const currentUserId = user ? user.uid : null
   const fileInputRef = useRef(null)
@@ -257,6 +259,27 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     };
   }, [showDropdown]);
 
+  // Close message dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      Object.keys(messageDropdownRefs.current).forEach((messageId) => {
+        const ref = messageDropdownRefs.current[messageId];
+        if (ref && !ref.contains(event.target)) {
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }
+      });
+    };
+
+    // Add event listener if any message dropdown is open
+    if (Object.values(showMessageDropdown).some(visible => visible)) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMessageDropdown]);
+
   // Subscribe to friends list for forwarding messages
   useEffect(() => {
     const unsubscribe = subscribeToFriends((friendsList) => {
@@ -284,6 +307,14 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
       return next
     })
   }
+
+  // Toggle message dropdown menu
+  const toggleMessageDropdown = (messageId) => {
+    setShowMessageDropdown(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId]
+    }));
+  };
 
   const openForwardModal = (msg) => {
     setForwardMessage(msg)
@@ -550,6 +581,105 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                   ) : (
                     <p className="text-responsive-sm">{msg.text}</p>
                   )}
+                  
+                  {/* Dropdown button in top right corner */}
+                  <div className="relative float-right -mt-1 -mr-1">
+                    <button
+                      ref={el => messageDropdownRefs.current[msg.id] = el}
+                      onClick={() => toggleMessageDropdown(msg.id)}
+                      className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                      aria-label="Message options"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                    
+                    {/* Message dropdown menu */}
+                    {showMessageDropdown[msg.id] && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-lg shadow-lg z-50">
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement react with emojis
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Heart className="h-4 w-4" />
+                          <span className="text-responsive-sm">React</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement reply
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Reply className="h-4 w-4" />
+                          <span className="text-responsive-sm">Reply</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement copy
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span className="text-responsive-sm">Copy</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            openForwardModal(msg);
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Forward className="h-4 w-4" />
+                          <span className="text-responsive-sm">Forward</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement pin
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Pin className="h-4 w-4" />
+                          <span className="text-responsive-sm">Pin</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement star
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Star className="h-4 w-4" />
+                          <span className="text-responsive-sm">Star</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          onClick={() => {
+                            // TODO: Implement select
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <MousePointer className="h-4 w-4" />
+                          <span className="text-responsive-sm">Select</span>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-red-500"
+                          onClick={() => {
+                            // TODO: Implement delete
+                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="text-responsive-sm">Delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className={`flex items-center justify-between mt-1 ${
                     msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
                   }`}>
