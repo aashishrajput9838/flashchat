@@ -157,6 +157,17 @@
   .text-responsive-3xl {
     font-size: clamp(1.875rem, 6vw, 2.5rem);
   }
+  
+  /* Dropdown positioning */
+  .dropdown-position {
+    position: absolute;
+    z-index: 50;
+  }
+  
+  .dropdown-constraint {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
 }
 
 /* Responsive video call layout */

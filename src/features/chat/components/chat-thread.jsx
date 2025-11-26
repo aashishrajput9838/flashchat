@@ -236,8 +236,65 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     }
   };
 
-  // Toggle dropdown menu
+  // Function to calculate dropdown position
+  const calculateDropdownPosition = (buttonRef) => {
+    if (!buttonRef.current) return { top: '100%', marginTop: '0.5rem' };
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+    const spaceAbove = buttonRect.top;
+    const dropdownHeight = 200; // Approximate height of dropdown
+    
+    // If not enough space below, show above the button
+    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+      return { bottom: '100%', marginBottom: '0.5rem' };
+    }
+    
+    return { top: '100%', marginTop: '0.5rem' };
+  };
+
+  // Toggle dropdown menu with position calculation
   const toggleDropdown = () => {
+    if (!showDropdown) {
+      // Will show dropdown, calculate position
+      setTimeout(() => {
+        if (ellipsisRef.current && dropdownRef.current) {
+          const position = calculateDropdownPosition(ellipsisRef);
+          dropdownRef.current.style.position = 'absolute';
+          dropdownRef.current.style.right = '0';
+          dropdownRef.current.style.left = 'auto';
+          dropdownRef.current.style.maxHeight = '90vh';
+          dropdownRef.current.style.overflowY = 'auto';
+          
+          if (position.top) {
+            dropdownRef.current.style.top = position.top;
+            dropdownRef.current.style.marginTop = position.marginTop;
+            dropdownRef.current.style.bottom = 'auto';
+            dropdownRef.current.style.marginBottom = '0';
+          } else {
+            dropdownRef.current.style.bottom = position.bottom;
+            dropdownRef.current.style.marginBottom = position.marginBottom;
+            dropdownRef.current.style.top = 'auto';
+            dropdownRef.current.style.marginTop = '0';
+          }
+          
+          // Ensure dropdown stays within viewport
+          const dropdownRect = dropdownRef.current.getBoundingClientRect();
+          if (dropdownRect.right > window.innerWidth) {
+            dropdownRef.current.style.right = 'auto';
+            dropdownRef.current.style.left = '0';
+          }
+          
+          // Ensure dropdown doesn't go off the bottom of the screen
+          const finalDropdownRect = dropdownRef.current.getBoundingClientRect();
+          if (finalDropdownRect.bottom > window.innerHeight) {
+            dropdownRef.current.style.maxHeight = `${window.innerHeight - finalDropdownRect.top - 10}px`;
+            dropdownRef.current.style.overflowY = 'auto';
+          }
+        }
+      }, 0);
+    }
     setShowDropdown(prev => !prev);
   };
 
@@ -308,12 +365,62 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     })
   }
 
-  // Toggle message dropdown menu
+  // Toggle message dropdown menu with position calculation
   const toggleMessageDropdown = (messageId) => {
+    const isOpening = !showMessageDropdown[messageId];
     setShowMessageDropdown(prev => ({
       ...prev,
       [messageId]: !prev[messageId]
     }));
+    
+    if (isOpening) {
+      // Will show dropdown, calculate position
+      setTimeout(() => {
+        const buttonRef = { current: messageDropdownRefs.current[messageId] };
+        const dropdownRef = document.getElementById(`message-dropdown-${messageId}`);
+        if (buttonRef.current && dropdownRef) {
+          const buttonRect = buttonRef.current.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const spaceBelow = viewportHeight - buttonRect.bottom;
+          const spaceAbove = buttonRect.top;
+          const dropdownHeight = 250; // Approximate height of message dropdown
+          
+          // Reset styles
+          dropdownRef.style.position = 'absolute';
+          dropdownRef.style.right = '0';
+          dropdownRef.style.left = 'auto';
+          dropdownRef.style.maxHeight = '90vh';
+          dropdownRef.style.overflowY = 'auto';
+          
+          // If not enough space below, show above the button
+          if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+            dropdownRef.style.bottom = '100%';
+            dropdownRef.style.marginBottom = '0.25rem';
+            dropdownRef.style.top = 'auto';
+            dropdownRef.style.marginTop = '0';
+          } else {
+            dropdownRef.style.top = '100%';
+            dropdownRef.style.marginTop = '0.25rem';
+            dropdownRef.style.bottom = 'auto';
+            dropdownRef.style.marginBottom = '0';
+          }
+          
+          // Ensure dropdown stays within viewport
+          const dropdownRect = dropdownRef.getBoundingClientRect();
+          if (dropdownRect.right > window.innerWidth) {
+            dropdownRef.style.right = 'auto';
+            dropdownRef.style.left = '0';
+          }
+          
+          // Ensure dropdown doesn't go off the bottom of the screen
+          const finalDropdownRect = dropdownRef.getBoundingClientRect();
+          if (finalDropdownRect.bottom > window.innerHeight) {
+            dropdownRef.style.maxHeight = `${window.innerHeight - finalDropdownRect.top - 10}px`;
+            dropdownRef.style.overflowY = 'auto';
+          }
+        }
+      }, 0);
+    }
   };
 
   const openForwardModal = (msg) => {
@@ -465,8 +572,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
             {showDropdown && (
               <div 
                 ref={dropdownRef}
-                className="absolute right-0 top-full mt-2 w-48 bg-card border rounded-lg shadow-lg z-50"
-                style={{ position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem' }}
+                className="absolute right-0 w-48 bg-card border rounded-lg shadow-lg z-50 dropdown-constraint"
               >
                 <button
                   onClick={() => {
@@ -595,7 +701,10 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     
                     {/* Message dropdown menu */}
                     {showMessageDropdown[msg.id] && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-lg shadow-lg z-50">
+                      <div 
+                        id={`message-dropdown-${msg.id}`}
+                        className="absolute right-0 w-48 bg-card border rounded-lg shadow-lg z-50 dropdown-constraint"
+                      >
                         <button
                           className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
                           onClick={() => {
