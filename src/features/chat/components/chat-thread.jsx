@@ -70,12 +70,36 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [forwardMessage, setForwardMessage] = useState(null)
   const [showReactionPopup, setShowReactionPopup] = useState({}) // For reaction popups
   const [reactionPopupPosition, setReactionPopupPosition] = useState({}) // Position for reaction popups
+  const [reactions, setReactions] = useState({}) // For storing message reactions
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const messageDropdownRefs = useRef({}) // Refs for message dropdowns
   const user = getCurrentUser()
   const currentUserId = user ? user.uid : null
   const fileInputRef = useRef(null)
+  
+  // Process reactions from messages
+  useEffect(() => {
+    const newReactions = {};
+    chatMessages.forEach(msg => {
+      if (msg.reactions) {
+        // Convert the reactions object to the format expected by the UI
+        const reactionArray = [];
+        Object.entries(msg.reactions).forEach(([emoji, users]) => {
+          const userEntries = Object.entries(users);
+          if (userEntries.length > 0) {
+            reactionArray.push({
+              emoji,
+              count: userEntries.length,
+              users: userEntries.map(([userId, userData]) => ({ userId, ...userData }))
+            });
+          }
+        });
+        newReactions[msg.id] = reactionArray;
+      }
+    });
+    setReactions(newReactions);
+  }, [chatMessages]);
 
   // Set chat title when selectedChat changes
   useEffect(() => {
