@@ -579,7 +579,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     handleUnfriend();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                 >
                   <XCircle className="h-4 w-4" />
                   <span className="text-responsive-sm">Unfriend</span>
@@ -589,7 +589,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     toggleAppearOffline();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                 >
                   <span className="text-responsive-sm">
                     {user?.appearOffline ? "Appear Online" : "Appear Offline"}
@@ -600,7 +600,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     handleSignOut();
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                 >
                   <LogOut className="h-4 w-4" />
                   <span className="text-responsive-sm">Sign out</span>
@@ -706,7 +706,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                         className="absolute right-0 w-48 bg-card border rounded-lg shadow-lg z-50 dropdown-constraint"
                       >
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement react with emojis
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -716,7 +716,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">React</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement reply
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -726,7 +726,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Reply</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement copy
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -736,7 +736,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Copy</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             openForwardModal(msg);
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -746,7 +746,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Forward</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement pin
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -756,7 +756,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Pin</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement star
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -766,7 +766,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Star</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
                             // TODO: Implement select
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
@@ -776,7 +776,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <span className="text-responsive-sm">Select</span>
                         </button>
                         <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-red-500"
+                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-destructive"
                           onClick={() => {
                             // TODO: Implement delete
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
