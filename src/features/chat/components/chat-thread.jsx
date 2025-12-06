@@ -1153,7 +1153,7 @@ const MessageDropdown = React.memo(({
   openForwardModal,
   msg
 }) => {
-  if (!showMessageDropdown) return null;
+  if (!showMessageDropdown[messageId]) return null;
 
   return (
     <div 
@@ -1252,7 +1252,7 @@ const ReactionPopup = React.memo(({
   handleAddReaction,
   reactionPopupPosition
 }) => {
-  if (!showReactionPopup) return null;
+  if (!showReactionPopup[messageId]) return null;
 
   return (
     <div 
