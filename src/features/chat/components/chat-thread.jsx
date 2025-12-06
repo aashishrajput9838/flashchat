@@ -1069,7 +1069,7 @@ const ChatMessage = React.memo(({
           )}
           
           {/* Reactions display */}
-          {reactions[msg.id] && reactions[msg.id].length > 0 && (
+          {reactions?.[msg.id] && reactions[msg.id].length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {reactions[msg.id].map((reaction, index) => (
                 <div 
@@ -1105,7 +1105,7 @@ const ChatMessage = React.memo(({
           {/* Message dropdown menu */}
           <MessageDropdown 
             messageId={msg.id} 
-            showMessageDropdown={showMessageDropdown[msg.id]} 
+            showMessageDropdown={showMessageDropdown?.[msg.id]} 
             setShowMessageDropdown={setShowMessageDropdown} 
             toggleReactionPopup={toggleReactionPopup} 
             openForwardModal={openForwardModal}
@@ -1115,10 +1115,10 @@ const ChatMessage = React.memo(({
           {/* Reaction popup */}
           <ReactionPopup 
             messageId={msg.id} 
-            showReactionPopup={showReactionPopup[msg.id]} 
+            showReactionPopup={showReactionPopup?.[msg.id]} 
             setShowReactionPopup={setShowReactionPopup} 
             handleAddReaction={handleAddReaction}
-            reactionPopupPosition={reactionPopupPosition[msg.id]}
+            reactionPopupPosition={reactionPopupPosition?.[msg.id]}
           />
         </div>
         
@@ -1153,7 +1153,7 @@ const MessageDropdown = React.memo(({
   openForwardModal,
   msg
 }) => {
-  if (!showMessageDropdown[messageId]) return null;
+  if (!showMessageDropdown) return null;
 
   return (
     <div 
@@ -1252,7 +1252,7 @@ const ReactionPopup = React.memo(({
   handleAddReaction,
   reactionPopupPosition
 }) => {
-  if (!showReactionPopup[messageId]) return null;
+  if (!showReactionPopup) return null;
 
   return (
     <div 
