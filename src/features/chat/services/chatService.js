@@ -333,3 +333,76 @@ export const subscribeToLatestMessages = (callback) => {
     return () => {};
   }
 };
+
+/**
+ * Function to add a reaction to a message
+ * @param {string} messageId - The ID of the message to react to
+ * @param {string} emoji - The emoji to add as a reaction
+ * @returns {Promise<boolean>} - True if successful, false if failed
+ */
+export const addReactionToMessage = async (messageId, emoji) => {
+  if (!db) {
+    console.warn('Firestore not available, skipping addReactionToMessage');
+    return false;
+  }
+
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !messageId || !emoji) {
+      console.error('Missing required parameters for addReactionToMessage');
+      return false;
+    }
+
+    const messageRef = doc(db, 'messages', messageId);
+    
+    // Get the current message data to check existing reactions
+    // In a production app, you might want to use a transaction here
+    await updateDoc(messageRef, {
+      [`reactions.${emoji}.${currentUser.uid}`]: {
+        userId: currentUser.uid,
+        name: currentUser.displayName || 'Anonymous',
+        timestamp: serverTimestamp()
+      }
+    });
+
+    return true;
+  } catch (error) {
+    handleFirestoreError(error);
+    console.error('Error adding reaction to message:', error);
+    return false;
+  }
+};
+
+/**
+ * Function to remove a reaction from a message
+ * @param {string} messageId - The ID of the message to remove reaction from
+ * @param {string} emoji - The emoji to remove as a reaction
+ * @returns {Promise<boolean>} - True if successful, false if failed
+ */
+export const removeReactionFromMessage = async (messageId, emoji) => {
+  if (!db) {
+    console.warn('Firestore not available, skipping removeReactionFromMessage');
+    return false;
+  }
+
+  try {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !messageId || !emoji) {
+      console.error('Missing required parameters for removeReactionFromMessage');
+      return false;
+    }
+
+    const messageRef = doc(db, 'messages', messageId);
+    
+    // Remove the user's reaction for this emoji
+    await updateDoc(messageRef, {
+      [`reactions.${emoji}.${currentUser.uid}`]: null
+    });
+
+    return true;
+  } catch (error) {
+    handleFirestoreError(error);
+    console.error('Error removing reaction from message:', error);
+    return false;
+  }
+};

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { sendMessage, sendFileMessage, subscribeToMessages, markMessagesAsRead } from '@/features/chat/services/chatService';
+import { sendMessage, sendFileMessage, subscribeToMessages, markMessagesAsRead, addReactionToMessage, removeReactionFromMessage } from '@/features/chat/services/chatService';
 import { getCurrentUser } from '@/features/user/services/userService';
 import { uploadFile, createFileMessage } from '@/features/chat/services/fileService';
 
@@ -147,6 +147,26 @@ export const useChat = (selectedChat) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
+  // Handle adding a reaction to a message
+  const handleAddReaction = useCallback(async (messageId, emoji) => {
+    try {
+      await addReactionToMessage(messageId, emoji);
+    } catch (err) {
+      console.error('Error adding reaction:', err);
+      setError(err.message || 'Failed to add reaction');
+    }
+  }, []);
+
+  // Handle removing a reaction from a message
+  const handleRemoveReaction = useCallback(async (messageId, emoji) => {
+    try {
+      await removeReactionFromMessage(messageId, emoji);
+    } catch (err) {
+      console.error('Error removing reaction:', err);
+      setError(err.message || 'Failed to remove reaction');
+    }
+  }, []);
+
   return {
     messages,
     message,
@@ -158,6 +178,8 @@ export const useChat = (selectedChat) => {
     handleSendMessage,
     handleSendFileMessage,
     formatMessageTime,
-    scrollToBottom
+    scrollToBottom,
+    handleAddReaction,
+    handleRemoveReaction
   };
 };

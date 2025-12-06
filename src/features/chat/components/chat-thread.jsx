@@ -50,7 +50,9 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     handleSendFileMessage,
     formatMessageTime, 
     messagesEndRef,
-    isUploading
+    isUploading,
+    handleAddReaction,
+    handleRemoveReaction
   } = useChat(selectedChat);
   
   const [userName, setUserName] = useState("")
@@ -66,6 +68,8 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
   const [friends, setFriends] = useState([])
   const [selectedForwardUserIds, setSelectedForwardUserIds] = useState(new Set())
   const [forwardMessage, setForwardMessage] = useState(null)
+  const [showReactionPopup, setShowReactionPopup] = useState({}) // For reaction popups
+  const [reactionPopupPosition, setReactionPopupPosition] = useState({}) // Position for reaction popups
   const dropdownRef = useRef(null)
   const ellipsisRef = useRef(null)
   const messageDropdownRefs = useRef({}) // Refs for message dropdowns
@@ -254,6 +258,71 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     return { top: '100%', marginTop: '0.5rem' };
   };
 
+  // Function to calculate reaction popup position
+  const calculateReactionPopupPosition = (buttonRef) => {
+    if (!buttonRef.current) return { top: '100%', marginTop: '0.5rem' };
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const spaceRight = viewportWidth - buttonRect.right;
+    const spaceLeft = buttonRect.left;
+    const popupWidth = 200; // Approximate width of popup
+    
+    // Center the popup below the button
+    if (spaceLeft + buttonRect.width / 2 >= popupWidth / 2 && 
+        spaceRight + buttonRect.width / 2 >= popupWidth / 2) {
+      return { 
+        top: '100%', 
+        marginTop: '0.25rem',
+        left: '50%',
+        transform: 'translateX(-50%)'
+      };
+    }
+    
+    // Adjust position if popup would go off screen
+    if (spaceLeft < popupWidth / 2) {
+      return { 
+        top: '100%', 
+        marginTop: '0.25rem',
+        left: '0'
+      };
+    }
+    
+    if (spaceRight < popupWidth / 2) {
+      return { 
+        top: '100%', 
+        marginTop: '0.25rem',
+        right: '0'
+      };
+    }
+    
+    return { top: '100%', marginTop: '0.25rem' };
+  };
+
+  // Toggle reaction popup with position calculation
+  const toggleReactionPopup = (messageId) => {
+    const isOpening = !showReactionPopup[messageId];
+    
+    if (isOpening) {
+      // Will show popup, calculate position
+      setTimeout(() => {
+        const buttonRef = { current: messageDropdownRefs.current[messageId] };
+        if (buttonRef.current) {
+          const position = calculateReactionPopupPosition(buttonRef);
+          setReactionPopupPosition(prev => ({
+            ...prev,
+            [messageId]: position
+          }));
+        }
+      }, 0);
+    }
+    
+    setShowReactionPopup(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId]
+    }));
+  };
+
   // Toggle dropdown menu with position calculation
   const toggleDropdown = () => {
     if (!showDropdown) {
@@ -297,6 +366,31 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     }
     setShowDropdown(prev => !prev);
   };
+
+  // Close reaction popups when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      Object.keys(showReactionPopup).forEach((messageId) => {
+        // Check if click was outside any reaction popup
+        const popupElement = document.getElementById(`reaction-popup-${messageId}`);
+        const reactButton = messageDropdownRefs.current[messageId]?.querySelector('button');
+        
+        if (popupElement && !popupElement.contains(event.target) && 
+            reactButton && !reactButton.contains(event.target)) {
+          setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
+        }
+      });
+    };
+
+    // Add event listener if any reaction popup is open
+    if (Object.values(showReactionPopup).some(visible => visible)) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReactionPopup]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -688,6 +782,26 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                     <p className="text-responsive-sm">{msg.text}</p>
                   )}
                   
+                  {/* Reactions */}
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {Object.entries(msg.reactions).map(([emoji, users]) => {
+                        const userCount = Object.keys(users).length;
+                        return (
+                          <div 
+                            key={emoji}
+                            className="inline-flex items-center bg-muted rounded-full px-2 py-1 text-xs"
+                          >
+                            <span>{emoji}</span>
+                            {userCount > 1 && (
+                              <span className="ml-1">{userCount}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
                   {/* Dropdown button in top right corner */}
                   <div className="relative float-right -mt-1 -mr-1">
                     <button
@@ -708,8 +822,8 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                         <button
                           className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
                           onClick={() => {
-                            // TODO: Implement react with emojis
                             setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
+                            toggleReactionPopup(msg.id);
                           }}
                         >
                           <Heart className="h-4 w-4" />
@@ -785,6 +899,28 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
                           <Trash2 className="h-4 w-4" />
                           <span className="text-responsive-sm">Delete</span>
                         </button>
+                      </div>
+                    )}
+                    
+                    {/* Reaction popup */}
+                    {showReactionPopup[msg.id] && (
+                      <div 
+                        id={`reaction-popup-${msg.id}`}
+                        className="absolute bg-card border rounded-full shadow-lg z-50 flex items-center p-1 gap-1"
+                        style={reactionPopupPosition[msg.id] || {}}
+                      >
+                        {['👍', '❤️', '😂', '😮', '😢'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            className="text-lg p-1 hover:bg-muted rounded-full transition-colors"
+                            onClick={async () => {
+                              await handleAddReaction(msg.id, emoji);
+                              setShowReactionPopup(prev => ({ ...prev, [msg.id]: false }));
+                            }}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
