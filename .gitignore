@@ -35,5 +35,6 @@ dist-ssr
 *.json
 !package.json
 !tsconfig.json
+!railway.json
 
 .env*.local
