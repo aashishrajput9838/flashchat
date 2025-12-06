@@ -269,6 +269,61 @@ This project includes GitHub Actions workflows for continuous integration and de
 
 For detailed setup instructions, see [CI/CD Setup Guide](CI_CD_SETUP.md).
 
+## Docker Deployment
+
+This project includes Docker configuration for containerizing both the frontend and backend services.
+
+### Prerequisites
+
+- Docker Engine 20.10+
+- Docker Compose 1.29+
+
+### Quick Start
+
+1. Create a `.env` file in the project root with your Firebase configuration:
+   ```bash
+   # Firebase configuration
+   FIREBASE_API_KEY=your_api_key
+   FIREBASE_AUTH_DOMAIN=your_auth_domain
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+   FIREBASE_APP_ID=your_app_id
+   FIREBASE_MEASUREMENT_ID=your_measurement_id
+   VITE_FCM_VAPID_KEY=your_vapid_key
+   ```
+
+2. Build and start the services:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. Access the application:
+   - Frontend: http://localhost
+   - Backend API: http://localhost:8080
+
+### Docker Configuration
+
+- **Frontend**: Built with Node.js and served by Nginx
+- **Backend**: Node.js Express server with Socket.IO
+- **Networking**: Services communicate through a dedicated Docker network
+- **Persistence**: File uploads are stored in a Docker volume
+
+### Environment Variables
+
+The following environment variables can be configured in the `.env` file:
+
+| Variable | Description |
+|----------|-------------|
+| FIREBASE_API_KEY | Firebase API key |
+| FIREBASE_AUTH_DOMAIN | Firebase Auth domain |
+| FIREBASE_PROJECT_ID | Firebase Project ID |
+| FIREBASE_STORAGE_BUCKET | Firebase Storage bucket |
+| FIREBASE_MESSAGING_SENDER_ID | Firebase Messaging sender ID |
+| FIREBASE_APP_ID | Firebase App ID |
+| FIREBASE_MEASUREMENT_ID | Firebase Measurement ID |
+| VITE_FCM_VAPID_KEY | FCM VAPID key for push notifications |
+
 ## Deployment
 
 To deploy to Firebase Hosting:
