@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/avatar"
 import { OnlineStatus } from "@/shared/components/online-status"
 import { VideoCall } from "@/features/call/components/video-call"
 import { AudioCall } from "@/features/call/components/audio-call"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useChat } from "@/features/chat/hooks/useChat"
 import { getCurrentUser, updateUserProfile, signOutUser, unfriendUser, sendVideoCallNotification, setAppearOffline, subscribeToFriends } from "@/features/user/services/userService"
 import { sendMessage, sendFileMessage } from "@/features/chat/services/chatService"
@@ -367,21 +367,22 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     setShowDropdown(prev => !prev);
   };
 
+  // Memoized handler for closing reaction popups when clicking outside
+  const handleClickOutside = useCallback((event) => {
+    Object.keys(showReactionPopup).forEach((messageId) => {
+      // Check if click was outside any reaction popup
+      const popupElement = document.getElementById(`reaction-popup-${messageId}`);
+      const reactButton = messageDropdownRefs.current[messageId]?.querySelector('button');
+      
+      if (popupElement && !popupElement.contains(event.target) && 
+          reactButton && !reactButton.contains(event.target)) {
+        setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
+      }
+    });
+  }, [showReactionPopup]);
+
   // Close reaction popups when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      Object.keys(showReactionPopup).forEach((messageId) => {
-        // Check if click was outside any reaction popup
-        const popupElement = document.getElementById(`reaction-popup-${messageId}`);
-        const reactButton = messageDropdownRefs.current[messageId]?.querySelector('button');
-        
-        if (popupElement && !popupElement.contains(event.target) && 
-            reactButton && !reactButton.contains(event.target)) {
-          setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
-        }
-      });
-    };
-
     // Add event listener if any reaction popup is open
     if (Object.values(showReactionPopup).some(visible => visible)) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -390,7 +391,7 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showReactionPopup]);
+  }, [showReactionPopup, handleClickOutside]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -716,236 +717,29 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
             </p>
           </div>
         ) : (
-          chatMessages.map((msg) => {
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-
-            const fileHref = msg.fileUrl
-              ? (msg.fileUrl.startsWith('http')
-                  ? msg.fileUrl
-                  : `${backendUrl}${msg.fileUrl}`)
-              : null;
-
-            // For download, use the dedicated download endpoint
-            const downloadHref = msg.fileUrl
-              ? (msg.fileUrl.startsWith('http')
-                  ? msg.fileUrl.replace('/uploads/', '/api/download-file/')
-                  : `${backendUrl}/api/download-file/${msg.fileUrl.split('/').pop()}`)
-              : null;
-
-            const thumbnailHref = msg.thumbnailUrl
-              ? (msg.thumbnailUrl.startsWith('http')
-                  ? msg.thumbnailUrl
-                  : `${backendUrl}${msg.thumbnailUrl}`)
-              : fileHref;
-
-            const isImage = msg.fileType && msg.fileType.startsWith('image/');
-
-            return (
-              <div 
-                key={msg.id} 
-                className={`flex ${msg.userId === currentUserId ? 'justify-end' : 'justify-start'}`}
-              >
-                <div 
-                  className={`max-w-xs sm:max-w-md lg:max-w-lg xl:max-w-xl rounded-2xl px-4 py-2 ${
-                    msg.userId === currentUserId 
-                      ? 'bg-primary text-primary-foreground rounded-br-none' 
-                      : 'bg-muted rounded-bl-none'
-                  }`}
-                >
-                  {/* File message (with thumbnail for images) */}
-                  {msg.fileUrl ? (
-                    <div>
-                      {isImage && thumbnailHref && (
-                        <ImageThumbnail
-                          src={thumbnailHref}
-                          alt={msg.fileName || 'Image'}
-                        />
-                      )}
-                      <div className="flex items-center gap-2">
-                        {getFileIcon(msg.fileType)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-responsive-sm truncate">{msg.fileName}</p>
-                          <a 
-                            href={downloadHref} 
-                            download={msg.fileName}
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
-                          >
-                            <Download className="h-3 w-3" />
-                            Download
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-responsive-sm">{msg.text}</p>
-                  )}
-                  
-                  {/* Reactions */}
-                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {Object.entries(msg.reactions).map(([emoji, users]) => {
-                        const userCount = Object.keys(users).length;
-                        return (
-                          <div 
-                            key={emoji}
-                            className="inline-flex items-center bg-muted rounded-full px-2 py-1 text-xs"
-                          >
-                            <span>{emoji}</span>
-                            {userCount > 1 && (
-                              <span className="ml-1">{userCount}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  {/* Dropdown button in top right corner */}
-                  <div className="relative float-right -mt-1 -mr-1">
-                    <button
-                      ref={el => messageDropdownRefs.current[msg.id] = el}
-                      onClick={() => toggleMessageDropdown(msg.id)}
-                      className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                      aria-label="Message options"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                    
-                    {/* Message dropdown menu */}
-                    {showMessageDropdown[msg.id] && (
-                      <div 
-                        id={`message-dropdown-${msg.id}`}
-                        className="absolute right-0 w-48 bg-card border rounded-lg shadow-lg z-50 dropdown-constraint"
-                      >
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                            toggleReactionPopup(msg.id);
-                          }}
-                        >
-                          <Heart className="h-4 w-4" />
-                          <span className="text-responsive-sm">React</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            // TODO: Implement reply
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Reply className="h-4 w-4" />
-                          <span className="text-responsive-sm">Reply</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            // TODO: Implement copy
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                          <span className="text-responsive-sm">Copy</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            openForwardModal(msg);
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Forward className="h-4 w-4" />
-                          <span className="text-responsive-sm">Forward</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            // TODO: Implement pin
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Pin className="h-4 w-4" />
-                          <span className="text-responsive-sm">Pin</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            // TODO: Implement star
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Star className="h-4 w-4" />
-                          <span className="text-responsive-sm">Star</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-                          onClick={() => {
-                            // TODO: Implement select
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <MousePointer className="h-4 w-4" />
-                          <span className="text-responsive-sm">Select</span>
-                        </button>
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-destructive"
-                          onClick={() => {
-                            // TODO: Implement delete
-                            setShowMessageDropdown(prev => ({ ...prev, [msg.id]: false }));
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="text-responsive-sm">Delete</span>
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Reaction popup */}
-                    {showReactionPopup[msg.id] && (
-                      <div 
-                        id={`reaction-popup-${msg.id}`}
-                        className="absolute bg-card border rounded-full shadow-lg z-50 flex items-center p-1 gap-1"
-                        style={reactionPopupPosition[msg.id] || {}}
-                      >
-                        {['👍', '❤️', '😂', '😮', '😢'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            className="text-lg p-1 hover:bg-muted rounded-full transition-colors"
-                            onClick={async () => {
-                              await handleAddReaction(msg.id, emoji);
-                              setShowReactionPopup(prev => ({ ...prev, [msg.id]: false }));
-                            }}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className={`flex items-center justify-between mt-1 ${
-                    msg.userId === currentUserId ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                  }`}>
-                    {/* Forward message icon on the left side of the message */}
-                    <button
-                      type="button"
-                      onClick={() => openForwardModal(msg)}
-                      className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                      aria-label="Forward message"
-                    >
-                      <Forward className="h-4 w-4" />
-                    </button>
-                    <div className="flex items-center gap-1">
-                      <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
-                      {msg.userId === currentUserId && getMessageStatusIcon(msg.status || 'sent')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          chatMessages.map((msg) => (
+            <ChatMessage
+              key={msg.id}
+              msg={msg}
+              currentUserId={currentUserId}
+              selectedChat={selectedChat}
+              chatTitle={chatTitle}
+              messageDropdownRefs={messageDropdownRefs}
+              showMessageDropdown={showMessageDropdown}
+              setShowMessageDropdown={setShowMessageDropdown}
+              toggleMessageDropdown={toggleMessageDropdown}
+              showReactionPopup={showReactionPopup}
+              setShowReactionPopup={setShowReactionPopup}
+              toggleReactionPopup={toggleReactionPopup}
+              reactionPopupPosition={reactionPopupPosition}
+              handleAddReaction={handleAddReaction}
+              handleRemoveReaction={handleRemoveReaction}
+              openForwardModal={openForwardModal}
+              formatMessageTime={formatMessageTime}
+              getMessageStatusIcon={getMessageStatusIcon}
+              reactions={reactions}
+            />
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -1130,3 +924,330 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     </div>
   );
 }
+
+// Individual message component for better performance
+const ChatMessage = React.memo(({ 
+  msg, 
+  currentUserId, 
+  selectedChat, 
+  chatTitle,
+  messageDropdownRefs,
+  showMessageDropdown,
+  setShowMessageDropdown,
+  toggleMessageDropdown,
+  showReactionPopup,
+  setShowReactionPopup,
+  toggleReactionPopup,
+  reactionPopupPosition,
+  handleAddReaction,
+  handleRemoveReaction,
+  openForwardModal,
+  formatMessageTime,
+  getMessageStatusIcon,
+  reactions
+}) => {
+  const isCurrentUser = msg.userId === currentUserId;
+  
+  // File-related logic
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+  
+  const fileHref = msg.fileUrl
+    ? (msg.fileUrl.startsWith('http')
+        ? msg.fileUrl
+        : `${backendUrl}${msg.fileUrl}`)
+    : null;
+
+  // For download, use the dedicated download endpoint
+  const downloadHref = msg.fileUrl
+    ? (msg.fileUrl.startsWith('http')
+        ? msg.fileUrl.replace('/uploads/', '/api/download-file/')
+        : `${backendUrl}/api/download-file/${msg.fileUrl.split('/').pop()}`)
+    : null;
+
+  const thumbnailHref = msg.thumbnailUrl
+    ? (msg.thumbnailUrl.startsWith('http')
+        ? msg.thumbnailUrl
+        : `${backendUrl}${msg.thumbnailUrl}`)
+    : fileHref;
+
+  const isImage = msg.fileType && msg.fileType.startsWith('image/');
+  
+  // Helper function to get file icon
+  const getFileIcon = (fileType) => {
+    if (!fileType) return <FileText className="h-5 w-5 flex-shrink-0" />;
+    
+    if (fileType.startsWith('image/')) {
+      return <Image className="h-5 w-5 flex-shrink-0" />;
+    } else if (fileType.startsWith('video/')) {
+      return <Film className="h-5 w-5 flex-shrink-0" />;
+    } else if (fileType.startsWith('audio/')) {
+      return <Music className="h-5 w-5 flex-shrink-0" />;
+    } else {
+      return <FileText className="h-5 w-5 flex-shrink-0" />;
+    }
+  };
+  
+  return (
+    <div 
+      key={msg.id} 
+      className={`flex mb-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+    >
+      {!isCurrentUser && (
+        <Avatar className="h-8 w-8 mr-2 flex-shrink-0">
+          <AvatarImage src={msg.userPhotoURL || "/diverse-avatars.png"} alt={msg.userName || "User"} />
+          <AvatarFallback className="bg-secondary text-responsive-xs">
+            {(msg.userName || 'U').charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      )}
+      
+      <div 
+        className={`max-w-[80%] relative group ${
+          isCurrentUser 
+            ? 'bg-primary text-primary-foreground rounded-l-2xl rounded-tr-2xl' 
+            : 'bg-card text-card-foreground rounded-r-2xl rounded-tl-2xl border'
+        }`}
+      >
+        {!isCurrentUser && msg.userName && (
+          <div className="px-3 pt-2 font-medium text-responsive-sm">
+            {msg.userName}
+          </div>
+        )}
+        
+        <div className="px-3 py-2 break-words">
+          {msg.fileUrl ? (
+            <div>
+              {isImage && thumbnailHref && (
+                <ImageThumbnail
+                  src={thumbnailHref}
+                  alt={msg.fileName || 'Image'}
+                />
+              )}
+              <div className="flex items-center gap-2">
+                {getFileIcon(msg.fileType)}
+                <div className="flex-1 min-w-0">
+                  <p className="text-responsive-sm truncate">{msg.fileName}</p>
+                  <a 
+                    href={downloadHref} 
+                    download={msg.fileName}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-responsive-xs flex items-center gap-1 mt-1 hover:underline"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-responsive-sm">{msg.text}</p>
+          )}
+          
+          {/* Reactions display */}
+          {reactions[msg.id] && reactions[msg.id].length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {reactions[msg.id].map((reaction, index) => (
+                <div 
+                  key={index}
+                  className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer ${
+                    isCurrentUser 
+                      ? 'bg-primary-foreground/20 text-primary-foreground' 
+                      : 'bg-muted text-foreground'
+                  }`}
+                  onClick={() => handleRemoveReaction(msg.id, reaction.emoji)}
+                >
+                  <span>{reaction.emoji}</span>
+                  {reaction.count > 1 && (
+                    <span className="text-[10px]">{reaction.count}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Dropdown button in top right corner */}
+        <div className="relative float-right -mt-1 -mr-1">
+          <button
+            ref={el => messageDropdownRefs.current[msg.id] = el}
+            onClick={() => toggleMessageDropdown(msg.id)}
+            className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+            aria-label="Message options"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          
+          {/* Message dropdown menu */}
+          <MessageDropdown 
+            messageId={msg.id} 
+            showMessageDropdown={showMessageDropdown[msg.id]} 
+            setShowMessageDropdown={setShowMessageDropdown} 
+            toggleReactionPopup={toggleReactionPopup} 
+            openForwardModal={openForwardModal}
+            msg={msg}
+          />
+          
+          {/* Reaction popup */}
+          <ReactionPopup 
+            messageId={msg.id} 
+            showReactionPopup={showReactionPopup[msg.id]} 
+            setShowReactionPopup={setShowReactionPopup} 
+            handleAddReaction={handleAddReaction}
+            reactionPopupPosition={reactionPopupPosition[msg.id]}
+          />
+        </div>
+        
+        <div className={`flex items-center justify-between mt-1 ${
+          isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
+        }`}>
+          {/* Forward message icon on the left side of the message */}
+          <button
+            type="button"
+            onClick={() => openForwardModal(msg)}
+            className="flex items-center justify-center p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            aria-label="Forward message"
+          >
+            <Forward className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="text-responsive-xs">{formatMessageTime(msg.timestamp)}</span>
+            {isCurrentUser && getMessageStatusIcon(msg.status || 'sent')}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Extract MessageDropdown component for better performance
+const MessageDropdown = React.memo(({ 
+  messageId, 
+  showMessageDropdown, 
+  setShowMessageDropdown, 
+  toggleReactionPopup, 
+  openForwardModal,
+  msg
+}) => {
+  if (!showMessageDropdown) return null;
+
+  return (
+    <div 
+      id={`message-dropdown-${messageId}`}
+      className="absolute right-0 w-48 bg-card border rounded-lg shadow-lg z-50 dropdown-constraint"
+    >
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+          toggleReactionPopup(messageId);
+        }}
+      >
+        <Heart className="h-4 w-4" />
+        <span className="text-responsive-sm">React</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          // TODO: Implement reply
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Reply className="h-4 w-4" />
+        <span className="text-responsive-sm">Reply</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          // TODO: Implement copy
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Copy className="h-4 w-4" />
+        <span className="text-responsive-sm">Copy</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          openForwardModal(msg);
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Forward className="h-4 w-4" />
+        <span className="text-responsive-sm">Forward</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          // TODO: Implement pin
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Pin className="h-4 w-4" />
+        <span className="text-responsive-sm">Pin</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          // TODO: Implement star
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Star className="h-4 w-4" />
+        <span className="text-responsive-sm">Star</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
+        onClick={() => {
+          // TODO: Implement select
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <MousePointer className="h-4 w-4" />
+        <span className="text-responsive-sm">Select</span>
+      </button>
+      <button
+        className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-destructive"
+        onClick={() => {
+          // TODO: Implement delete
+          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="text-responsive-sm">Delete</span>
+      </button>
+    </div>
+  );
+});
+
+// Extract ReactionPopup component for better performance
+const ReactionPopup = React.memo(({ 
+  messageId, 
+  showReactionPopup, 
+  setShowReactionPopup, 
+  handleAddReaction,
+  reactionPopupPosition
+}) => {
+  if (!showReactionPopup) return null;
+
+  return (
+    <div 
+      id={`reaction-popup-${messageId}`}
+      className="absolute bg-card border rounded-full shadow-lg z-50 flex items-center p-1 gap-1"
+      style={reactionPopupPosition || {}}
+    >
+      {['👍', '❤️', '😂', '😮', '😢'].map((emoji) => (
+        <button
+          key={emoji}
+          className="text-lg p-1 hover:bg-muted rounded-full transition-colors"
+          onClick={async () => {
+            await handleAddReaction(messageId, emoji);
+            setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
+          }}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+});
