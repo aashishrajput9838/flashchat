@@ -72,7 +72,6 @@ export const updateUserNotificationSettings = async (userId, settings) => {
     await updateDoc(userDocRef, {
       notificationSettings: settings
     });
-    console.log('Notification settings updated successfully');
   } catch (error) {
     console.error('Error updating notification settings:', error);
   }
@@ -99,11 +98,8 @@ const isValidVapidKey = (vapidKey) => {
  */
 export const requestNotificationPermission = async () => {
   try {
-    console.log('Requesting notification permission...');
-    
     // Check if browser supports notifications
     if (!('Notification' in window)) {
-      console.log('This browser does not support desktop notification');
       return null;
     }
 
@@ -115,10 +111,8 @@ export const requestNotificationPermission = async () => {
 
     // Request permission
     const permission = await Notification.requestPermission();
-    console.log('Notification permission result:', permission);
     
     if (permission !== 'granted') {
-      console.log('Notification permission denied');
       return null;
     }
 
@@ -137,7 +131,6 @@ export const requestNotificationPermission = async () => {
     }
 
     // Get FCM token
-    console.log('Getting FCM token with VAPID key:', VAPID_KEY ? VAPID_KEY.substring(0, 10) + '...' : 'undefined');
     
     // Add timeout to prevent hanging
     const tokenPromise = getToken(messaging, { vapidKey: VAPID_KEY });
@@ -146,7 +139,6 @@ export const requestNotificationPermission = async () => {
     );
     
     const token = await Promise.race([tokenPromise, timeoutPromise]);
-    console.log('FCM token obtained:', token ? token.substring(0, 20) + '...' : 'null');
     
     // Validate token format
     if (!token || typeof token !== 'string' || token.length < 100) {
@@ -156,16 +148,12 @@ export const requestNotificationPermission = async () => {
     
     // Save the token globally so it can be accessed for testing
     window.fcmToken = token;
-    console.log('FCM token saved to window.fcmToken for easy access');
     
     // Save token to user's document in Firestore
     const user = getCurrentUser();
     if (user && token) {
-      console.log('Saving FCM token for user:', user.uid);
-      
       // Update token via backend API
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
-      console.log('Sending FCM token to backend at:', backendUrl);
       
       try {
         const response = await fetch(`${backendUrl}/api/update-fcm-token`, {
@@ -179,12 +167,8 @@ export const requestNotificationPermission = async () => {
           })
         });
         
-        console.log('Backend response status:', response.status);
-        console.log('Backend response headers:', [...response.headers.entries()]);
-        
         if (response.ok) {
           const responseData = await response.json();
-          console.log('FCM token sent to backend successfully:', responseData);
         } else {
           const errorText = await response.text();
           console.error('Failed to send FCM token to backend:', response.status, errorText);
@@ -205,10 +189,7 @@ export const requestNotificationPermission = async () => {
           userId: user.uid,
           fcmToken: token
         });
-        console.log('FCM token sent via socket');
       }
-      
-      console.log('FCM token saved to user document');
     }
 
     return token;
@@ -240,8 +221,6 @@ export const requestNotificationPermission = async () => {
  */
 const showInAppNotification = (payload) => {
   try {
-    console.log('Showing in-app notification:', payload);
-    
     // Extract notification data
     const title = payload.notification?.title || 'New Message';
     const body = payload.notification?.body || '';
@@ -273,7 +252,6 @@ const showInAppNotification = (payload) => {
     // Create notification
     if (Notification.permission === 'granted') {
       const notification = new Notification(title, notificationOptions);
-      console.log('In-app notification created:', notification);
       
       // Handle notification click
       notification.onclick = function(event) {
@@ -301,8 +279,6 @@ export const initializeForegroundNotifications = async () => {
 
   // Handle foreground messages
   onMessage(messaging, async (payload) => {
-    console.log('Message received in foreground:', payload);
-    
     // Get current user to check notification settings
     const user = getCurrentUser();
     if (user) {
@@ -341,7 +317,6 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     
     // If we're in a production environment without a proper backend URL, skip notifications
     if (import.meta.env.PROD && (!backendUrl || backendUrl.includes('localhost'))) {
-      console.log('Skipping notification in production without proper backend URL');
       return false;
     }
     
@@ -350,7 +325,6 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     
     // Check if user has enabled this type of notification
     if (!shouldSendNotification(settings, notificationData.type)) {
-      console.log(`Notification type ${notificationData.type} disabled for user`);
       return false;
     }
     
@@ -360,8 +334,6 @@ export const sendNotification = async (recipientUserId, notificationData) => {
     
     // Only send notification if recipient has a token
     if (recipientFcmToken) {
-      console.log('Sending notification to backend at:', backendUrl);
-      
       // Send notification to backend to trigger FCM
       const response = await fetch(`${backendUrl}/api/send-notification`, {
         method: 'POST',
@@ -382,19 +354,14 @@ export const sendNotification = async (recipientUserId, notificationData) => {
         })
       });
       
-      console.log('Notification response status:', response.status);
-      
       // If the backend is not available or returns an error, don't fail the entire operation
       if (!response.ok) {
-        console.log('Notification service unavailable, continuing without notification');
         return false;
       }
       
       const result = await response.json();
-      console.log('Notification response data:', result);
       
       if (result.success) {
-        console.log('Notification sent successfully');
         return true;
       } else {
         console.error('Failed to send notification:', result.error);
@@ -402,7 +369,6 @@ export const sendNotification = async (recipientUserId, notificationData) => {
         return await sendFallbackNotification(recipientUserId, notificationData);
       }
     } else {
-      console.log('Recipient does not have an FCM token');
       // Try fallback mechanism
       return await sendFallbackNotification(recipientUserId, notificationData);
     }
@@ -539,29 +505,19 @@ export const initNotificationService = async () => {
   try {
     // Request notification permission
     const token = await requestNotificationPermission();
-    if (token) {
-      console.log('Notification permission granted and token obtained');
-    } else {
-      console.log('Notification permission not granted or token could not be obtained');
-    }
     
     // Initialize foreground message handling
     await initializeForegroundNotifications();
     
     // Add a helper function to the window object for easy testing
     window.getFcmToken = async () => {
-      console.log('Getting FCM token...');
       const newToken = await requestNotificationPermission();
       if (newToken) {
         window.fcmToken = newToken;
-        console.log('New FCM token:', newToken ? newToken.substring(0, 20) + '...' : 'null');
-        console.log('You can now test notifications with this token!');
         return newToken;
       }
       return null;
     };
-    
-    console.log('Notification service initialized. Use window.getFcmToken() to get a new token or window.fcmToken to access the current token.');
   } catch (error) {
     console.error('Error initializing notification service:', error);
   }

@@ -28,7 +28,6 @@ export function ConversationList({ onSelectChat }) {
 
     // Subscribe to friends only from Firestore to create chat list
     friendsSubscriptionRef.current = subscribeToFriends((friends) => {
-      console.log('Friends updated:', friends); // Debug log
       // Transform friends data to match the expected format
       const chatList = (Array.isArray(friends) ? friends : [])
         .map(friend => ({
@@ -44,8 +43,6 @@ export function ConversationList({ onSelectChat }) {
           // Pass the entire friend object so OnlineStatus can access all properties
           ...friend
         }));
-      
-      console.log('Chat list:', chatList); // Debug log
       
       // Add current user to the list
       if (currentUser) {

@@ -36,7 +36,6 @@ export function RightSidebar({ onUserClick }) {
 
     // Subscribe to all users from Firestore
     usersSubscriptionRef.current = subscribeToUsers((users) => {
-      console.log('Users updated:', users); // Debug log
       // Transform users data to match the expected format
       const memberList = (Array.isArray(users) ? users : []).map(user => ({
         name: user.name || user.displayName || user.email || `User${user.uid.substring(0, 5)}`,
@@ -49,8 +48,6 @@ export function RightSidebar({ onUserClick }) {
         // Pass the entire user object so OnlineStatus can access all properties
         ...user
       }));
-      
-      console.log('Member list:', memberList); // Debug log
       
       // Sort to put current user at the top
       memberList.sort((a, b) => {
@@ -212,14 +209,7 @@ export function RightSidebar({ onUserClick }) {
 
   // Debugging: Log notifications when they change
   useEffect(() => {
-    console.log('Notifications updated:', notifications);
-    console.log('Unread notifications count:', notifications.filter(n => !n.read).length);
-    // Log the read property of each notification for debugging
-    notifications.forEach((n, index) => {
-      console.log(`Notification ${index}:`, n);
-      console.log(`  Has read property:`, 'read' in n);
-      console.log(`  Read value:`, n.read);
-    });
+    // Removed verbose logging for production
   }, [notifications]);
 
   // Function to update online status privacy
