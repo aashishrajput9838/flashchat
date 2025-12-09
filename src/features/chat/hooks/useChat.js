@@ -9,6 +9,12 @@ export const useChat = (selectedChat) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
+  // Log errors to console for debugging
+  useEffect(() => {
+    if (error) {
+      console.error('Chat error:', error);
+    }
+  }, [error]);
   const messagesEndRef = useRef(null);
   const messageSubscriptionRef = useRef(null);
   const user = getCurrentUser();
@@ -150,21 +156,36 @@ export const useChat = (selectedChat) => {
   // Handle adding a reaction to a message
   const handleAddReaction = useCallback(async (messageId, emoji) => {
     try {
-      await addReactionToMessage(messageId, emoji);
+      const success = await addReactionToMessage(messageId, emoji);
+      if (!success) {
+        setError('Failed to add reaction');
+      }
+      return success;
     } catch (err) {
       console.error('Error adding reaction:', err);
       setError(err.message || 'Failed to add reaction');
+      return false;
     }
   }, []);
 
   // Handle removing a reaction from a message
   const handleRemoveReaction = useCallback(async (messageId, emoji) => {
     try {
-      await removeReactionFromMessage(messageId, emoji);
+      const success = await removeReactionFromMessage(messageId, emoji);
+      if (!success) {
+        setError('Failed to remove reaction');
+      }
+      return success;
     } catch (err) {
       console.error('Error removing reaction:', err);
       setError(err.message || 'Failed to remove reaction');
+      return false;
     }
+  }, []);
+
+  // Clear error state
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
   return {
@@ -180,6 +201,7 @@ export const useChat = (selectedChat) => {
     formatMessageTime,
     scrollToBottom,
     handleAddReaction,
-    handleRemoveReaction
+    handleRemoveReaction,
+    clearError
   };
 };

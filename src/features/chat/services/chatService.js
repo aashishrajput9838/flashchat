@@ -369,7 +369,14 @@ export const addReactionToMessage = async (messageId, emoji) => {
   } catch (error) {
     handleFirestoreError(error);
     console.error('Error adding reaction to message:', error);
-    return false;
+    // Return a more specific error message
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to react to this message');
+    } else if (error.code === 'not-found') {
+      throw new Error('Message not found');
+    } else {
+      throw new Error('Failed to add reaction. Please try again.');
+    }
   }
 };
 
@@ -403,6 +410,13 @@ export const removeReactionFromMessage = async (messageId, emoji) => {
   } catch (error) {
     handleFirestoreError(error);
     console.error('Error removing reaction from message:', error);
-    return false;
+    // Return a more specific error message
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to remove this reaction');
+    } else if (error.code === 'not-found') {
+      throw new Error('Message not found');
+    } else {
+      throw new Error('Failed to remove reaction. Please try again.');
+    }
   }
 };

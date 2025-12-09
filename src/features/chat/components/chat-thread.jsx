@@ -52,7 +52,9 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     messagesEndRef,
     isUploading,
     handleAddReaction,
-    handleRemoveReaction
+    handleRemoveReaction,
+    error,
+    clearError
   } = useChat(selectedChat);
   
   const [userName, setUserName] = useState("")
@@ -624,6 +626,20 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
     );
   }
 
+  // Display error message if there's an error
+  const ErrorMessage = ({ error, onDismiss }) => (
+    <div className="bg-destructive/20 border border-destructive/30 rounded-lg p-3 mb-4 flex items-center justify-between">
+      <span className="text-destructive text-sm">{error}</span>
+      <button 
+        onClick={onDismiss}
+        className="text-destructive hover:text-destructive/80"
+        aria-label="Dismiss error"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
   // Get chat title
   const chatTitle = selectedChat 
     ? selectedChat.uid === user?.uid 
@@ -633,6 +649,13 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   return (
     <div className="h-[90vh] flex flex-col bg-card rounded-xl border shadow-sm mobile-chat-thread">
+      {/* Error message */}
+      {error && (
+        <div className="p-3 sm:p-4">
+          <ErrorMessage error={error} onDismiss={clearError} />
+        </div>
+      )}
+      
       {/* Chat header */}
       <div className="flex items-center justify-between p-3 sm:p-4 md:p-5 border-b flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -1071,22 +1094,27 @@ const ChatMessage = React.memo(({
           {/* Reactions display */}
           {reactions?.[msg.id] && reactions[msg.id].length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {reactions[msg.id].map((reaction, index) => (
-                <div 
-                  key={index}
-                  className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer ${
-                    isCurrentUser 
-                      ? 'bg-primary-foreground/20 text-primary-foreground' 
-                      : 'bg-muted text-foreground'
-                  }`}
-                  onClick={() => handleRemoveReaction(msg.id, reaction.emoji)}
-                >
-                  <span>{reaction.emoji}</span>
-                  {reaction.count > 1 && (
-                    <span className="text-[10px]">{reaction.count}</span>
-                  )}
-                </div>
-              ))}
+              {reactions[msg.id].map((reaction, index) => {
+                // Check if current user has this reaction
+                const userHasReaction = reaction.users.some(user => user.userId === currentUserId);
+                
+                return (
+                  <div 
+                    key={index}
+                    className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 ${
+                      userHasReaction
+                        ? 'cursor-pointer bg-primary-foreground/20 text-primary-foreground' 
+                        : 'bg-muted text-foreground'
+                    }`}
+                    onClick={userHasReaction ? () => handleRemoveReaction(msg.id, reaction.emoji) : undefined}
+                  >
+                    <span>{reaction.emoji}</span>
+                    {reaction.count > 1 && (
+                      <span className="text-[10px]">{reaction.count}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1254,6 +1282,16 @@ const ReactionPopup = React.memo(({
 }) => {
   if (!showReactionPopup) return null;
 
+  // Handle adding reaction with better error handling
+  const handleReactionClick = async (emoji) => {
+    try {
+      await handleAddReaction(messageId, emoji);
+    } finally {
+      // Always close the popup after attempting to add reaction
+      setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
+    }
+  };
+
   return (
     <div 
       id={`reaction-popup-${messageId}`}
@@ -1264,10 +1302,7 @@ const ReactionPopup = React.memo(({
         <button
           key={emoji}
           className="text-lg p-1 hover:bg-muted rounded-full transition-colors"
-          onClick={async () => {
-            await handleAddReaction(messageId, emoji);
-            setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
-          }}
+          onClick={() => handleReactionClick(emoji)}
         >
           {emoji}
         </button>
