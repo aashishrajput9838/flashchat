@@ -40,8 +40,8 @@ app.use(cors({
 // where needed (e.g. /api/upload-file) instead of a global wildcard.
 
 // Add this before any other middleware to log all requests
+// Removed for optimization: console.log(`Request: ${req.method} ${req.path} from ${req.get('Origin') || 'unknown origin'}`);
 app.use((req, res, next) => {
-  console.log(`Request: ${req.method} ${req.path} from ${req.get('Origin') || 'unknown origin'}`);
   next();
 });
 
@@ -62,7 +62,8 @@ let sharp = null;
 try {
   sharp = require('sharp');
 } catch (error) {
-  console.error('Optional dependency "sharp" is not available. Image thumbnails will be disabled.', error.message);
+  // Optional dependency "sharp" is not available. Image thumbnails will be disabled.
+  // console.error('Optional dependency "sharp" is not available. Image thumbnails will be disabled.', error.message);
 }
 
 // Create uploads directory
@@ -192,9 +193,9 @@ const activeCalls = new Map();
 
 // Endpoint to update user FCM token
 app.post('/api/update-fcm-token', async (req, res) => {
-  console.log('Received FCM token update request from:', req.get('Origin'));
-  console.log('Request headers:', req.headers);
-  console.log('Request body:', req.body);
+  // Received FCM token update request (details removed for optimization)
+  // console.log('Request headers:', req.headers);
+  // console.log('Request body:', req.body);
   
   // Set CORS headers explicitly for this endpoint
   res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
@@ -233,9 +234,9 @@ app.post('/api/update-fcm-token', async (req, res) => {
 
 // Endpoint to send FCM notifications
 app.post('/api/send-notification', async (req, res) => {
-  console.log('Received notification request from:', req.get('Origin'));
-  console.log('Request headers:', req.headers);
-  console.log('Request body:', req.body);
+  // Received notification request (details removed for optimization)
+  // console.log('Request headers:', req.headers);
+  // console.log('Request body:', req.body);
   
   // Set CORS headers explicitly for this endpoint
   res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
@@ -315,10 +316,12 @@ app.post('/api/send-notification', async (req, res) => {
     // Send notification
     const response = await messaging.send(message);
     
-    console.log('Successfully sent message:', response);
+    // Successfully sent message (response details removed for optimization)
+      // console.log('Successfully sent message:', response);
     res.status(200).json({ success: true, messageId: response });
   } catch (error) {
-    console.error('Error sending message:', error);
+    // Error sending message (details removed for optimization)
+      // console.error('Error sending message:', error);
     // Provide more specific error messages
     if (error.code === 'messaging/invalid-argument') {
       return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
@@ -596,22 +599,10 @@ async function updateCallStatus(callId, status) {
   }
 }
 
-// Log when the server is about to start
-console.log('About to start server on port:', process.env.PORT || 8080);
-
 const PORT = process.env.PORT || 8080; // Use Railway's PORT or default to 8080
-
-// Add this before starting the server to debug CORS issues
-app.use((req, res, next) => {
-  console.log(`Request: ${req.method} ${req.path} from ${req.get('Origin')}`);
-  next();
-});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Call management server running on port ${PORT}`);
-  console.log(`Server listening on port ${PORT}`);
-  // Log that the server is listening
-  console.log(`Server is now listening for requests on port ${PORT}`);
 });
 
 // Add a simple test endpoint
@@ -675,7 +666,8 @@ process.on('SIGINT', () => {
 // Test notification endpoint
 app.post('/api/test-notification', async (req, res) => {
   try {
-    console.log('Test notification request received:', req.body);
+    // Test notification request received (details removed for optimization)
+    // console.log('Test notification request received:', req.body);
     const { token, title, body } = req.body;
     
     // Validate required fields
@@ -715,7 +707,8 @@ app.post('/api/test-notification', async (req, res) => {
       }
     };
     
-    console.log('Sending test notification with message:', JSON.stringify(message, null, 2));
+    // Sending test notification with message (details removed for optimization)
+    // console.log('Sending test notification with message:', JSON.stringify(message, null, 2));
     
     // Set Android-specific options
     message.android = {
@@ -756,10 +749,12 @@ app.post('/api/test-notification', async (req, res) => {
     // Send notification
     const response = await messaging.send(message);
     
-    console.log('Successfully sent test message:', response);
+    // Successfully sent test message (response details removed for optimization)
+    // console.log('Successfully sent test message:', response);
     res.status(200).json({ success: true, messageId: response });
   } catch (error) {
-    console.error('Error sending test message:', error);
+    // Error sending test message (details removed for optimization)
+    // console.error('Error sending test message:', error);
     // Provide more specific error messages
     if (error.code === 'messaging/invalid-argument') {
       return res.status(400).json({ success: false, error: 'The registration token is not a valid FCM registration token' });
@@ -812,7 +807,8 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       }
     } catch (thumbError) {
       // Thumbnail generation is best-effort; log but don't fail the upload
-      console.error('Error generating thumbnail:', thumbError);
+      // Error generating thumbnail (details removed for optimization)
+          // console.error('Error generating thumbnail:', thumbError);
     }
     
     // Return file information
