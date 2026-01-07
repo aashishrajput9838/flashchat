@@ -75,7 +75,7 @@ try {
 export const auth = getAuth(app);
 
 // Export Firestore instance, Messaging, Storage, and Functions
-export { db, messaging, functions, storage };
+export { db, messaging, functions, storage, analytics };
 
 // Add a function to handle Firestore errors and implement backoff logic
 export const handleFirestoreError = (error) => {
