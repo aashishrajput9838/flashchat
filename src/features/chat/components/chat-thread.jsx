@@ -327,26 +327,50 @@ export function ChatThread({ selectedChat, onClose, showCloseButton = false }) {
 
   // Toggle reaction popup with position calculation
   const toggleReactionPopup = (messageId) => {
-    const isOpening = !showReactionPopup[messageId];
-    
-    if (isOpening) {
-      // Will show popup, calculate position
-      setTimeout(() => {
-        const buttonRef = { current: messageDropdownRefs.current[messageId] };
-        if (buttonRef.current) {
-          const position = calculateReactionPopupPosition(buttonRef);
-          setReactionPopupPosition(prev => ({
-            ...prev,
-            [messageId]: position
-          }));
-        }
-      }, 0);
+    try {
+      console.log('[Reaction] Toggling reaction popup for message:', messageId);
+      const isOpening = !showReactionPopup[messageId];
+      console.log('[Reaction] Popup state changing from', showReactionPopup[messageId], 'to', !showReactionPopup[messageId]);
+      
+      if (isOpening) {
+        // Will show popup, calculate position
+        setTimeout(() => {
+          try {
+            const buttonRef = { current: messageDropdownRefs.current[messageId] };
+            if (buttonRef.current) {
+              const position = calculateReactionPopupPosition(buttonRef);
+              console.log('[Reaction] Calculated reaction popup position:', position);
+              setReactionPopupPosition(prev => ({
+                ...prev,
+                [messageId]: position
+              }));
+            } else {
+              console.warn('[Reaction] Button reference not found for message:', messageId);
+            }
+          } catch (positionError) {
+            console.error('[Reaction] Error calculating reaction popup position:', positionError);
+            console.error('[Reaction] Message ID:', messageId);
+          }
+        }, 0);
+      }
+      
+      setShowReactionPopup(prev => {
+        const newState = {
+          ...prev,
+          [messageId]: !prev[messageId]
+        };
+        console.log('[Reaction] Updated reaction popup state:', newState);
+        return newState;
+      });
+    } catch (error) {
+      console.error('[Reaction] Error in toggleReactionPopup:', error);
+      console.error('[Reaction] Message ID:', messageId);
+      // Still attempt to toggle the state even if position calculation fails
+      setShowReactionPopup(prev => ({
+        ...prev,
+        [messageId]: !prev[messageId]
+      }));
     }
-    
-    setShowReactionPopup(prev => ({
-      ...prev,
-      [messageId]: !prev[messageId]
-    }));
   };
 
   // Toggle dropdown menu with position calculation
@@ -1190,9 +1214,18 @@ const MessageDropdown = React.memo(({
     >
       <button
         className="w-full text-left px-4 py-2 hover:bg-muted flex items-center gap-2 text-foreground"
-        onClick={() => {
-          setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
-          toggleReactionPopup(messageId);
+        onClick={async () => {
+          try {
+            console.log('[Reaction] React button clicked for message:', messageId);
+            setShowMessageDropdown(prev => ({ ...prev, [messageId]: false }));
+            toggleReactionPopup(messageId);
+            console.log('[Reaction] Reaction popup toggled for message:', messageId);
+          } catch (error) {
+            console.error('[Reaction] Error handling React button click:', error);
+            console.error('[Reaction] Message ID:', messageId);
+            // Show error to user
+            alert('Failed to open reaction picker. Please try again.');
+          }
         }}
       >
         <Heart className="h-4 w-4" />
@@ -1285,7 +1318,18 @@ const ReactionPopup = React.memo(({
   // Handle adding reaction with better error handling
   const handleReactionClick = async (emoji) => {
     try {
-      await handleAddReaction(messageId, emoji);
+      console.log('[Reaction] Adding reaction:', emoji, 'to message:', messageId);
+      const success = await handleAddReaction(messageId, emoji);
+      if (success) {
+        console.log('[Reaction] Reaction added successfully:', emoji, 'to message:', messageId);
+      } else {
+        console.error('[Reaction] Failed to add reaction:', emoji, 'to message:', messageId);
+        alert('Failed to add reaction. Please try again.');
+      }
+    } catch (error) {
+      console.error('[Reaction] Error adding reaction:', error);
+      console.error('[Reaction] Emoji:', emoji, 'Message ID:', messageId);
+      alert('Error adding reaction: ' + (error.message || 'Please try again.'));
     } finally {
       // Always close the popup after attempting to add reaction
       setShowReactionPopup(prev => ({ ...prev, [messageId]: false }));
@@ -1302,7 +1346,14 @@ const ReactionPopup = React.memo(({
         <button
           key={emoji}
           className="text-lg p-1 hover:bg-muted rounded-full transition-colors"
-          onClick={() => handleReactionClick(emoji)}
+          onClick={async () => {
+            try {
+              await handleReactionClick(emoji);
+            } catch (error) {
+              console.error('[Reaction] Error in reaction button click handler:', error);
+              console.error('[Reaction] Emoji:', emoji, 'Message ID:', messageId);
+            }
+          }}
         >
           {emoji}
         </button>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { logEvent } from 'firebase/analytics';
+import { analytics } from '@/config/firebase'; // Import analytics from firebase config
 import { LeftRail } from "@/features/user/components/left-rail";
 import { ConversationList } from "@/features/chat/components/conversation-list";
 import { ChatThread } from "@/features/chat/components/chat-thread";
@@ -16,6 +18,9 @@ import { initNotificationService } from '@/features/notifications/services/notif
 import logoFlashchat from '../fevicon.png';
 import fullnameLogoFlashchat from '../fullname-flashchat.png';
 import SplitText from './components/SplitText';
+
+// Initialize gtag function for Google Analytics
+const gtag = window.gtag;
 
 // Create Theme Context
 export const ThemeContext = React.createContext();
@@ -57,6 +62,21 @@ function App() {
   // Toggle theme
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+    
+    // Track theme change in analytics
+    if (gtag) {
+      gtag('event', 'theme_change', {
+        theme: theme === 'dark' ? 'light' : 'dark',
+        page_location: window.location.href
+      });
+    }
+    
+    if (analytics) {
+      logEvent(analytics, 'theme_change', {
+        theme: theme === 'dark' ? 'light' : 'dark',
+        page_location: window.location.href
+      });
+    }
   };
 
   // Handle screen resize for responsive design
@@ -81,6 +101,14 @@ function App() {
     // Apply theme to document
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
+    
+    // Track theme change in analytics
+    if (gtag) {
+      gtag('event', 'page_view', {
+        page_title: document.title,
+        page_location: window.location.href
+      });
+    }
   }, [theme]);
   
   // Track user activity for online status
@@ -131,6 +159,36 @@ function App() {
         
         // Initialize notification service
         initNotificationService();
+        
+        // Track user login in analytics
+        if (gtag) {
+          gtag('event', 'login', {
+            method: 'Google',
+            user_id: user.uid,
+            page_location: window.location.href
+          });
+        }
+        
+        if (analytics) {
+          logEvent(analytics, 'login', {
+            method: 'Google',
+            user_id: user.uid,
+            page_location: window.location.href
+          });
+        }
+      } else {
+        // Track user logout in analytics
+        if (gtag) {
+          gtag('event', 'logout', {
+            page_location: window.location.href
+          });
+        }
+        
+        if (analytics) {
+          logEvent(analytics, 'logout', {
+            page_location: window.location.href
+          });
+        }
       }
       setUser(user);
       setLoading(false);
@@ -144,6 +202,19 @@ function App() {
   // Handle closing chat on mobile
   const handleCloseChat = () => {
     setSelectedChat(null);
+    
+    // Track chat close in analytics
+    if (gtag) {
+      gtag('event', 'close_chat', {
+        page_location: window.location.href
+      });
+    }
+    
+    if (analytics) {
+      logEvent(analytics, 'close_chat', {
+        page_location: window.location.href
+      });
+    }
   };
   
   // Select a chat
@@ -152,6 +223,23 @@ function App() {
     // Close mobile overlays when selecting a chat
     setShowMobileConversations(false);
     setShowMobileSidebar(false);
+    
+    // Track chat selection in analytics
+    if (gtag) {
+      gtag('event', 'select_chat', {
+        user_id: user?.uid,
+        user_name: user?.displayName,
+        page_location: window.location.href
+      });
+    }
+    
+    if (analytics) {
+      logEvent(analytics, 'select_chat', {
+        user_id: user?.uid,
+        user_name: user?.displayName,
+        page_location: window.location.href
+      });
+    }
   };
 
   if (loading) {

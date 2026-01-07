@@ -11,14 +11,17 @@ import { sendMessageNotification } from '@/features/notifications/services/notif
  * @returns {Promise<string|null>} - The document ID of the sent message, or null if failed
  */
 export const sendMessage = async (messageData, recipientUserId) => {
+  console.log('sendMessage called with:', { messageData, recipientUserId });
+  
   // Only interact with Firestore if it's available
   if (db) {
     try {
       const user = getCurrentUser();
+      console.log('Current user:', user?.uid);
       
       // Validate required data
       if (!user || !recipientUserId) {
-        console.error('Missing user or recipient data');
+        console.error('Missing user or recipient data', { user: !!user, recipientUserId: !!recipientUserId });
         return null;
       }
       
@@ -36,16 +39,22 @@ export const sendMessage = async (messageData, recipientUserId) => {
         status: 'sent' // initial status for message ticks
       };
       
+      console.log('Creating message document with data:', message);
+      
       // Use addDoc to let Firestore generate the ID
       const docRef = await addDoc(messagesRef, message);
+      console.log('Message document created with ID:', docRef.id);
       
       // Send notification to recipient
+      console.log('Sending notification to recipient:', recipientUserId);
       await sendMessageNotification(recipientUserId, message.name, message.text);
       
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error);
       console.error('Error sending message:', error);
+      console.error('Message data:', messageData);
+      console.error('Recipient ID:', recipientUserId);
       // Don't throw error, just return null to indicate failure
       return null;
     }
@@ -62,14 +71,17 @@ export const sendMessage = async (messageData, recipientUserId) => {
  * @returns {Promise<string|null>} - The document ID of the sent message, or null if failed
  */
 export const sendFileMessage = async (fileMessageData, recipientUserId) => {
+  console.log('sendFileMessage called with:', { fileMessageData, recipientUserId });
+  
   // Only interact with Firestore if it's available
   if (db) {
     try {
       const user = getCurrentUser();
+      console.log('Current user:', user?.uid);
       
       // Validate required data
       if (!user || !recipientUserId) {
-        console.error('Missing user or recipient data');
+        console.error('Missing user or recipient data', { user: !!user, recipientUserId: !!recipientUserId });
         return null;
       }
       
@@ -91,16 +103,22 @@ export const sendFileMessage = async (fileMessageData, recipientUserId) => {
         status: 'sent' // initial status for file message ticks
       };
       
+      console.log('Creating file message document with data:', message);
+      
       // Use addDoc to let Firestore generate the ID
       const docRef = await addDoc(messagesRef, message);
+      console.log('File message document created with ID:', docRef.id);
       
       // Send notification to recipient
+      console.log('Sending notification to recipient:', recipientUserId);
       await sendMessageNotification(recipientUserId, message.name, message.text);
       
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error);
       console.error('Error sending file message:', error);
+      console.error('File message data:', fileMessageData);
+      console.error('Recipient ID:', recipientUserId);
       // Don't throw error, just return null to indicate failure
       return null;
     }
@@ -117,13 +135,20 @@ export const sendFileMessage = async (fileMessageData, recipientUserId) => {
  * @returns {Function} - Unsubscribe function to clean up the listener
  */
 export const subscribeToMessages = (selectedUserId, callback) => {
+  console.log('subscribeToMessages called with:', selectedUserId);
+  
   // Only subscribe to Firestore if it's available
   if (db) {
     try {
       const currentUser = getCurrentUser();
+      console.log('Current user:', currentUser?.uid);
       
       // If no selected user or no current user, return empty array
       if (!selectedUserId || !currentUser) {
+        console.warn('Missing user data for subscribeToMessages', { 
+          selectedUserId: !!selectedUserId, 
+          currentUser: !!currentUser 
+        });
         callback([]);
         return () => {};
       }
@@ -137,49 +162,63 @@ export const subscribeToMessages = (selectedUserId, callback) => {
         orderBy('timestamp', 'asc')
       );
       
+      console.log('Subscribing to messages between', currentUser.uid, 'and', selectedUserId);
+      
       // Subscribe to the query
       const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const messages = [];
-        const deliveryUpdates = [];
+        try {
+          console.log('Received message snapshot with', snapshot.size, 'documents');
+          const messages = [];
+          const deliveryUpdates = [];
 
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
 
-          // Queue delivery status update for messages that reached this client as recipient
-          if (
-            data.recipientId === currentUser.uid &&
-            (!data.status || data.status === 'sent')
-          ) {
-            deliveryUpdates.push({ id: docSnap.id });
-          }
+            // Queue delivery status update for messages that reached this client as recipient
+            if (
+              data.recipientId === currentUser.uid &&
+              (!data.status || data.status === 'sent')
+            ) {
+              deliveryUpdates.push({ id: docSnap.id });
+            }
 
-          messages.push({
-            id: docSnap.id,
-            ...data,
-            you: data.userId === currentUser.uid,
-            time: data.timestamp && data.timestamp.toDate && typeof data.timestamp.toDate === 'function'
-              ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : 'Just now'
-          });
-        });
-
-        // Mark messages as delivered in Firestore (single tick -> double tick)
-        if (deliveryUpdates.length > 0 && db) {
-          try {
-            const batch = writeBatch(db);
-            deliveryUpdates.forEach((msg) => {
-              const msgRef = doc(db, 'messages', msg.id);
-              batch.update(msgRef, { status: 'delivered' });
+            messages.push({
+              id: docSnap.id,
+              ...data,
+              you: data.userId === currentUser.uid,
+              time: data.timestamp && data.timestamp.toDate && typeof data.timestamp.toDate === 'function'
+                ? new Date(data.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : 'Just now'
             });
-            await batch.commit();
-          } catch (error) {
-            handleFirestoreError(error);
-          }
-        }
+          });
 
-        callback(messages);
+          console.log('Processed messages:', messages.length, 'Delivery updates:', deliveryUpdates.length);
+          
+          // Mark messages as delivered in Firestore (single tick -> double tick)
+          if (deliveryUpdates.length > 0 && db) {
+            try {
+              console.log('Updating', deliveryUpdates.length, 'messages to delivered status');
+              const batch = writeBatch(db);
+              deliveryUpdates.forEach((msg) => {
+                const msgRef = doc(db, 'messages', msg.id);
+                batch.update(msgRef, { status: 'delivered' });
+              });
+              await batch.commit();
+              console.log('Successfully updated messages to delivered status');
+            } catch (error) {
+              handleFirestoreError(error);
+              console.error('Error updating message statuses to delivered:', error);
+            }
+          }
+
+          callback(messages);
+        } catch (error) {
+          console.error('Error processing message snapshot:', error);
+          callback([]);
+        }
       }, (error) => {
         handleFirestoreError(error);
+        console.error('Error in message subscription:', error);
         callback([]);
       });
       
@@ -187,6 +226,7 @@ export const subscribeToMessages = (selectedUserId, callback) => {
       return unsubscribe;
     } catch (error) {
       handleFirestoreError(error);
+      console.error('Error setting up message subscription:', error);
       callback([]);
       return () => {};
     }
@@ -204,6 +244,8 @@ export const subscribeToMessages = (selectedUserId, callback) => {
  * @param {string} selectedUserId - The UID of the conversation partner
  */
 export const markMessagesAsRead = async (selectedUserId) => {
+  console.log('markMessagesAsRead called with:', selectedUserId);
+  
   if (!db) {
     console.warn('Firestore not available, skipping markMessagesAsRead');
     return;
@@ -211,7 +253,13 @@ export const markMessagesAsRead = async (selectedUserId) => {
 
   try {
     const currentUser = getCurrentUser();
+    console.log('Current user:', currentUser?.uid);
+    
     if (!currentUser || !selectedUserId) {
+      console.warn('Missing user data for markMessagesAsRead', { 
+        currentUser: !!currentUser, 
+        selectedUserId: !!selectedUserId 
+      });
       return;
     }
 
@@ -224,17 +272,29 @@ export const markMessagesAsRead = async (selectedUserId) => {
       where('status', 'in', ['sent', 'delivered'])
     );
 
+    console.log('Executing query for messages to mark as read');
     const snapshot = await getDocs(q);
-    if (snapshot.empty) return;
+    console.log('Found', snapshot.size, 'messages to mark as read');
+    
+    if (snapshot.empty) {
+      console.log('No messages to mark as read');
+      return;
+    }
 
     const batch = writeBatch(db);
+    let updateCount = 0;
     snapshot.forEach((docSnap) => {
       batch.update(docSnap.ref, { status: 'read' });
+      updateCount++;
     });
-
+    
+    console.log('Updating', updateCount, 'messages to read status');
     await batch.commit();
+    console.log('Successfully marked', updateCount, 'messages as read');
   } catch (error) {
     handleFirestoreError(error);
+    console.error('Error in markMessagesAsRead:', error);
+    console.error('Selected user ID:', selectedUserId);
   }
 };
 
@@ -244,11 +304,15 @@ export const markMessagesAsRead = async (selectedUserId) => {
  * @returns {Function} - Unsubscribe function to clean up the listener
  */
 export const subscribeToLatestMessages = (callback) => {
+  console.log('subscribeToLatestMessages called');
+  
   if (db) {
     try {
       const currentUser = getCurrentUser();
+      console.log('Current user:', currentUser?.uid);
       
       if (!currentUser) {
+        console.warn('No current user, returning empty latest messages');
         callback([]);
         return () => {};
       }
@@ -261,36 +325,15 @@ export const subscribeToLatestMessages = (callback) => {
         orderBy('timestamp', 'desc')
       );
       
+      console.log('Subscribing to latest messages where user is sender');
+      
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const latestMessages = {};
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const otherUserId = data.recipientId;
-          
-          // Only keep the most recent message for each conversation
-          if (!latestMessages[otherUserId] || 
-              (data.timestamp && data.timestamp.toDate && 
-               latestMessages[otherUserId].timestamp && latestMessages[otherUserId].timestamp.toDate &&
-               data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate())) {
-            latestMessages[otherUserId] = {
-              id: doc.id,
-              ...data,
-              otherUserId: otherUserId
-            };
-          }
-        });
-        
-        // Also get messages where current user is recipient
-        const q2 = query(
-          messagesRef,
-          where('recipientId', '==', currentUser.uid),
-          orderBy('timestamp', 'desc')
-        );
-        
-        const unsubscribe2 = onSnapshot(q2, (snapshot2) => {
-          snapshot2.forEach((doc) => {
+        try {
+          console.log('Received sender messages snapshot with', snapshot.size, 'documents');
+          const latestMessages = {};
+          snapshot.forEach((doc) => {
             const data = doc.data();
-            const otherUserId = data.userId;
+            const otherUserId = data.recipientId;
             
             // Only keep the most recent message for each conversation
             if (!latestMessages[otherUserId] || 
@@ -305,25 +348,68 @@ export const subscribeToLatestMessages = (callback) => {
             }
           });
           
-          callback(Object.values(latestMessages));
-        }, (error) => {
-          handleFirestoreError(error);
-          callback(Object.values(latestMessages));
-        });
-        
-        // Return unsubscribe function for both queries
-        return () => {
-          unsubscribe();
-          unsubscribe2();
-        };
+          console.log('Processed sender messages, found', Object.keys(latestMessages).length, 'conversations');
+          
+          // Also get messages where current user is recipient
+          const q2 = query(
+            messagesRef,
+            where('recipientId', '==', currentUser.uid),
+            orderBy('timestamp', 'desc')
+          );
+          
+          console.log('Subscribing to latest messages where user is recipient');
+          
+          const unsubscribe2 = onSnapshot(q2, (snapshot2) => {
+            try {
+              console.log('Received recipient messages snapshot with', snapshot2.size, 'documents');
+              snapshot2.forEach((doc) => {
+                const data = doc.data();
+                const otherUserId = data.userId;
+                
+                // Only keep the most recent message for each conversation
+                if (!latestMessages[otherUserId] || 
+                    (data.timestamp && data.timestamp.toDate && 
+                     latestMessages[otherUserId].timestamp && latestMessages[otherUserId].timestamp.toDate &&
+                     data.timestamp.toDate() > latestMessages[otherUserId].timestamp.toDate())) {
+                  latestMessages[otherUserId] = {
+                    id: doc.id,
+                    ...data,
+                    otherUserId: otherUserId
+                  };
+                }
+              });
+              
+              console.log('Processed recipient messages, total conversations:', Object.keys(latestMessages).length);
+              callback(Object.values(latestMessages));
+            } catch (error2) {
+              console.error('Error processing recipient messages:', error2);
+              callback(Object.values(latestMessages));
+            }
+          }, (error) => {
+            handleFirestoreError(error);
+            console.error('Error in recipient messages subscription:', error);
+            callback(Object.values(latestMessages));
+          });
+          
+          // Return unsubscribe function for both queries
+          return () => {
+            unsubscribe();
+            unsubscribe2();
+          };
+        } catch (error) {
+          console.error('Error processing sender messages:', error);
+          callback([]);
+        }
       }, (error) => {
         handleFirestoreError(error);
+        console.error('Error in sender messages subscription:', error);
         callback([]);
       });
       
       return unsubscribe;
     } catch (error) {
       handleFirestoreError(error);
+      console.error('Error setting up latest messages subscription:', error);
       callback([]);
       return () => {};
     }
@@ -341,34 +427,49 @@ export const subscribeToLatestMessages = (callback) => {
  * @returns {Promise<boolean>} - True if successful, false if failed
  */
 export const addReactionToMessage = async (messageId, emoji) => {
+  console.log('[Reaction] addReactionToMessage called with:', { messageId, emoji });
+  
   if (!db) {
-    console.warn('Firestore not available, skipping addReactionToMessage');
+    console.warn('[Reaction] Firestore not available, skipping addReactionToMessage');
     return false;
   }
 
   try {
     const currentUser = getCurrentUser();
+    console.log('[Reaction] Current user:', currentUser?.uid);
+    
     if (!currentUser || !messageId || !emoji) {
-      console.error('Missing required parameters for addReactionToMessage');
+      console.error('[Reaction] Missing required parameters for addReactionToMessage', { 
+        currentUser: !!currentUser, 
+        messageId: !!messageId, 
+        emoji: !!emoji 
+      });
       return false;
     }
 
     const messageRef = doc(db, 'messages', messageId);
+    console.log('[Reaction] Updating message document:', messageId);
     
     // Get the current message data to check existing reactions
     // In a production app, you might want to use a transaction here
+    const reactionData = {
+      userId: currentUser.uid,
+      name: currentUser.displayName || 'Anonymous',
+      timestamp: serverTimestamp()
+    };
+    
+    console.log('[Reaction] Adding reaction data:', reactionData);
+    
     await updateDoc(messageRef, {
-      [`reactions.${emoji}.${currentUser.uid}`]: {
-        userId: currentUser.uid,
-        name: currentUser.displayName || 'Anonymous',
-        timestamp: serverTimestamp()
-      }
+      [`reactions.${emoji}.${currentUser.uid}`]: reactionData
     });
 
+    console.log('[Reaction] Successfully added reaction to message:', messageId);
     return true;
   } catch (error) {
     handleFirestoreError(error);
-    console.error('Error adding reaction to message:', error);
+    console.error('[Reaction] Error adding reaction to message:', error);
+    console.error('[Reaction] Parameters:', { messageId, emoji });
     // Return a more specific error message
     if (error.code === 'permission-denied') {
       throw new Error('You do not have permission to react to this message');
@@ -387,29 +488,40 @@ export const addReactionToMessage = async (messageId, emoji) => {
  * @returns {Promise<boolean>} - True if successful, false if failed
  */
 export const removeReactionFromMessage = async (messageId, emoji) => {
+  console.log('[Reaction] removeReactionFromMessage called with:', { messageId, emoji });
+  
   if (!db) {
-    console.warn('Firestore not available, skipping removeReactionFromMessage');
+    console.warn('[Reaction] Firestore not available, skipping removeReactionFromMessage');
     return false;
   }
 
   try {
     const currentUser = getCurrentUser();
+    console.log('[Reaction] Current user:', currentUser?.uid);
+    
     if (!currentUser || !messageId || !emoji) {
-      console.error('Missing required parameters for removeReactionFromMessage');
+      console.error('[Reaction] Missing required parameters for removeReactionFromMessage', { 
+        currentUser: !!currentUser, 
+        messageId: !!messageId, 
+        emoji: !!emoji 
+      });
       return false;
     }
 
     const messageRef = doc(db, 'messages', messageId);
+    console.log('[Reaction] Removing reaction from message document:', messageId);
     
     // Remove the user's reaction for this emoji
     await updateDoc(messageRef, {
       [`reactions.${emoji}.${currentUser.uid}`]: null
     });
 
+    console.log('[Reaction] Successfully removed reaction from message:', messageId);
     return true;
   } catch (error) {
     handleFirestoreError(error);
-    console.error('Error removing reaction from message:', error);
+    console.error('[Reaction] Error removing reaction from message:', error);
+    console.error('[Reaction] Parameters:', { messageId, emoji });
     // Return a more specific error message
     if (error.code === 'permission-denied') {
       throw new Error('You do not have permission to remove this reaction');

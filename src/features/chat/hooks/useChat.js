@@ -156,13 +156,18 @@ export const useChat = (selectedChat) => {
   // Handle adding a reaction to a message
   const handleAddReaction = useCallback(async (messageId, emoji) => {
     try {
+      console.log('[Reaction] Attempting to add reaction:', emoji, 'to message:', messageId);
       const success = await addReactionToMessage(messageId, emoji);
       if (!success) {
+        console.error('[Reaction] Failed to add reaction:', emoji, 'to message:', messageId);
         setError('Failed to add reaction');
+      } else {
+        console.log('[Reaction] Successfully added reaction:', emoji, 'to message:', messageId);
       }
       return success;
     } catch (err) {
-      console.error('Error adding reaction:', err);
+      console.error('[Reaction] Error adding reaction:', err);
+      console.error('[Reaction] Emoji:', emoji, 'Message ID:', messageId);
       setError(err.message || 'Failed to add reaction');
       return false;
     }
@@ -171,13 +176,18 @@ export const useChat = (selectedChat) => {
   // Handle removing a reaction from a message
   const handleRemoveReaction = useCallback(async (messageId, emoji) => {
     try {
+      console.log('[Reaction] Attempting to remove reaction:', emoji, 'from message:', messageId);
       const success = await removeReactionFromMessage(messageId, emoji);
       if (!success) {
+        console.error('[Reaction] Failed to remove reaction:', emoji, 'from message:', messageId);
         setError('Failed to remove reaction');
+      } else {
+        console.log('[Reaction] Successfully removed reaction:', emoji, 'from message:', messageId);
       }
       return success;
     } catch (err) {
-      console.error('Error removing reaction:', err);
+      console.error('[Reaction] Error removing reaction:', err);
+      console.error('[Reaction] Emoji:', emoji, 'Message ID:', messageId);
       setError(err.message || 'Failed to remove reaction');
       return false;
     }
